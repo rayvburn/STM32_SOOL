@@ -5,9 +5,9 @@
  *      Author: user
  */
 
-#include "Potentiometer.h"
-//#include "ADC/DMA.h"
-#include "Filters.h"
+#include "Sensors/Potentiometer/Potentiometer.h"
+#include "Peripherals/ADC/DMA.h"
+#include "Maths/Filters.h"
 
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_rcc.h"

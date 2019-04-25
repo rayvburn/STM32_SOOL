@@ -5,7 +5,8 @@
  *      Author: user
  */
 
-#include "Button.h"
+//#include "Button.h"
+#include "Sensors/Button/Button.h"
 
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_rcc.h"

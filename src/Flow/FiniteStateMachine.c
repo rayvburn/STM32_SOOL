@@ -5,7 +5,7 @@
  *      Author: user
  */
 
-#include "FiniteStateMachine.h"
+#include "Flow/FiniteStateMachine.h"
 
 // initial conditions
 static uint8_t state_changed = 1;

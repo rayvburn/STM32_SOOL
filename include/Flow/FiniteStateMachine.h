@@ -9,7 +9,7 @@
 #define FINITESTATEMACHINE_H_
 
 #include <stdint.h>
-#include "Systick_Timer.h"
+#include "Peripherals/TIM/Systick_Timer.h"
 
 typedef enum {
 

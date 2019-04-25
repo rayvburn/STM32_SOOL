@@ -5,7 +5,7 @@
  *      Author: user
  */
 
-#include "PinConfig.h"
+#include "Common/PinConfig.h"
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_exti.h"
 #include "stm32f10x_rcc.h"
@@ -19,18 +19,31 @@ static void SOOL_PinConfig_SetEXTIPortSource(const GPIO_TypeDef* port, uint8_t *
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-struct SoolPinConfigNoInt PinConfig_Initialize_NoInt(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin) {
+struct SoolPinConfigNoInt SOOL_PinConfig_Initialize_NoInt(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const GPIOMode_TypeDef gpio_mode) {
 
+	// copy values into structure
 	struct SoolPinConfigNoInt config;
 	config.gpio_port = gpio_port;
 	config.gpio_pin = gpio_pin;
+
+	// start the clock
+	SOOL_PinConfig_EnableAPBClock(gpio_port);
+
+	// initialize pin
+	GPIO_InitTypeDef gpio;
+	GPIO_StructInit(&gpio);
+	gpio.GPIO_Pin = gpio_pin;
+	gpio.GPIO_Speed = GPIO_Speed_50MHz;
+	gpio.GPIO_Mode = gpio_mode;
+	GPIO_Init(gpio_port, &gpio);
+
 	return (config);
 
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-struct SoolPinConfigInt PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin,
+struct SoolPinConfigInt SOOL_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin,
 					const uint32_t exti_line, const uint8_t port_source, const uint8_t pin_source,
 					const EXTITrigger_TypeDef exti_trigger, const uint8_t irq_channel) {
 

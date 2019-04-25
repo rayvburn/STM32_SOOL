@@ -5,7 +5,7 @@
  *      Author: user
  */
 
-#include "USART.h"
+#include "Peripherals/USART/USART.h"
 #include "stm32f10x_rcc.h"
 #include "stm32f10x_gpio.h"
 

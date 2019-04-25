@@ -5,8 +5,8 @@
  *      Author: user
  */
 
-#include "Sparkfun_EasyDriver.h"
-#include "USART.h" // debug
+#include "Effectors/SparkFun_EasyDriver_stepper_driver/Sparkfun_EasyDriver.h"
+#include "Peripherals/USART/USART.h" // debug
 #include "stm32f10x_rcc.h"
 #include "stm32f10x_tim.h"
 

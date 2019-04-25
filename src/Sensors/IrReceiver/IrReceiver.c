@@ -5,7 +5,8 @@
  *      Author: user
  */
 
-#include "IrReceiver.h"
+//#include "IrReceiver.h"
+#include "Sensors/IrReceiver/IrReceiver.h"
 
 #include "stm32f10x_exti.h"
 #include "stm32f10x_gpio.h"

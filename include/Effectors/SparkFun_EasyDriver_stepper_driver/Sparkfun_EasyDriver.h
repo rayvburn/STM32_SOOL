@@ -9,7 +9,7 @@
 #define SPARKFUN_EASYDRIVER_H_
 
 #include "stm32f10x.h"
-#include "StepperTB6600.h"	// contains dir and enable enums
+#include "Effectors/TB6600_stepper_driver/StepperTB6600.h"	// contains dir and enable enums
 
 /* 2 EasyDrivers used in this project
  * both use the same timer but different

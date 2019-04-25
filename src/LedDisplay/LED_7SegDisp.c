@@ -5,10 +5,10 @@
  *      Author: user
  */
 
-#include "LED_7SegDisp.h"
+//#include "LedDisplay/LED_7SegDisp.h"
 #include "stm32f10x.h"
 
-#include "USART.h"
+//#include "Peripherals/USART/USART.h"
 /*
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 

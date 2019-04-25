@@ -5,7 +5,7 @@
  *      Author: user
  */
 
-#include "SOOL_I2C.h"
+#include "Peripherals/I2C/SOOL_I2C.h"
 #include "stm32f10x_rcc.h"
 #include "stm32f10x_i2c.h"
 #include "stm32f10x_gpio.h"

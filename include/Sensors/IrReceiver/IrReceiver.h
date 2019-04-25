@@ -9,7 +9,7 @@
 #define IRRECEIVER_H_
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-#include "Button.h"
+#include "Sensors/Button/Button.h"
 #include "stm32f10x.h"
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 

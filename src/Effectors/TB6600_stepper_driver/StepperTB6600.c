@@ -5,8 +5,9 @@
  *      Author: user
  */
 
-#include "StepperTB6600.h"
-#include "USART.h" // debugging purposes
+#include "Effectors/TB6600_stepper_driver/StepperTB6600.h"
+#include "Peripherals/USART/USART.h" // debugging purposes
+
 #include "stm32f10x_rcc.h"
 #include "stm32f10x_tim.h"
 

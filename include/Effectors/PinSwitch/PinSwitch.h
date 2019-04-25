@@ -8,8 +8,10 @@
 #ifndef EFFECTORS_PINSWITCH_PINSWITCH_H_
 #define EFFECTORS_PINSWITCH_PINSWITCH_H_
 
+// - - - - - - - - - - -
+
 #include "stm32f10x.h"
-#include "PinConfig.h"
+#include "include/Common/PinConfig.h"
 
 // - - - - - - - - - - -
 
@@ -23,8 +25,8 @@ typedef struct PinSwitchStruct PinSwitch;
 // define a structure
 struct PinSwitchStruct {
 	PinSwitchSetup	setup;
-	void (*SetHigh)(const PinSwitchSetup);
-	void (*SetLow)(const PinSwitchSetup);
+	void (*SetHigh)(const PinSwitch*);
+	void (*SetLow)(const PinSwitch*);
 };
 
 // - - - - - - - - - - -

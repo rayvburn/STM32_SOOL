@@ -36,8 +36,11 @@ struct SoolPinConfigInt {
 
 // - - - - - - - - - - -
 
-struct SoolPinConfigNoInt	SOOL_PinConfig_Initialize_NoInt(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin);
-struct SoolPinConfigInt		SOOL_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const uint32_t exti_line, const uint8_t port_source, const uint8_t pin_source, const EXTITrigger_TypeDef exti_trigger, const uint8_t irq_channel);
+/// \brief Initializes non-interrupt pin
+/// hard-coded 50 MHz speed
+extern struct SoolPinConfigNoInt SOOL_PinConfig_Initialize_NoInt(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const GPIOMode_TypeDef gpio_mode);
+
+extern struct SoolPinConfigInt		SOOL_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const uint32_t exti_line, const uint8_t port_source, const uint8_t pin_source, const EXTITrigger_TypeDef exti_trigger, const uint8_t irq_channel);
 
 // - - - - - - - - - - -
 

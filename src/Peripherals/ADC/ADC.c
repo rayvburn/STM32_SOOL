@@ -5,7 +5,7 @@
  *      Author: user
  */
 
-#include "ADC.h"
+#include "Peripherals/ADC/ADC.h"
 
 #include "stm32f10x_adc.h"
 #include "stm32f10x_rcc.h"

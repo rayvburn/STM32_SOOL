@@ -5,7 +5,7 @@
  *      Author: user
  */
 
-#include "DMA.h"
+#include "Peripherals/ADC/DMA.h"
 #include "stm32f10x_rcc.h"
 #include "stm32f10x_dma.h"
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

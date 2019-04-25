@@ -10,7 +10,7 @@
 
 #include "stm32f10x.h"
 #include "ADC.h"
-#include "Potentiometer.h"
+#include "Sensors/Potentiometer/Potentiometer.h"
 
 extern void 		DMA_ADC_Config(FunctionalState state);
 extern void 		DMA_ADC_SwitchCmd(FunctionalState state);
