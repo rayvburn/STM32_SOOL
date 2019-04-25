@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cdtprojectproperties>
+<section name="org.eclipse.cdt.internal.ui.wizards.settingswizards.IncludePaths">
+<language name="C Source File">
+<includepath>${ProjDirPath}/StdPeriph_Driver/inc</includepath>
+<includepath>${ProjDirPath}/CMSIS/device</includepath>
+<includepath>${ProjDirPath}/CMSIS/core</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Common</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Flow</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/LedDisplay</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Maths</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Memory</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Peripherals/ADC</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Peripherals/GPIO</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Peripherals/I2C</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Peripherals/TIM</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Peripherals/USART</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Sensors/Button</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Sensors/IrReceiver</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Sensors/Potentiometer</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Effectors/PinSwitch</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Effectors/SparkFun_EasyDriver_stepper_driver</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Effectors/TB6600_stepper_driver</includepath>
+
+</language>
+<language name="S">
+<includepath>${ProjDirPath}/StdPeriph_Driver/inc</includepath>
+<includepath>${ProjDirPath}/CMSIS/device</includepath>
+<includepath>${ProjDirPath}/CMSIS/core</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Common</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Flow</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/LedDisplay</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Maths</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Memory</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Peripherals/ADC</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Peripherals/GPIO</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Peripherals/I2C</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Peripherals/TIM</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Peripherals/USART</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Sensors/Button</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Sensors/IrReceiver</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Sensors/Potentiometer</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Effectors/PinSwitch</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Effectors/SparkFun_EasyDriver_stepper_driver</includepath>
+<includepath workspace_path="true">/STM32_SOOL/include/Effectors/TB6600_stepper_driver</includepath>
+
+</language>
+<language name="s">
+<includepath>${ProjDirPath}/StdPeriph_Driver/inc</includepath>
+<includepath>${ProjDirPath}/CMSIS/device</includepath>
+<includepath>${ProjDirPath}/CMSIS/core</includepath>
+
+</language>
+<language name="Assembly Source File">
+<includepath>${ProjDirPath}/StdPeriph_Driver/inc</includepath>
+<includepath>${ProjDirPath}/CMSIS/device</includepath>
+<includepath>${ProjDirPath}/CMSIS/core</includepath>
+
+</language>
+</section>
+<section name="org.eclipse.cdt.internal.ui.wizards.settingswizards.Macros">
+<language name="C Source File">
+<macro>
+<name>STM32</name><value/>
+</macro>
+<macro>
+<name>STM32F1</name><value/>
+</macro>
+<macro>
+<name>STM32F103C8Tx</name><value/>
+</macro>
+<macro>
+<name>DEBUG</name><value/>
+</macro>
+<macro>
+<name>STM32F10X_MD</name><value/>
+</macro>
+<macro>
+<name>USE_STDPERIPH_DRIVER</name><value/>
+</macro>
+
+</language>
+<language name="S">
+<macro>
+<name>STM32</name><value/>
+</macro>
+<macro>
+<name>STM32F1</name><value/>
+</macro>
+<macro>
+<name>STM32F103C8Tx</name><value/>
+</macro>
+<macro>
+<name>DEBUG</name><value/>
+</macro>
+<macro>
+<name>STM32F10X_MD</name><value/>
+</macro>
+<macro>
+<name>USE_STDPERIPH_DRIVER</name><value/>
+</macro>
+
+</language>
+<language name="s">
+
+</language>
+<language name="Assembly Source File">
+
+</language>
+</section>
+</cdtprojectproperties>
