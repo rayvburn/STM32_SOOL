@@ -1,0 +1,47 @@
+STM32_SOOL must be added as a static library to the workspace!
+
+o Project -> Properties
+	o C/C++ Build
+		o Settings
+			o Tool Settings
+			- Includes
+			- Add include path (File System...)
+			- choose STM32_SOOL folder
+
+in main.c put #includes based on folder structure:
+
+#include <include/Sensors/Potentiometer/Potentiometer.h>
+
+
++
+
+
+
+o Project -> Properties
+	o C/C++ General
+		o Paths and Symbols
+			o Includes
+				o Add (directory path) ("/STM32_SOOL") for each Language
+
+
++
+
+
+
+o Project -> Properties
+	o C/C++ General
+		o Paths and Symbols
+			o References
+				o Tick STM32_SOOL/Debug (Debug is crucial!)			
+
+
+
++
+
+
+
+o Project -> Properties
+	o C/C++ General
+		o Paths and Symbols
+			o Library Paths
+				o Add "/STM32_SOOL/Debug" ("/Debug" is crucial!, this is a directory where .a file is generated in)
