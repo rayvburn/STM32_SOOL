@@ -1,0 +1,2 @@
+Arduino library STM32 conversion
+- not tested as I2C doesn't work well in STM32F1xx
