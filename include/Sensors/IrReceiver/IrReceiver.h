@@ -5,51 +5,48 @@
  *      Author: user
  */
 
-#ifndef IRRECEIVER_H_
-#define IRRECEIVER_H_
+#ifndef SENSORS_IRRECEIVER_H_
+#define SENSORS_IRRECEIVER_H_
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-#include "Sensors/Button/Button.h"
 #include "stm32f10x.h"
+#include "include/Common/PinConfig.h"
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-/// \brief So-called objects, reference to Buttons takes place via these enums
-typedef enum {
-	IR_RECEIVER_LEFT = 0,
-	IR_RECEIVER_RIGHT
-} IrReceiverID;
+/// \brief TSOP3123/1736 IR receiver controller
 
-// - - - - - - - - - - - - - - - - -
-
-/* no need to defined SetupStruct one again as fields
- * would be the same */
-typedef struct ButtonSetup IrReceiverSetup;
-
-// - - - - - - - - - - - - - - - - -
-
-struct IrReceiverState {
-	uint8_t 			signal_flag;
+/// \brief status `register` which changes as interrupt routing fires up
+struct IrReceiverStateStruct {
+	uint8_t 	received_flag;	// received signal (active low)
+	uint8_t		last_state_int; // last pin state during interrupt routing processing
+	uint32_t 	last_edge_time;	// non-defined if it will be milliseconds or 0.1 seconds
 };
 
+typedef struct IrReceiverStateStruct IrReceiverState;
+
 // - - - - - - - - - - - - - - - - -
 
-typedef struct {
-	IrReceiverSetup setup;
-	struct IrReceiverState state;
-} IrReceiverData;
+// forward declare a structure and typedef it to further make use of it inside a structure
+struct IrReceiverStruct;
+typedef struct IrReceiverStruct IrReceiver;
+
+// IR Receiver is interrupt-driven - use previously defined structure for this task
+struct IrReceiverStruct {
+	SOOL_PinConfigInt setup;
+	IrReceiverState state;
+	uint8_t 	(*GetReceptionFlag)(IrReceiver*);		// interrupt-driven
+	uint8_t 	(*GetCurrentState)(const IrReceiver*);
+	uint32_t 	(*GetLastEdgeTime)(const IrReceiver*);
+	uint8_t 	(*IsStateStable)(const IrReceiver*, const uint32_t); /// \param[in] object pointer, time gap required; current time requested from SysTick
+	void 		(*SetNvicState)(SOOL_PinConfigInt*, const FunctionalState state);
+	void 		(*SetExtiState)(SOOL_PinConfigInt*, const FunctionalState state);
+	uint8_t 	(*InterruptHandler)(IrReceiver*);			// routine fired in a proper ISR (firstly it must check if interrupt has been triggered on sensor's EXTI line)
+};
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-extern void		IrReceiver_InitialConfig();
-extern void 	IrReceiver_Config(IrReceiverID id, GPIO_TypeDef* port, uint16_t pin);
-extern void 	IrReceiver_SwitchInterruptNVIC(IrReceiverID id, FunctionalState state);
-extern void 	IrReceiver_SwitchInterruptEXTI(IrReceiverID id, FunctionalState state);
-extern uint8_t 	IrReceiver_GetPushedFlag(IrReceiverID id);
-extern uint8_t  IrReceiver_GetState(IrReceiverID id);
-
-extern void 	EXTI4_IRQHandler();
-extern void 	EXTI9_5_IRQHandler();
+IrReceiver SOOL_IrReceiver_Init(SOOL_PinConfigInt setup);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-#endif /* IRRECEIVER_H_ */
+#endif /* SENSORS_IRRECEIVER_H_ */

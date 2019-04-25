@@ -15,23 +15,20 @@
 
 // - - - - - - - - - - -
 
-// pin switcher is not interrupt-driven
-typedef struct SoolPinConfigNoInt PinSwitchSetup;
-
-// declare a structure and typedef it
+// forward declare a structure and typedef it to further make use of it inside a structure
 struct PinSwitchStruct;
 typedef struct PinSwitchStruct PinSwitch;
 
 // define a structure
 struct PinSwitchStruct {
-	PinSwitchSetup	setup;
+	SOOL_PinConfigNoInt setup;				// pin switcher is not interrupt-driven
 	void (*SetHigh)(const PinSwitch*);
 	void (*SetLow)(const PinSwitch*);
 };
 
 // - - - - - - - - - - -
 
-PinSwitch SOOL_PinSwitch_Initialize(PinSwitchSetup *setup_ptr);
+PinSwitch SOOL_PinSwitch_Init(SOOL_PinConfigNoInt setup);
 
 // - - - - - - - - - - -
 

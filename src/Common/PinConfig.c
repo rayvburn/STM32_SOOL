@@ -5,7 +5,7 @@
  *      Author: user
  */
 
-#include "Common/PinConfig.h"
+#include "include/Common/PinConfig.h"
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_exti.h"
 #include "stm32f10x_rcc.h"
@@ -19,10 +19,10 @@ static void SOOL_PinConfig_SetEXTIPortSource(const GPIO_TypeDef* port, uint8_t *
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-struct SoolPinConfigNoInt SOOL_PinConfig_Initialize_NoInt(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const GPIOMode_TypeDef gpio_mode) {
+SOOL_PinConfigNoInt SOOL_PinConfig_Initialize_NoInt(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const GPIOMode_TypeDef gpio_mode) {
 
 	// copy values into structure
-	struct SoolPinConfigNoInt config;
+	SOOL_PinConfigNoInt config;
 	config.gpio_port = gpio_port;
 	config.gpio_pin = gpio_pin;
 
@@ -43,14 +43,26 @@ struct SoolPinConfigNoInt SOOL_PinConfig_Initialize_NoInt(GPIO_TypeDef* gpio_por
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-struct SoolPinConfigInt SOOL_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin,
-					const uint32_t exti_line, const uint8_t port_source, const uint8_t pin_source,
-					const EXTITrigger_TypeDef exti_trigger, const uint8_t irq_channel) {
+SOOL_PinConfigInt SOOL_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin,
+					const EXTITrigger_TypeDef exti_trigger) {
 
 	/* object to be filled with given values
 	 * and peripherals on which it depends
 	 * will be started */
-	struct SoolPinConfigInt config;
+	SOOL_PinConfigInt config;
+
+	/*
+	 * Prevents from improper EXTI_Line values in defined-to-be structs
+	 * Need to be fired each before first Button_Config()
+	 */
+
+	/*
+	 * 0x00 is not correct value in terms of IS_EXTI_LINE(), see
+	 * @defgroup EXTI_Exported_Constants
+	 * @defgroup EXTI_Lines
+	 */
+	config.exti_line = 0x00;
+	config.exti_line = 0x00;
 
 	uint32_t exti_ln;
 	uint8_t pin_src, port_src, irqn;
@@ -104,6 +116,20 @@ struct SoolPinConfigInt SOOL_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, c
 
 	return (config);
 
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+void SOOL_PinConfig_NvicSwitch(SOOL_PinConfigInt *config, const FunctionalState state) {
+	config->nvic_setup.NVIC_IRQChannelCmd = state;
+	NVIC_Init(&(config->nvic_setup));
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+void SOOL_PinConfig_ExtiSwitch(SOOL_PinConfigInt *config, const FunctionalState state) {
+	config->exti_setup.EXTI_LineCmd = state;
+	EXTI_Init(&(config->exti_setup));
 }
 
 // =============================================================================================

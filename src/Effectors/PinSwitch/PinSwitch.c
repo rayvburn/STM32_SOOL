@@ -5,17 +5,17 @@
  *      Author: user
  */
 
-#include "Effectors/PinSwitch/PinSwitch.h"
+#include "include/Effectors/PinSwitch/PinSwitch.h"
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 static void SOOL_PinSwitch_SetHigh(const PinSwitch *obj_ptr);
 static void SOOL_PinSwitch_SetLow (const PinSwitch *obj_ptr);
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-PinSwitch SOOL_PinSwitch_Initialize(PinSwitchSetup *setup_ptr) {
+PinSwitch SOOL_PinSwitch_Init(SOOL_PinConfigNoInt setup) {
 
 	PinSwitch obj;
-	obj.setup = *setup_ptr;
+	obj.setup = setup;
 	obj.SetHigh = SOOL_PinSwitch_SetHigh;
 	obj.SetLow = SOOL_PinSwitch_SetLow;
 	return (obj);

@@ -16,14 +16,14 @@
 
 // - - - - - - - - - - -
 
-struct SoolPinConfigNoInt  {
+typedef struct {
 	GPIO_TypeDef*		gpio_port;		// @ref Peripheral_declaration
 	uint16_t 			gpio_pin;		// @ref GPIO_pins
-};
+} SOOL_PinConfigNoInt;
 
 // - - - - - - - - - - -
 
-struct SoolPinConfigInt {
+typedef struct {
 	GPIO_TypeDef*		gpio_port;		// @ref Peripheral_declaration
 	uint16_t 			gpio_pin;		// @ref GPIO_pins
 	uint32_t			exti_line;		// @ref EXTI_Lines
@@ -32,15 +32,21 @@ struct SoolPinConfigInt {
 	EXTI_InitTypeDef	exti_setup;
 	uint8_t				irq_channel;	// @ref IRQn_Type
 	NVIC_InitTypeDef	nvic_setup;
-};
+} SOOL_PinConfigInt;
 
 // - - - - - - - - - - -
 
-/// \brief Initializes non-interrupt pin
-/// hard-coded 50 MHz speed
-extern struct SoolPinConfigNoInt SOOL_PinConfig_Initialize_NoInt(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const GPIOMode_TypeDef gpio_mode);
+/// \brief Initializes a non-interrupt pin; hard-coded 50 MHz speed
+extern SOOL_PinConfigNoInt	SOOL_PinConfig_Initialize_NoInt(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const GPIOMode_TypeDef gpio_mode);
 
-extern struct SoolPinConfigInt		SOOL_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const uint32_t exti_line, const uint8_t port_source, const uint8_t pin_source, const EXTITrigger_TypeDef exti_trigger, const uint8_t irq_channel);
+/// \brief Initializes a interrupt pin; hard-coded Internal Pull-Up
+extern SOOL_PinConfigInt	SOOL_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const EXTITrigger_TypeDef exti_trigger);
+
+/// \brief NVIC interrupts switcher ( on (ENABLE) or off (DISABLE) )
+extern void	 				SOOL_PinConfig_NvicSwitch(SOOL_PinConfigInt *config, const FunctionalState state);
+
+/// \brief EXTI interrupts switcher ( on (ENABLE) or off (DISABLE) )
+extern void	 				SOOL_PinConfig_ExtiSwitch(SOOL_PinConfigInt *config, const FunctionalState state);
 
 // - - - - - - - - - - -
 
