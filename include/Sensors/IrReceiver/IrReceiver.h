@@ -16,13 +16,11 @@
 /// \brief TSOP3123/1736 IR receiver controller
 
 /// \brief status `register` which changes as interrupt routing fires up
-struct IrReceiverStateStruct {
+typedef struct {
 	uint8_t 	received_flag;	// received signal (active low)
 	uint8_t		last_state_int; // last pin state during interrupt routing processing
 	uint32_t 	last_edge_time;	// non-defined if it will be milliseconds or 0.1 seconds
-};
-
-typedef struct IrReceiverStateStruct IrReceiverState;
+} IrReceiverState;
 
 // - - - - - - - - - - - - - - - - -
 

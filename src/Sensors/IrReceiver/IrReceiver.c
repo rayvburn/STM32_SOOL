@@ -28,7 +28,15 @@ volatile IrReceiver SOOL_IrReceiver_Init(SOOL_PinConfigInt setup) {
 	volatile IrReceiver obj;
 
 	// setup
-	obj.setup = setup;
+//	obj.setup = setup; // infinite loop?
+	obj.setup.exti_line = setup.exti_line;
+	obj.setup.exti_setup = setup.exti_setup;
+	obj.setup.gpio_pin = setup.exti_line;
+	obj.setup.gpio_port = setup.gpio_port;
+	obj.setup.irq_channel = setup.irq_channel;
+	obj.setup.nvic_setup = setup.nvic_setup;
+	obj.setup.pin_source = setup.pin_source;
+	obj.setup.port_source = setup.port_source;
 
 	// state init
 	obj.state.last_edge_time = 0;
