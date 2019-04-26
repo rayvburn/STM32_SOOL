@@ -12,6 +12,8 @@
 
 // - - - - - - - - - - - - - - - -
 
+// TODO: ADD null-termination
+
 typedef struct {
 	uint16_t total;
 	uint16_t capacity;
