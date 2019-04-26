@@ -13,6 +13,7 @@
 extern void 	SysTick_Configuration();
 extern void 	SysTick_Handler();
 extern uint32_t SysTick_GetSeconds();
-extern uint32_t	SysTick_GetTithingsOfSec();
+extern uint32_t	SysTick_GetTenthsOfSec();
+extern uint32_t	SysTick_GetHundredthsOfSec();
 
 #endif /* SYSTICK_TIMER_H_ */

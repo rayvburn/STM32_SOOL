@@ -34,18 +34,18 @@ typedef struct IrReceiverStruct IrReceiver;
 struct IrReceiverStruct {
 	SOOL_PinConfigInt setup;
 	IrReceiverState state;
-	uint8_t 	(*GetReceptionFlag)(IrReceiver*);		// interrupt-driven
-	uint8_t 	(*GetCurrentState)(const IrReceiver*);
-	uint32_t 	(*GetLastEdgeTime)(const IrReceiver*);
-	uint8_t 	(*IsStateStable)(const IrReceiver*, const uint32_t); /// \param[in] object pointer, time gap required; current time requested from SysTick
+	uint8_t 	(*GetReceptionFlag)(volatile IrReceiver*); // interrupt-driven
+	uint8_t 	(*GetCurrentState)(const volatile IrReceiver*);
+	uint32_t 	(*GetLastEdgeTime)(const volatile IrReceiver*);
+	uint8_t 	(*IsStateStable)(const volatile IrReceiver*, const uint32_t); /// \param[in] object pointer, time gap required; current time requested from SysTick
 	void 		(*SetNvicState)(SOOL_PinConfigInt*, const FunctionalState state);
 	void 		(*SetExtiState)(SOOL_PinConfigInt*, const FunctionalState state);
-	uint8_t 	(*InterruptHandler)(IrReceiver*);			// routine fired in a proper ISR (firstly it must check if interrupt has been triggered on sensor's EXTI line)
+	uint8_t 	(*InterruptHandler)(volatile IrReceiver*); // routine fired in a proper ISR (firstly it must check if interrupt has been triggered on sensor's EXTI line)
 };
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-IrReceiver SOOL_IrReceiver_Init(SOOL_PinConfigInt setup);
+volatile IrReceiver SOOL_IrReceiver_Init(SOOL_PinConfigInt setup);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
