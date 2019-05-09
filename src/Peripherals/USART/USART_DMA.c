@@ -270,7 +270,8 @@ static uint8_t USART_DMA_TX_InterruptHandler(volatile UsartPeriph *usart) {
 	} else if ( DMA_GetFlagStatus( usart->setup.dma_tx. ) == RESET ) { // Transfer complete
 	*/
 
-
+	// FIXME: generic IT flags
+	// FIXME: flags etc. -> CAPITALS in the structure
 	if ( DMA_GetITStatus(DMA1_IT_TC7) == SET) {
 		DMA_ClearITPendingBit(DMA1_IT_TC7);
 		int abc = 1;
@@ -303,36 +304,27 @@ static uint8_t USART_DMA_TX_InterruptHandler(volatile UsartPeriph *usart) {
 
 static uint8_t USART_DMA_Send(volatile UsartPeriph *usart, char *to_send_buf) {
 
+	/* Copy contents of the string to be sent */
+	// FIXME: if string is longer than buffer's capacity then realloc()
 	strcpy(usart->tx.tx_buffer.items, to_send_buf);
 
-	/* Restart DMA Channel*/
+	/* Disable DMA Channel*/
 	DMA_Cmd(usart->setup.dma_tx.dma_channel, DISABLE);
 
-	//uint8_t abcde[8] = {0,1,2,3,4,5,6,7}; // OK!
-	//char abcde[8] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'}; // OK!
-	char *abcde = "abcdefgh";
+	/* Update peripheral's Data Register address */
+	usart->setup.dma_tx.dma_channel->CPAR = (uint32_t)&usart->setup.usart_periph->DR;
+
+	/* Update memory base register address */
+	usart->setup.dma_tx.dma_channel->CMAR = (uint32_t)usart->tx.tx_buffer.items;
 
 	/* Change buffer size */
-	size_t string_length = strlen(to_send_buf);
-
-	//DMA1_Channel7->CMAR = (uint32_t)&abcde[0]; // (uint32_t)&usart->tx.tx_buffer.items;
-	usart->setup.dma_tx.dma_channel->CMAR = (uint32_t)usart->tx.tx_buffer.items;
-	usart->setup.dma_tx.dma_channel->CPAR = (uint32_t)&usart->setup.usart_periph->DR; // (uint32_t)&usart->setup.usart_periph->DR;
-	usart->setup.dma_tx.dma_channel->CNDTR = string_length;
-
-//	usart->setup.dma_tx.dma_channel->CMAR = (uint32_t)&usart->tx.tx_buffer.items;
-//	usart->setup.dma_tx.dma_channel->CMAR = (uint32_t)&usart->setup.usart_periph->DR;
-//	usart->setup.dma_tx.dma_channel->CNDTR = (uint32_t)string_length; // strlen(usart->tx.tx_buffer.items);
-
-	if ( usart->setup.dma_tx.dma_channel == DMA1_Channel7 ) {
-		int abc = 0;
-		abc++;
-	}
+	usart->setup.dma_tx.dma_channel->CNDTR = strlen(to_send_buf);
 
 	/* Start DMA Channel's transfer */
 	DMA_Cmd(usart->setup.dma_tx.dma_channel, ENABLE);
 
 	return (1);
+
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
