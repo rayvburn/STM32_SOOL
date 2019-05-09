@@ -17,6 +17,8 @@
 /* add some Setter function to copy the objects here */
 void EXTI_Handler_SetObj (volatile void *obj_ptr) { }
 
+// -----------------------------------------------
+
 /* IRQHandlers declaration */
 void EXTI0_IRQHandler()   	{ /* only 1 object can trigger interrupts on this line */ }
 void EXTI1_IRQHandler()   	{ /* only 1 object can trigger interrupts on this line */ }
