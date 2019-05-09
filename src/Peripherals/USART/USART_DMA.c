@@ -314,10 +314,11 @@ static uint8_t USART_DMA_Send(volatile UsartPeriph *usart, char *to_send_buf) {
 
 	/* Change buffer size */
 	size_t string_length = strlen(to_send_buf);
+
 	//DMA1_Channel7->CMAR = (uint32_t)&abcde[0]; // (uint32_t)&usart->tx.tx_buffer.items;
-	DMA1_Channel7->CMAR = (uint32_t)abcde;
-	DMA1_Channel7->CPAR = (uint32_t)&USART2->DR; // (uint32_t)&usart->setup.usart_periph->DR;
-	DMA1_Channel7->CNDTR = 8;
+	usart->setup.dma_tx.dma_channel->CMAR = (uint32_t)usart->tx.tx_buffer.items;
+	usart->setup.dma_tx.dma_channel->CPAR = (uint32_t)&usart->setup.usart_periph->DR; // (uint32_t)&usart->setup.usart_periph->DR;
+	usart->setup.dma_tx.dma_channel->CNDTR = string_length;
 
 //	usart->setup.dma_tx.dma_channel->CMAR = (uint32_t)&usart->tx.tx_buffer.items;
 //	usart->setup.dma_tx.dma_channel->CMAR = (uint32_t)&usart->setup.usart_periph->DR;
