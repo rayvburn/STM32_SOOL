@@ -23,6 +23,7 @@
 #include <include/Memory/Array.h>
 
 // - - - - - - - - - - - - - - - -
+
 /* References:
  * https://elektronika327.blogspot.com/2017/08/28-stm32f4-usart-rx-oraz-tx-z-dma.html
  * http://stm32f4-discovery.net/2017/07/stm32-tutorial-efficiently-receive-uart-data-using-dma/
@@ -32,16 +33,34 @@
  */
 
 // - - - - - - - - - - - - - - - -
+
+/* USART coupled with DMA - DMA RX channel configuration */
+typedef struct {
+	DMA_Channel_TypeDef* 	dma_channel;
+	uint32_t				dma_tc_flag;
+	uint8_t 				dma_channel_id;	// IT flags bitwise shifting (see @defgroup DMA_interrupts_definition )
+//	DMA_InitTypeDef			dma_config;		// raw register value will be changed (buf size)
+} UsartDmaRxConfiguration;
+
+// - - - - - - - - - - - - - - - -
+
+/* USART coupled with DMA - DMA TX channel configuration */
+typedef struct {
+	DMA_Channel_TypeDef* 	dma_channel;
+	uint32_t				dma_tc_flag;
+	uint8_t 				dma_channel_id;	// IT flags bitwise shifting (see @defgroup DMA_interrupts_definition )
+//	DMA_InitTypeDef			dma_config;		// raw register value will be changed (buf size)
+} UsartDmaTxConfiguration;
+
+// - - - - - - - - - - - - - - - -
+
+/* USART coupled with DMA configuration */
 typedef struct {
 
 	USART_TypeDef*			usart_periph;
 //	NVIC_InitTypeDef 		nvic;			// to be able to disable interrupts
-	DMA_Channel_TypeDef* 	dma_rx_channel;
-	uint32_t				dma_rx_tc_flag;
-//	DMA_InitTypeDef			dma_rx_config;
-	DMA_Channel_TypeDef* 	dma_tx_channel;
-	uint32_t				dma_tx_tc_flag;
-//	DMA_InitTypeDef			dma_tx_config;
+	UsartDmaRxConfiguration	dma_rx;
+	UsartDmaTxConfiguration dma_tx;
 
 } UsartDmaConfiguration;
 
@@ -50,6 +69,7 @@ typedef struct {
 typedef struct {
 	ArrayString 		rx_buffer;
 	uint8_t 			new_data_flag;
+	uint8_t				data_fully_received_flag;
 } UsartRx;
 
 // - - - - - - - - - - - - - - - -
@@ -71,9 +91,9 @@ struct UsartPeriphStruct {
 	UsartTx					tx;
 
 	// methods
-	uint8_t (*Send)(UsartPeriph*, char*);
-	uint8_t (*IsDataReceived)(UsartPeriph*);
-	uint8_t (*DmaTcIrqHandler)(UsartPeriph*);
+	uint8_t (*Send)(volatile UsartPeriph*, char*);
+	uint8_t (*IsDataReceived)(volatile UsartPeriph*);
+	uint8_t (*DmaTxIrqHandler)(volatile UsartPeriph*);
 
 };
 
@@ -82,5 +102,54 @@ struct UsartPeriphStruct {
 volatile UsartPeriph SOOL_USART_DMA_Init(USART_TypeDef* usart_periph_id, uint32_t baud);
 
 // - - - - - - - - - - - - - - - -
+
+/* STMF103xB Reference manual notes */
+
+/* 	-----------------------------------------------------------------------------
+ * 	DMA section, "DMA main features", p. 274
+ * 		3 event flags (DMA Half Transfer, DMA Transfer complete and DMA Transfer Error)
+ * 		logically ORed together in a single interrupt request for each channel
+ *	-----------------------------------------------------------------------------
+ * 	DMA section, "DMA transactions", p. 277
+ * 	each DMA transfer consists of three operations:
+ *
+ *		• The loading of data from the peripheral data register or a location in memory addressed
+ *			through an internal current peripheral/memory address register. The start address used
+ *			for the first transfer is the base peripheral/memory address programmed in the
+ *			DMA_CPARx or DMA_CMARx register
+ *
+ *			StdPeriph:
+ *			DMA_CPARx <-> DMA_InitStruct->DMA_PeripheralBaseAddr
+ *			DMA_CMARx <-> DMA_InitStruct->DMA_MemoryBaseAddr
+ *
+ *		• The storage of the data loaded to the peripheral data register or a location in memory
+ *			addressed through an internal current peripheral/memory address register. The start
+ *			address used for the first transfer is the base peripheral/memory address programmed
+ *			in the DMA_CPARx or DMA_CMARx register
+ *
+ *		• The post-decrementing of the DMA_CNDTRx register, which contains the number of
+ *			transactions that have still to be performed.
+ *
+ *			StdPeriph:
+ *			DMA_CNDTRx <-> DMA_InitStruct->DMA_BufferSize;
+ *	-----------------------------------------------------------------------------
+ *	DMA section, "Channel configuration procedure", p. 278
+ *	-----------------------------------------------------------------------------
+ *	DMA section, "Interrupts", p. 280
+ *
+ *		DMA interrupt requests:
+ *			• Half-transfer 		HTIF (event flag); 	HTIE (enable control bit)
+ *			• Transfer complete 	TCIF (event flag);	TCIE (enable control bit)
+ *			• Transfer error 		TEIF (event flag);	TEIE (enable control bit)
+ *	-----------------------------------------------------------------------------
+ *	DMA section, "Table 78. Summary of DMA1 requests for each channel", p. 282
+ *	-----------------------------------------------------------------------------
+ *	USART section, "Data register (USART_DR)"
+ *			• Contains the Received or Transmitted data character, depending on whether it is read from
+ *				or written to.
+ *	-----------------------------------------------------------------------------
+ *
+ *	-----------------------------------------------------------------------------
+ */
 
 #endif /* INCLUDE_PERIPHERALS_USART_USART_DMA_H_ */

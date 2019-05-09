@@ -7,13 +7,14 @@
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 #include <include/Peripherals/USART/USART_DMA.h>
-#include <string.h> // strcpy()
+#include <string.h> 								// strcpy()
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-// static uint8_t USART_DMA_SendData(UsartPeriph *usart);
-static uint8_t USART_DMA_IsRxBufferNotEmpty(UsartPeriph *usart);
-static uint8_t USART_DMA_TransmissionCompleted_InterruptHandler(UsartPeriph *usart);
-static uint8_t USART_DMA_Send(UsartPeriph *usart, char *to_send_buf);
+static char* test_arr = {'o', 'p', 'u', 'r', 't'};
+
+static uint8_t USART_DMA_IsRxBufferNotEmpty(volatile UsartPeriph *usart);
+static uint8_t USART_DMA_TX_InterruptHandler(volatile UsartPeriph *usart);
+static uint8_t USART_DMA_Send(volatile UsartPeriph *usart, char *to_send_buf);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -26,19 +27,21 @@ volatile UsartPeriph SOOL_USART_DMA_Init(USART_TypeDef* usart_periph_id, uint32_
 	/*		tx 		*/
 	DMA_Channel_TypeDef* dma_channel_tx;
 	uint8_t dma_tx_irqn;
+	uint8_t dma_tx_channel_id;
 	uint32_t dma_tx_tc_flag;
 
 	/*		rx 		*/
 	DMA_Channel_TypeDef* dma_channel_rx;
 	uint8_t dma_rx_irqn;
+	uint8_t dma_rx_channel_id;
 	uint32_t dma_rx_tc_flag;
 
 	/* USART_DMA object */
 	volatile  UsartPeriph usart_obj;
+
 	/* initialize peripheral's buffers */
 	usart_obj.tx.tx_buffer = SOOL_ArrayString_Init(25);
 	usart_obj.rx.rx_buffer = SOOL_ArrayString_Init(25);
-
 
 	// clock for port
 	// TODO: remap handling, USART could go to PD/PC when remapped
@@ -66,6 +69,7 @@ volatile UsartPeriph SOOL_USART_DMA_Init(USART_TypeDef* usart_periph_id, uint32_
 	// TODO: remap handling
 	if ( usart_periph_id == USART1 ) {
 
+		//pins and IRQn
 		tx_pin = GPIO_Pin_9;
 		rx_pin = GPIO_Pin_10;
 		irqn = USART1_IRQn;
@@ -73,13 +77,17 @@ volatile UsartPeriph SOOL_USART_DMA_Init(USART_TypeDef* usart_periph_id, uint32_
 		dma_channel_tx = DMA1_Channel4;
 		dma_tx_irqn = DMA1_Channel4_IRQn;
 		dma_tx_tc_flag = DMA1_FLAG_TC4;
+		dma_tx_channel_id = 4;
 		//rx
 		dma_channel_rx = DMA1_Channel5;
 		dma_rx_irqn = DMA1_Channel5_IRQn;
 		dma_rx_tc_flag = DMA1_FLAG_TC5;
+		dma_rx_channel_id = 5;
+		//DMA1_FLAG_
 
 	} else if ( usart_periph_id == USART2 ) {
 
+		//pins and IRQn
 		tx_pin = GPIO_Pin_2;
 		rx_pin = GPIO_Pin_3;
 		irqn = USART2_IRQn;
@@ -87,13 +95,16 @@ volatile UsartPeriph SOOL_USART_DMA_Init(USART_TypeDef* usart_periph_id, uint32_
 		dma_channel_tx = DMA1_Channel7;
 		dma_tx_irqn = DMA1_Channel7_IRQn;
 		dma_tx_tc_flag = DMA1_FLAG_TC7;
+		dma_tx_channel_id = 7;
 		// rx
 		dma_channel_rx = DMA1_Channel6;
 		dma_rx_irqn = DMA1_Channel6_IRQn;
 		dma_rx_tc_flag = DMA1_FLAG_TC6;
+		dma_rx_channel_id = 6;
 
 	} else if ( usart_periph_id == USART3 ) {
 
+		//pins and IRQn
 		tx_pin = GPIO_Pin_10;
 		rx_pin = GPIO_Pin_11;
 		irqn = USART3_IRQn;
@@ -101,10 +112,12 @@ volatile UsartPeriph SOOL_USART_DMA_Init(USART_TypeDef* usart_periph_id, uint32_
 		dma_channel_tx = DMA1_Channel2;
 		dma_tx_irqn = DMA1_Channel2_IRQn;
 		dma_tx_tc_flag = DMA1_FLAG_TC2;
+		dma_tx_channel_id = 2;
 		//rx
 		dma_channel_rx = DMA1_Channel3;
 		dma_rx_irqn = DMA1_Channel3_IRQn;
 		dma_rx_tc_flag = DMA1_FLAG_TC3;
+		dma_rx_channel_id = 3;
 
 	}
 
@@ -144,30 +157,15 @@ volatile UsartPeriph SOOL_USART_DMA_Init(USART_TypeDef* usart_periph_id, uint32_
 
 	/* DMA configuration */
 	DMA_InitTypeDef dma;
+	DMA_ClearFlag(DMA1_FLAG_TE6 | DMA1_FLAG_GL6 | DMA1_FLAG_HT6 | DMA1_FLAG_TC6);
+
 
 	/* Rx */
 	DMA_DeInit(dma_channel_rx);                              	// clear DMA configuration
-	dma.DMA_PeripheralBaseAddr = usart_periph_id->DR;  			// peripheral register address
+	dma.DMA_PeripheralBaseAddr = (uint32_t)&usart_periph_id->DR;  			// peripheral register address
 
 	// to be specified before first transfer
-	dma.DMA_MemoryBaseAddr = (uint32_t)usart_obj.rx.rx_buffer.items; // data block to be send initial address
-	dma.DMA_DIR = DMA_DIR_PeripheralDST;                    	// transfer direction
-	dma.DMA_BufferSize = 1;                              		// buffer's length (number of items to send)
-	dma.DMA_PeripheralInc = DMA_PeripheralInc_Disable;      	// auto-increment of address (peripheral's side)
-	dma.DMA_MemoryInc = DMA_MemoryInc_Enable;               	// auto-increment of address (buffer's side)
-	dma.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;	// data size (peripheral)
-	dma.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;         	// data_size (buffer)
-	dma.DMA_Mode = DMA_Mode_Normal;                             // mode
-	dma.DMA_Priority = DMA_Priority_VeryHigh;                   // priority
-	dma.DMA_M2M = DMA_M2M_Disable;                              // memory to memory setting
-	DMA_Init(dma_channel_rx, &dma);								// save configuration
-
-	/* Tx */
-	DMA_DeInit(dma_channel_tx);                              	// clear DMA configuration
-	dma.DMA_PeripheralBaseAddr = usart_periph_id->DR;  			// peripheral register address
-
-	// to be specified before a first transfer
-	dma.DMA_MemoryBaseAddr = (uint32_t)usart_obj.tx.tx_buffer.items; // data block to be send initial address
+	dma.DMA_MemoryBaseAddr = (uint32_t)&usart_obj.rx.rx_buffer.items; // data block to be send initial address
 	dma.DMA_DIR = DMA_DIR_PeripheralSRC;                    	// transfer direction
 	dma.DMA_BufferSize = 1;                              		// buffer's length (number of items to send)
 	dma.DMA_PeripheralInc = DMA_PeripheralInc_Disable;      	// auto-increment of address (peripheral's side)
@@ -177,7 +175,33 @@ volatile UsartPeriph SOOL_USART_DMA_Init(USART_TypeDef* usart_periph_id, uint32_
 	dma.DMA_Mode = DMA_Mode_Normal;                             // mode
 	dma.DMA_Priority = DMA_Priority_VeryHigh;                   // priority
 	dma.DMA_M2M = DMA_M2M_Disable;                              // memory to memory setting
+	DMA_Cmd(dma_channel_rx, DISABLE);							// https://stackoverflow.com/questions/23576241/stm32-dma-transfer-error
+	DMA_Init(dma_channel_rx, &dma);								// save the configuration
+
+//	usart_obj.setup.dma_rx.dma_config = dma;					// save the configuration to avoid further declaration
+
+	/* Tx */
+	DMA_DeInit(dma_channel_tx);                              	// clear DMA configuration
+	DMA_ClearFlag(DMA1_FLAG_TE7 | DMA1_FLAG_GL7 | DMA1_FLAG_HT7 | DMA1_FLAG_TC7);
+	dma.DMA_PeripheralBaseAddr = (uint32_t)&usart_periph_id->DR;  			// peripheral register address
+
+	// to be specified before a first transfer
+	dma.DMA_MemoryBaseAddr = (uint32_t)&usart_obj.tx.tx_buffer.items; // data block to be send as the initial address
+	dma.DMA_DIR = DMA_DIR_PeripheralDST;                    	// transfer direction
+	dma.DMA_BufferSize = 1;                              		// buffer's length (number of items to send)
+	dma.DMA_PeripheralInc = DMA_PeripheralInc_Disable;      	// auto-increment of address (peripheral's side)
+	dma.DMA_MemoryInc = DMA_MemoryInc_Enable;               	// auto-increment of address (buffer's side)
+	// Ref manual, p. 280
+	dma.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;	// data size (peripheral)
+	dma.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;         	// data_size (buffer)
+	dma.DMA_Mode = DMA_Mode_Normal;                             // mode
+	dma.DMA_Priority = DMA_Priority_VeryHigh;                   // priority
+	dma.DMA_M2M = DMA_M2M_Disable;                              // memory to memory setting
+	DMA_Cmd(dma_channel_tx, DISABLE);							// https://stackoverflow.com/questions/23576241/stm32-dma-transfer-error
+	//while ( dma_channel_tx->CCR & DMA_CCR7_EN );				// FIXME: HARD CODED 7th channel
 	DMA_Init(dma_channel_tx, &dma);								// save configuration
+
+//	usart_obj.setup.dma_tx.dma_config = dma;					// save the configuration to avoid further declaration
 
 	/* Enable global interrupts for DMA */
 	nvic.NVIC_IRQChannel = dma_rx_irqn;
@@ -197,24 +221,29 @@ volatile UsartPeriph SOOL_USART_DMA_Init(USART_TypeDef* usart_periph_id, uint32_
 	USART_DMACmd(usart_periph_id, USART_DMAReq_Tx, ENABLE);
 
 	/* Turn on transfer complete interupt */
-	DMA_ITConfig(dma_channel_rx, DMA_IT_TC, ENABLE);
-	DMA_ITConfig(dma_channel_tx, DMA_IT_TC, ENABLE);
+	DMA_ITConfig(dma_channel_rx, DMA_IT_TC | DMA_IT_TE, ENABLE);
+	DMA_ITConfig(dma_channel_tx, DMA_IT_TC | DMA_IT_TE, ENABLE);
 //	DMA_Cmd(dma_channel_rx, ENABLE);
 //	DMA_Cmd(dma_channel_tx, ENABLE);
 
 	/* fill rx/tx structures fields */
 	usart_obj.tx.transfer_finished = 0;
 	usart_obj.rx.new_data_flag = 0;
+	usart_obj.rx.data_fully_received_flag = 0;
 
 	/* fill setup structure fields */
-	usart_obj.setup.dma_rx_channel = dma_channel_rx;
-	usart_obj.setup.dma_rx_tc_flag = dma_rx_tc_flag;
-	usart_obj.setup.dma_tx_channel = dma_channel_tx;
-	usart_obj.setup.dma_tx_tc_flag = dma_tx_tc_flag;
+	usart_obj.setup.dma_rx.dma_channel = dma_channel_rx;
+	usart_obj.setup.dma_rx.dma_channel_id = dma_rx_channel_id;
+	usart_obj.setup.dma_rx.dma_tc_flag = dma_rx_tc_flag;
+
+	usart_obj.setup.dma_tx.dma_channel = dma_channel_tx;
+	usart_obj.setup.dma_tx.dma_channel_id = dma_tx_channel_id;
+	usart_obj.setup.dma_tx.dma_tc_flag = dma_tx_tc_flag;
+
 	usart_obj.setup.usart_periph = usart_periph_id;
 
 	/* fill object's methods */
-	usart_obj.DmaTcIrqHandler = USART_DMA_TransmissionCompleted_InterruptHandler;
+	usart_obj.DmaTxIrqHandler = USART_DMA_TX_InterruptHandler;
 	usart_obj.IsDataReceived = USART_DMA_IsRxBufferNotEmpty;
 	usart_obj.Send = USART_DMA_Send;
 
@@ -223,26 +252,7 @@ volatile UsartPeriph SOOL_USART_DMA_Init(USART_TypeDef* usart_periph_id, uint32_
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-uint8_t USART_DMA_SendData(UsartPeriph *usart) {
-
-	DMA_InitTypeDef DMA_InitStructure;
-	DMA_Cmd(usart->setup.dma_tx_channel, ENABLE); 				// enable DMA transfer
-
-	while( !DMA_GetFlagStatus(usart->setup.dma_tx_tc_flag) ); 	// wait until whole buffer will be sent (transfer complete flag)
-	DMA_ClearFlag(usart->setup.dma_tx_tc_flag); 				// clear TC flag
-	DMA_Cmd(usart->setup.dma_tx_channel, DISABLE); 				// disable DMA transfer
-
-	DMA_InitStructure.DMA_PeripheralBaseAddr = usart->setup.usart_periph->DR;
-	DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)usart->tx.tx_buffer.items;
-
-	DMA_Init(usart->setup.dma_tx_channel, &DMA_InitStructure);
-	return (1);
-
-}
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-uint8_t USART_DMA_IsRxBufferNotEmpty(UsartPeriph *usart) {
+static uint8_t USART_DMA_IsRxBufferNotEmpty(volatile UsartPeriph *usart) {
 
 	uint8_t temp = usart->rx.new_data_flag;
 	usart->rx.new_data_flag = 0;
@@ -252,14 +262,38 @@ uint8_t USART_DMA_IsRxBufferNotEmpty(UsartPeriph *usart) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t USART_DMA_TransmissionCompleted_InterruptHandler(UsartPeriph *usart) {
+static uint8_t USART_DMA_TX_InterruptHandler(volatile UsartPeriph *usart) {
 
-	if ( DMA_GetFlagStatus( usart->setup.dma_tx_tc_flag ) == RESET ) {
+	/*
+	if ( DMA_GetFlagStatus( usart->setup.dma_tx.dma_tc_flag ) == RESET ) { // Transfer complete
 		return (0);
+	} else if ( DMA_GetFlagStatus( usart->setup.dma_tx. ) == RESET ) { // Transfer complete
+	*/
+
+
+	if ( DMA_GetITStatus(DMA1_IT_TC7) == SET) {
+		DMA_ClearITPendingBit(DMA1_IT_TC7);
+		int abc = 1;
+		abc++;
+	}
+	if ( DMA_GetITStatus(DMA1_IT_HT7) == SET ) {
+		DMA_ClearITPendingBit(DMA1_IT_HT7);
+		int abc = 1;
+		abc++;
+	}
+	if ( DMA_GetITStatus(DMA1_IT_TE7) == SET ) {
+		DMA_ClearITPendingBit(DMA1_IT_TE7);
+		int abc = 1;
+		abc++;
+	}
+	if ( DMA_GetITStatus(DMA1_IT_GL7) == SET ) {
+		DMA_ClearITPendingBit(DMA1_IT_GL7);
+		int abc = 1;
+		abc++;
 	}
 
-	DMA_ClearITPendingBit(usart->setup.dma_tx_tc_flag);
-	DMA_Cmd(usart->setup.dma_tx_channel, DISABLE);
+	//DMA_ClearITPendingBit(usart->setup.dma_tx.dma_tc_flag);
+	DMA_Cmd(usart->setup.dma_tx.dma_channel, DISABLE);
 	usart->tx.transfer_finished = 1;
 
 	return (1);
@@ -267,21 +301,59 @@ static uint8_t USART_DMA_TransmissionCompleted_InterruptHandler(UsartPeriph *usa
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t USART_DMA_Send(UsartPeriph *usart, char *to_send_buf) {
+static uint8_t USART_DMA_Send(volatile UsartPeriph *usart, char *to_send_buf) {
 
 	strcpy(usart->tx.tx_buffer.items, to_send_buf);
 
 	/* Restart DMA Channel*/
-	DMA_Cmd(usart->setup.dma_tx_channel, DISABLE);
+	DMA_Cmd(usart->setup.dma_tx.dma_channel, DISABLE);
+
+	//uint8_t abcde[8] = {0,1,2,3,4,5,6,7}; // OK!
+	//char abcde[8] = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'}; // OK!
+	char *abcde = "abcdefgh";
 
 	/* Change buffer size */
-	usart->setup.dma_tx_channel->CNDTR = strlen(usart->tx.tx_buffer.items);
+	size_t string_length = strlen(to_send_buf);
+	//DMA1_Channel7->CMAR = (uint32_t)&abcde[0]; // (uint32_t)&usart->tx.tx_buffer.items;
+	DMA1_Channel7->CMAR = (uint32_t)abcde;
+	DMA1_Channel7->CPAR = (uint32_t)&USART2->DR; // (uint32_t)&usart->setup.usart_periph->DR;
+	DMA1_Channel7->CNDTR = 8;
+
+//	usart->setup.dma_tx.dma_channel->CMAR = (uint32_t)&usart->tx.tx_buffer.items;
+//	usart->setup.dma_tx.dma_channel->CMAR = (uint32_t)&usart->setup.usart_periph->DR;
+//	usart->setup.dma_tx.dma_channel->CNDTR = (uint32_t)string_length; // strlen(usart->tx.tx_buffer.items);
+
+	if ( usart->setup.dma_tx.dma_channel == DMA1_Channel7 ) {
+		int abc = 0;
+		abc++;
+	}
 
 	/* Start DMA Channel's transfer */
-	DMA_Cmd(usart->setup.dma_tx_channel, ENABLE);
+	DMA_Cmd(usart->setup.dma_tx.dma_channel, ENABLE);
 
 	return (1);
 }
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+/*
+uint8_t USART_DMA_SendData(UsartPeriph *usart) {
+
+	DMA_InitTypeDef DMA_InitStructure;
+	DMA_Cmd(usart->setup.dma_tx.dma_channel, ENABLE); 				// enable DMA transfer
+
+	while( !DMA_GetFlagStatus(usart->setup.dma_tx.dma_tc_flag) ); 	// wait until whole buffer will be sent (transfer complete flag)
+	DMA_ClearFlag(usart->setup.dma_tx.dma_tc_flag); 				// clear TC flag
+	DMA_Cmd(usart->setup.dma_tx.dma_channel, DISABLE); 				// disable DMA transfer
+
+	DMA_InitStructure.DMA_PeripheralBaseAddr = usart->setup.usart_periph->DR;
+	DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)usart->tx.tx_buffer.items;
+
+	DMA_Init(usart->setup.dma_tx.dma_channel, &DMA_InitStructure);
+	return (1);
+
+}
+*/
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
