@@ -313,8 +313,8 @@ static uint8_t USART_DMA_TxInterruptHandler(volatile USART_DMA_Periph *usart) {
 
 		/* Transfer Error Interrupt - happens for example when
 		 * peripheral register's address is wrong */
-//		DMA_ClearITPendingBit(usart->setup.dma_tx.int_flags.ERROR_FLAG);
-		DMA_ClearITPendingBit(usart->setup.dma_tx.int_flags.GLOBAL_FLAG);
+		DMA_ClearITPendingBit(usart->setup.dma_tx.int_flags.ERROR_FLAG);
+//		DMA_ClearITPendingBit(usart->setup.dma_tx.int_flags.GLOBAL_FLAG);
 		// TODO: some error message
 
 		return (1);
@@ -322,8 +322,8 @@ static uint8_t USART_DMA_TxInterruptHandler(volatile USART_DMA_Periph *usart) {
 	} else if ( DMA_GetITStatus(usart->setup.dma_tx.int_flags.COMPLETE_FLAG) == SET ) {
 
 		/* Transfer Complete Interrupt */
-//		DMA_ClearITPendingBit(usart->setup.dma_tx.int_flags.COMPLETE_FLAG);
-		DMA_ClearITPendingBit(usart->setup.dma_tx.int_flags.GLOBAL_FLAG);
+		DMA_ClearITPendingBit(usart->setup.dma_tx.int_flags.COMPLETE_FLAG);
+//		DMA_ClearITPendingBit(usart->setup.dma_tx.int_flags.GLOBAL_FLAG);
 		DMA_Cmd(usart->setup.dma_tx.dma_channel, DISABLE);
 		usart->tx.finished_flag = 1;
 		usart->tx.started_flag  = 0;
@@ -333,8 +333,8 @@ static uint8_t USART_DMA_TxInterruptHandler(volatile USART_DMA_Periph *usart) {
 	} else if ( DMA_GetITStatus(usart->setup.dma_tx.int_flags.HALF_FLAG) == SET ) {
 
 		/* Half Transfer Interrupt */
-//		DMA_ClearITPendingBit(usart->setup.dma_tx.int_flags.HALF_FLAG);
-		DMA_ClearITPendingBit(usart->setup.dma_tx.int_flags.GLOBAL_FLAG);
+		DMA_ClearITPendingBit(usart->setup.dma_tx.int_flags.HALF_FLAG);
+//		DMA_ClearITPendingBit(usart->setup.dma_tx.int_flags.GLOBAL_FLAG);
 		return (1);
 
 	} else if ( DMA_GetITStatus(usart->setup.dma_tx.int_flags.GLOBAL_FLAG) == SET ) {
