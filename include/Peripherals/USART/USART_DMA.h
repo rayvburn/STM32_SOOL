@@ -56,6 +56,7 @@ typedef struct {
 	USART_TypeDef*		usart_id;
 	USART_DMA_RxConfig	dma_rx;
 	USART_DMA_TxConfig 	dma_tx;
+	uint32_t			BUF_INIT_SIZE;
 } USART_DMA_Config;
 
 // - - - - - - - - - - - - - - - -
@@ -63,6 +64,7 @@ typedef struct {
 typedef struct {
 	Array_String 		buffer;
 	uint8_t 			new_data_flag;
+	uint8_t				idle_line_flag;
 } USART_Rx;
 
 // - - - - - - - - - - - - - - - -
@@ -80,6 +82,10 @@ struct USART_DMA_PeriphStruct;
 typedef struct USART_DMA_PeriphStruct USART_DMA_Periph;
 
 /* USART_DMA `class` */
+
+/* FIXME: there is an issue connected with initiating a smaller buffer than needed
+ * for a whole transmission via RX line; resize method is probably too slow and a part of data
+ * which was not loaded into RX buffer is lost */
 struct USART_DMA_PeriphStruct {
 
 	USART_DMA_Config 	setup;
@@ -88,7 +94,10 @@ struct USART_DMA_PeriphStruct {
 
 	// Methods
 	// RX section
+	void	(*ActivateReading)(volatile USART_DMA_Periph*);
 	uint8_t (*IsDataReceived)(volatile USART_DMA_Periph*);
+//	void	(*SetDataRead)(volatile USART_DMA_Periph*);
+	const Array_String* (*GetRxData)(volatile USART_DMA_Periph*); // Use this method instead of raw ArrayString operations because some calculations are performed here (it is not possible to count number of bytes read from DMA on the fly)
 	void	(*ClearRxBuffer)(volatile USART_DMA_Periph*);
 	uint8_t (*DmaRxIrqHandler)(volatile USART_DMA_Periph*);
 
@@ -99,13 +108,14 @@ struct USART_DMA_PeriphStruct {
 	uint8_t (*DmaTxIrqHandler)(volatile USART_DMA_Periph*);
 
 	// General
-	void 	(*Destroy)(volatile USART_DMA_Periph*);	// frees the memory taken by buffers
+	uint8_t (*IdleLineIrqHandler)(volatile USART_DMA_Periph*);
+	void 	(*DestroyBuffers)(volatile USART_DMA_Periph*);	// frees the memory taken by buffers
 
 };
 
 // - - - - - - - - - - - - - - - -
 
-volatile USART_DMA_Periph SOOL_USART_DMA_Init(USART_TypeDef* USARTx, uint32_t baud);
+volatile USART_DMA_Periph SOOL_USART_DMA_Init(USART_TypeDef* USARTx, uint32_t baud, size_t buf_size);
 
 // - - - - - - - - - - - - - - - -
 

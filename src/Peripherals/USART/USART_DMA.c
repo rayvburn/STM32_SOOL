@@ -10,11 +10,28 @@
 #include <string.h> 								// strcpy()
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t USART_DMA_IsRxBufferNotEmpty(volatile USART_DMA_Periph *usart);
-static uint8_t USART_DMA_IsTxLineBusy(volatile USART_DMA_Periph *usart);
-static uint8_t USART_DMA_Send(volatile USART_DMA_Periph *usart, char *to_send_buf);
+// RX
+static void 	USART_DMA_ActivateReading(volatile USART_DMA_Periph *usart);
+static uint8_t 	USART_DMA_IsDataReceived(volatile USART_DMA_Periph *usart);
+static const Array_String* USART_DMA_GetRxData(volatile USART_DMA_Periph *usart);
+static void		USART_DMA_ClearRxBuffer(volatile USART_DMA_Periph *usart);
 
+// TX
+static uint8_t 	USART_DMA_IsTxLineBusy(volatile USART_DMA_Periph *usart);
+static uint8_t 	USART_DMA_Send(volatile USART_DMA_Periph *usart, char *to_send_buf);
+static void		USART_DMA_ClearTxBuffer(volatile USART_DMA_Periph *usart);
+
+static void		USART_DMA_DestroyBuffers(volatile USART_DMA_Periph *usart);
+
+// IRQ
+static uint8_t USART_DMA_RxInterruptHandler(volatile USART_DMA_Periph *usart);
 static uint8_t USART_DMA_TxInterruptHandler(volatile USART_DMA_Periph *usart);
+static uint8_t USART_DMA_IdleInterruptHandler(volatile USART_DMA_Periph *usart);
+
+// private class function
+static void USART_DMA_SetupAndStartDmaReading(volatile USART_DMA_Periph *usart, const size_t buf_start_pos);
+static void USART_DMA_RestartReading(volatile USART_DMA_Periph *usart, const size_t buf_start_pos);
+static uint16_t USART_DMA_GetMaxNonEmptyItemIndex(Array_String *arr);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -29,7 +46,7 @@ static void SOOL_USART_DMA_Copy(volatile USART_DMA_Periph *usart, const USART_DM
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-volatile USART_DMA_Periph SOOL_USART_DMA_Init(USART_TypeDef* USARTx, uint32_t baud) {
+volatile USART_DMA_Periph SOOL_USART_DMA_Init(USART_TypeDef* USARTx, uint32_t baud, size_t buf_size) {
 
 	/* GPIO setup */
 	GPIO_TypeDef* port;
@@ -42,13 +59,14 @@ volatile USART_DMA_Periph SOOL_USART_DMA_Init(USART_TypeDef* USARTx, uint32_t ba
 	USART_DMA_SettingsHelper dma_rx;
 	USART_DMA_SettingsHelper dma_tx;
 
-	/* Create a new USART_DMA object */
+	/* Create a new USART_DMA object and save initial buffers' size */
 	volatile  USART_DMA_Periph usart_obj;
+	usart_obj.setup.BUF_INIT_SIZE = buf_size;
 
 	/* Initialize the peripheral's RX and TX buffers
 	 * with an arbitrary length */
-	usart_obj.rx.buffer = SOOL_Array_String_Init(10);
-	usart_obj.tx.buffer = SOOL_Array_String_Init(10);
+	usart_obj.rx.buffer = SOOL_Array_String_Init(buf_size);
+	usart_obj.tx.buffer = SOOL_Array_String_Init(buf_size);
 
 	/* TODO: Remap handling, USART could go to PD/PC when remapped
 	 * Reference Manual, p. 183 - AFIO_MAPR */
@@ -162,7 +180,7 @@ volatile USART_DMA_Periph SOOL_USART_DMA_Init(USART_TypeDef* USARTx, uint32_t ba
 	usart.USART_BaudRate = baud;
 	USART_Init(USARTx, &usart);
 
-	/* Useful in interrupts mode */
+	/* Useful in pure RX/TX interrupts mode */
 //	USART_ITConfig(usart_periph_id, USART_IT_RXNE, int_rx_en);
 //	USART_ITConfig(usart_periph_id, USART_IT_TXE,  int_tx_en);
 
@@ -177,7 +195,7 @@ volatile USART_DMA_Periph SOOL_USART_DMA_Init(USART_TypeDef* USARTx, uint32_t ba
 	/* Enable peripheral */
 	USART_Cmd(USARTx, ENABLE);
 
-	/* IDLE line protection */
+	/* IDLE line protection - enabled by ActivateReading() */
 //	USART_ITConfig(USARTx, USART_IT_IDLE, ENABLE);
 
 	/* DMA configuration structure */
@@ -261,7 +279,7 @@ volatile USART_DMA_Periph SOOL_USART_DMA_Init(USART_TypeDef* USARTx, uint32_t ba
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-void SOOL_USART_DMA_Copy(volatile USART_DMA_Periph *usart, const USART_DMA_SettingsHelper *rx_settings,
+static void SOOL_USART_DMA_Copy(volatile USART_DMA_Periph *usart, const USART_DMA_SettingsHelper *rx_settings,
 		const USART_DMA_SettingsHelper *tx_settings) {
 
 	/* Fill the Setup structure's fields */
@@ -272,6 +290,7 @@ void SOOL_USART_DMA_Copy(volatile USART_DMA_Periph *usart, const USART_DMA_Setti
 
 	// buffer already assigned in this moment
 	usart->rx.new_data_flag = 0;
+	usart->rx.idle_line_flag = 0;
 
 	/* TX */
 	usart->setup.dma_tx.dma_channel = tx_settings->channel;
@@ -281,21 +300,221 @@ void SOOL_USART_DMA_Copy(volatile USART_DMA_Periph *usart, const USART_DMA_Setti
 	usart->tx.finished_flag = 0;
 	usart->tx.started_flag = 0;
 
-	/* Fill USART class'es methods */
-	usart->IsDataReceived = USART_DMA_IsRxBufferNotEmpty;
+	/* Fill USART class' methods */
+	usart->ActivateReading = USART_DMA_ActivateReading;
+	usart->IsDataReceived = USART_DMA_IsDataReceived;
+	usart->GetRxData = USART_DMA_GetRxData;
+	usart->ClearRxBuffer = USART_DMA_ClearRxBuffer;
+	usart->DmaRxIrqHandler = USART_DMA_RxInterruptHandler;
 
 	usart->IsTxLineBusy = USART_DMA_IsTxLineBusy;
 	usart->Send = USART_DMA_Send;
+	usart->ClearTxBuffer = USART_DMA_ClearTxBuffer;
 	usart->DmaTxIrqHandler = USART_DMA_TxInterruptHandler;
+
+	usart->IdleLineIrqHandler = USART_DMA_IdleInterruptHandler;
+	usart->DestroyBuffers = USART_DMA_DestroyBuffers;
+
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t USART_DMA_IsRxBufferNotEmpty(volatile USART_DMA_Periph *usart) {
+static void USART_DMA_SetupAndStartDmaReading(volatile USART_DMA_Periph *usart, const size_t buf_start_pos) {
+
+	/* Disable DMA Channel*/
+	DMA_Cmd(usart->setup.dma_rx.dma_channel, DISABLE);
+
+	/* Update peripheral's Data Register address */
+	usart->setup.dma_rx.dma_channel->CPAR = (uint32_t)&usart->setup.usart_id->DR;
+
+	/* Update memory base register address */
+//	usart->setup.dma_rx.dma_channel->CMAR = (uint32_t)usart->rx.buffer.data;
+	usart->setup.dma_rx.dma_channel->CMAR = (uint32_t)&usart->rx.buffer.data[buf_start_pos];
+
+	/* Change buffer size - bigger data will come in parts */
+	usart->setup.dma_rx.dma_channel->CNDTR = usart->setup.BUF_INIT_SIZE;
+
+	/* Reset the Idle Line flag */
+	usart->rx.idle_line_flag = 0;
+
+	/* Enable Idle Line interrupt */
+	USART_ITConfig(usart->setup.usart_id, USART_IT_IDLE, ENABLE);
+
+	/* Start DMA Channel's reading */
+	DMA_Cmd(usart->setup.dma_rx.dma_channel, ENABLE);
+
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static void USART_DMA_ActivateReading(volatile USART_DMA_Periph *usart) {
+	USART_DMA_SetupAndStartDmaReading(usart, 0);
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static void USART_DMA_RestartReading(volatile USART_DMA_Periph *usart, const size_t buf_start_pos) {
+//
+//
+//
+//	/* Reset the Idle Line flag */
+//	usart->rx.idle_line_flag = 0;
+//
+//	/* Disable DMA Channel*/
+//	DMA_Cmd(usart->setup.dma_rx.dma_channel, DISABLE);
+//
+//	/* Update peripheral's Data Register address */
+//	usart->setup.dma_rx.dma_channel->CPAR = (uint32_t)&usart->setup.usart_id->DR;
+//
+//	/* Update memory base register address */
+//
+//
+//	/* Change buffer size */
+//	usart->setup.dma_rx.dma_channel->CNDTR = 10;
+//
+//	// read usart's dr
+//	//uint16_t test = usart->setup.usart_id->DR;
+//
+//	/* Start DMA Channel's reading */
+//	DMA_Cmd(usart->setup.dma_rx.dma_channel, ENABLE);
+
+
+	/* This is invoked after TC but not all data was transmitted due to full RX buffer */
+	USART_DMA_SetupAndStartDmaReading(usart, buf_start_pos);
+
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static uint8_t USART_DMA_IsDataReceived(volatile USART_DMA_Periph *usart) {
 
 	uint8_t temp = usart->rx.new_data_flag;
 	usart->rx.new_data_flag = 0;
 	return (temp);
+
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static const Array_String* USART_DMA_GetRxData(volatile USART_DMA_Periph *usart) {
+
+	/* update Array_String info */
+	usart->rx.buffer.info.total = USART_DMA_GetMaxNonEmptyItemIndex(&usart->rx.buffer) + 1;
+	usart->rx.buffer.info.add_index = usart->rx.buffer.info.total;
+	usart->rx.new_data_flag = 0;
+	return (&usart->rx.buffer);
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static uint16_t USART_DMA_GetMaxNonEmptyItemIndex(Array_String *arr) {
+
+	/* Array is filled with 0-s by default, find non-zero value with the biggest index */
+	for ( size_t i = (arr->info.capacity - 1); i >= 0; i-- ) {
+		if ( arr->data[i] != 0 ) {
+			return (i);
+		}
+	}
+	return (0);
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static void	USART_DMA_ClearRxBuffer(volatile USART_DMA_Periph *usart) {
+	usart->rx.buffer.Clear(&usart->rx.buffer);
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static uint8_t USART_DMA_RxInterruptHandler(volatile USART_DMA_Periph *usart) {
+
+	if ( DMA_GetITStatus(usart->setup.dma_rx.int_flags.ERROR_FLAG) == SET ) {
+
+		/* Transfer Error Interrupt */
+//		DMA_ClearITPendingBit(usart->setup.dma_rx.int_flags.ERROR_FLAG);
+		DMA_ClearITPendingBit(usart->setup.dma_rx.int_flags.GLOBAL_FLAG);
+		// TODO: some error message
+
+		return (1);
+
+	} else if ( DMA_GetITStatus(usart->setup.dma_rx.int_flags.COMPLETE_FLAG) == SET ) {
+
+		/* Transfer Complete Interrupt */
+//		DMA_ClearITPendingBit(usart->setup.dma_rx.int_flags.COMPLETE_FLAG);
+		DMA_ClearITPendingBit(usart->setup.dma_rx.int_flags.GLOBAL_FLAG);
+
+		/* Check whether RX line is idle - if yes then disable DMA RX Channel,
+		 * otherwise resize the buffer as it is full */
+		DMA_Cmd(usart->setup.dma_rx.dma_channel, DISABLE);
+
+		if ( usart->rx.idle_line_flag ) {
+
+			/* Idle Line and Transfer Complete flag indicate new data */
+			usart->rx.new_data_flag = 1;
+
+		} else {
+
+			/* The line is not in idle state:
+			 * 	- 	number of data to receive was known in advance (no way to tell if it is that case or the next),
+			 * 	-	there are still some data to receive (buffer must be resized)
+			 */
+			/* The buffer must be resized in both cases - make it 2 times bigger */
+			if ( !usart->rx.buffer.Resize(&usart->rx.buffer, 2 * usart->rx.buffer.info.capacity) ) {
+				// FIXME: unable to resize - data will be lost, this is not a good situation - print some error
+				int abc = 0;
+				abc++;
+			}
+
+			/* Try to continue reading making the message continuously written into buffer;
+			 * usually this resize takes too long and data is lost */
+			USART_DMA_RestartReading(usart, usart->rx.buffer.info.capacity / 2);
+//			usart->ActivateReading(usart);
+
+		}
+		return (1);
+
+	} else if ( DMA_GetITStatus(usart->setup.dma_rx.int_flags.HALF_FLAG) == SET ) {
+
+		/* Half Transfer Interrupt */
+//		DMA_ClearITPendingBit(usart->setup.dma_rx.int_flags.HALF_FLAG);
+		DMA_ClearITPendingBit(usart->setup.dma_rx.int_flags.GLOBAL_FLAG);
+		return (1);
+
+	} else if ( DMA_GetITStatus(usart->setup.dma_rx.int_flags.GLOBAL_FLAG) == SET ) {
+
+		/* Global DMA Channel Interrupt */
+		DMA_ClearITPendingBit(usart->setup.dma_rx.int_flags.GLOBAL_FLAG);
+		return (1);
+
+	} else {
+
+		// indicate that no interrupt flag was recognized and cleared
+		return (0);
+	}
+
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static uint8_t USART_DMA_IdleInterruptHandler(volatile USART_DMA_Periph *usart) {
+
+	if ( USART_GetITStatus(usart->setup.usart_id, USART_IT_IDLE) == SET ) {
+
+		USART_ClearITPendingBit(usart->setup.usart_id, USART_IT_IDLE);
+		USART_ITConfig(usart->setup.usart_id, USART_IT_IDLE, DISABLE); // interrupts generated all the time when no data on bus
+
+		if ( usart->setup.dma_rx.dma_channel->CCR & DMA_CCR1_EN ) {
+			/* if reading is active and Idle Line detected
+			 * then save this information for later use */
+			/* EN bit check is used to avoid the first interrupt of an Idle Line issue
+			 * (triggers just after enabling the IT_IDLE) */
+			usart->rx.idle_line_flag = 1;
+		}
+		return (1);
+
+	}
+
+	return (0);
 
 }
 
@@ -307,12 +526,20 @@ static uint8_t USART_DMA_IsTxLineBusy(volatile USART_DMA_Periph *usart) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+static void	USART_DMA_ClearTxBuffer(volatile USART_DMA_Periph *usart) {
+	usart->tx.buffer.Clear(&usart->tx.buffer);
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 static uint8_t USART_DMA_TxInterruptHandler(volatile USART_DMA_Periph *usart) {
 
 	if ( DMA_GetITStatus(usart->setup.dma_tx.int_flags.ERROR_FLAG) == SET ) {
 
-		/* Transfer Error Interrupt - happens for example when
-		 * peripheral register's address is wrong */
+		/* Transfer Error Interrupt - happens for example when:
+		 * 	- 	the peripheral register's address is wrong
+		 *	- 	data couldn't be pushed due to the full buffer (RX-TX of MCU transfer)
+		 */
 //		DMA_ClearITPendingBit(usart->setup.dma_tx.int_flags.ERROR_FLAG);
 		DMA_ClearITPendingBit(usart->setup.dma_tx.int_flags.GLOBAL_FLAG);
 		// TODO: some error message
@@ -360,7 +587,7 @@ static uint8_t USART_DMA_Send(volatile USART_DMA_Periph *usart, char *to_send_bu
 
 	if ( length > usart->tx.buffer.info.capacity ) {
 
-		// discards volatile - not crucial here
+		// Resize method discards USART's volatile qualifier - not crucial here
 		if ( !usart->tx.buffer.Resize(&usart->tx.buffer, (size_t)length) ) {
 			//perror("COULD NOT REALLOCATE AN ARRAY");
 		}
@@ -380,6 +607,7 @@ static uint8_t USART_DMA_Send(volatile USART_DMA_Periph *usart, char *to_send_bu
 	usart->setup.dma_tx.dma_channel->CMAR = (uint32_t)usart->tx.buffer.data;
 
 	/* Change buffer size */
+	/* Ref: `can only be written when the channel is disabled` */
 	usart->setup.dma_tx.dma_channel->CNDTR = length;
 
 	/* Start DMA Channel's transfer */
@@ -391,6 +619,13 @@ static uint8_t USART_DMA_Send(volatile USART_DMA_Periph *usart, char *to_send_bu
 	/* Return 1 on successful sent */
 	return (1);
 
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static void	USART_DMA_DestroyBuffers(volatile USART_DMA_Periph *usart) {
+	usart->rx.buffer.Free(&usart->rx.buffer);
+	usart->tx.buffer.Free(&usart->tx.buffer);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

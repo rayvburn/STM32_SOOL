@@ -155,15 +155,31 @@ static void Array_String_Clear(Array_String *string_ptr) {
 
 static uint8_t Array_String_Resize(Array_String *string_ptr, const size_t new_capacity) {
 
+	/* Backup some info */
+	uint16_t old_capacity = string_ptr->info.capacity;
 	char *ptr_backup = string_ptr->data;
-	string_ptr->data = realloc( (char *)string_ptr->data, new_capacity * sizeof(char) );
 
+	/* Try to reallocate memory */
+	string_ptr->data = realloc( (char*)string_ptr->data, new_capacity * sizeof(char) );
+
+	/* Check if the reallocation was successful */
 	if ( string_ptr->data != NULL ) {
-		Array_String_Clear(string_ptr);
+
+		/* Clear the new part of an Array (if Array is bigger than before) */
+		if ( old_capacity < new_capacity ) {
+			for ( size_t i = old_capacity; i < new_capacity; i++) {
+				string_ptr->data[i] = 0;
+			}
+		}
+
+		/* Update capacity */
+		string_ptr->info.capacity = new_capacity;
+
 		return (1);
+
 	}
 
-	// if the reallocation failed - restore a previous pointer and return 0
+	/* If the reallocation failed - restore a previous pointer and return 0 */
 	string_ptr->data = ptr_backup;
 	// TODO: some error message
 	return (0);

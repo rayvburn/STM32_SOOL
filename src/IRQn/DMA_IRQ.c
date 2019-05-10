@@ -18,7 +18,7 @@ void DMA_IRQ_Handler_SetObj (volatile void *obj_ptr) { }
 
 // -----------------------------------------------
 
-/* IRQHandlers declaration */
+/* IRQHandlers definitions */
 void DMA1_Channel1_IRQHandler() {
 
 	/* DMA1 Channel1 global interrupt */
