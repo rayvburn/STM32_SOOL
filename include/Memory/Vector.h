@@ -34,8 +34,8 @@ struct VectorStruct {
     int 	(*GetTotal)(const Vector *v);
 	void 	(*Add)(Vector*, void*);
 	void 	(*Set)(Vector*, const unsigned int, void*);
-	void* 	(*GetElem)(const Vector*, const unsigned int);
-	void 	(*DeleteElem)(Vector*, const unsigned int);
+	void* 	(*GetItem)(const Vector*, const unsigned int);
+	void 	(*DeleteItem)(Vector*, const unsigned int);
 	void 	(*FreeMemory)(Vector*);
 
 };
@@ -55,8 +55,8 @@ Vector SOOL_Vector_Init(const unsigned int initial_capacity);
 	number = 92;
 	vector_uint.Add(&vector_uint, &number);
 	unsigned int total_num  = vector_uint.GetTotal(&vector_uint);
-	unsigned int* elem_0 	= (unsigned int *)vector_uint.GetElem(&vector_uint, 0);
-	unsigned int* elem_1 	= (unsigned int *)vector_uint.GetElem(&vector_uint, 1);
+	unsigned int* elem_0 	= (unsigned int *)vector_uint.GetItem(&vector_uint, 0);
+	unsigned int* elem_1 	= (unsigned int *)vector_uint.GetItem(&vector_uint, 1);
 	unsigned int elem_0_val = *elem_0;
 	unsigned int elem_1_val = *elem_1;
 

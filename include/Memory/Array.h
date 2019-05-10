@@ -12,54 +12,53 @@
 
 // - - - - - - - - - - - - - - - -
 
-// TODO: ADD null-termination
-
 typedef struct {
 	uint16_t total;
 	uint16_t capacity;
 	uint16_t add_index;	// stores index of an element to-be-added
-} ArrayInfo;
+} Array_Info;
 
 // - - - - - - - - - - - - - - - -
 
-struct ArrayInt16Struct; // forward declaration
-typedef struct ArrayInt16Struct ArrayInt16;
+struct Array_Int16Struct; // forward declaration
+typedef struct Array_Int16Struct Array_Int16;
 
-struct ArrayInt16Struct {
-	ArrayInfo info;
-	int16_t *items;
+struct Array_Int16Struct {
+	Array_Info info;
+	int16_t *data;
 
-	void 	(*Add)(ArrayInt16 *arr_ptr, int16_t val);			// acts like a circular buffer
-	void 	(*Clear)(ArrayInt16 *arr_ptr);
-	void	(*Free)(ArrayInt16 *arr_ptr);
+	void 	(*Add)(Array_Int16 *arr_ptr, int16_t val);			// acts like a circular buffer
+	void 	(*Clear)(Array_Int16 *arr_ptr);
+	void	(*Free)(Array_Int16 *arr_ptr);
 };
 
 // - - - - - - - - - - - - - - - -
 
-struct ArrayStringStruct; // forward declaration
-typedef struct ArrayStringStruct ArrayString;
+// TODO: ADD null-termination?
+struct Array_StringStruct; // forward declaration
+typedef struct Array_StringStruct Array_String;
 
-struct ArrayStringStruct {
+struct Array_StringStruct {
 
-	ArrayInfo info;
-	char *items;
+	Array_Info info;
+	char *data;
 
-	void 	(*AddChar)(ArrayString *string_ptr, char c);			// acts like a circular buffer
-	void 	(*SetString)(ArrayString *string_ptr, const char *str);
-	char* 	(*GetString)(ArrayString *string_ptr); /// IMPORTANT: free memory after finished processing!
-	void 	(*Clear)(ArrayString *string_ptr);
-	void	(*Free)(ArrayString *string_ptr);
+	void 	(*AddChar)(Array_String *string_ptr, char c);			// acts like a circular buffer
+	void 	(*SetString)(Array_String *string_ptr, const char *str);
+	char* 	(*GetString)(Array_String *string_ptr); /// IMPORTANT: free memory after finished processing!
+	void 	(*Clear)(Array_String *string_ptr);
+	void	(*Free)(Array_String *string_ptr);
 
 };
 
 // - - - - - - - - - - - - - - - -
 
-ArrayInt16 SOOL_ArrayInt16_Init(const uint16_t capacity);
-ArrayString SOOL_ArrayString_Init(const uint16_t capacity);
+Array_Int16  SOOL_Array_Int16_Init(const uint16_t capacity);
+Array_String SOOL_Array_String_Init(const uint16_t capacity);
 
 // - - - - - - - - - - - - - - - -
 
-/* Test code:
+/* Test code: (BEFORE REFACTOR)
 ArrayString str1 = SOOL_ArrayString_Init(15);
 str1.AddChar(&str1, 'o');
 str1.AddChar(&str1, 'p');

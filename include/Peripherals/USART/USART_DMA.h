@@ -21,6 +21,7 @@
 
 // SOOL
 #include <include/Memory/Array.h>
+#include <include/Peripherals/DMA/Common.h>
 
 // - - - - - - - - - - - - - - - -
 
@@ -37,69 +38,62 @@
 /* USART coupled with DMA - DMA RX channel configuration */
 typedef struct {
 	DMA_Channel_TypeDef* 	dma_channel;
-	uint32_t				dma_tc_flag;
-	uint8_t 				dma_channel_id;	// IT flags bitwise shifting (see @defgroup DMA_interrupts_definition )
-//	DMA_InitTypeDef			dma_config;		// raw register value will be changed (buf size)
-} UsartDmaRxConfiguration;
+	DMA_InterruptFlags		int_flags;
+} USART_DMA_RxConfig;
 
 // - - - - - - - - - - - - - - - -
 
 /* USART coupled with DMA - DMA TX channel configuration */
 typedef struct {
 	DMA_Channel_TypeDef* 	dma_channel;
-	uint32_t				dma_tc_flag;
-	uint8_t 				dma_channel_id;	// IT flags bitwise shifting (see @defgroup DMA_interrupts_definition )
-//	DMA_InitTypeDef			dma_config;		// raw register value will be changed (buf size)
-} UsartDmaTxConfiguration;
+	DMA_InterruptFlags		int_flags;
+} USART_DMA_TxConfig;
 
 // - - - - - - - - - - - - - - - -
 
 /* USART coupled with DMA configuration */
 typedef struct {
-
-	USART_TypeDef*			usart_periph;
-//	NVIC_InitTypeDef 		nvic;			// to be able to disable interrupts
-	UsartDmaRxConfiguration	dma_rx;
-	UsartDmaTxConfiguration dma_tx;
-
-} UsartDmaConfiguration;
+	USART_TypeDef*			usart_id;
+	USART_DMA_RxConfig		dma_rx;
+	USART_DMA_TxConfig 		dma_tx;
+} USART_DMA_Config;
 
 // - - - - - - - - - - - - - - - -
 
 typedef struct {
-	ArrayString 		rx_buffer;
+	Array_String 		buffer;
 	uint8_t 			new_data_flag;
-	uint8_t				data_fully_received_flag;
-} UsartRx;
+} USART_Rx;
 
 // - - - - - - - - - - - - - - - -
 
 typedef struct {
-	ArrayString 		tx_buffer;
-	uint8_t				transfer_finished;
-} UsartTx;
+	Array_String 		buffer;
+	uint8_t 			started_flag;
+	uint8_t				finished_flag;
+} USART_Tx;
 
 // - - - - - - - - - - - - - - - -
 
-struct UsartPeriphStruct;
-typedef struct UsartPeriphStruct UsartPeriph;
+struct USART_DMA_PeriphStruct;
+typedef struct USART_DMA_PeriphStruct USART_DMA_Periph;
 
-struct UsartPeriphStruct {
+struct USART_DMA_PeriphStruct {
 
-	UsartDmaConfiguration 	setup;
-	UsartRx					rx;
-	UsartTx					tx;
+	USART_DMA_Config 	setup;
+	USART_Rx			rx;
+	USART_Tx			tx;
 
 	// methods
-	uint8_t (*Send)(volatile UsartPeriph*, char*);
-	uint8_t (*IsDataReceived)(volatile UsartPeriph*);
-	uint8_t (*DmaTxIrqHandler)(volatile UsartPeriph*);
+	uint8_t (*Send)(volatile USART_DMA_Periph*, char*);
+	uint8_t (*IsDataReceived)(volatile USART_DMA_Periph*);
+	uint8_t (*DmaTxIrqHandler)(volatile USART_DMA_Periph*);
 
 };
 
 // - - - - - - - - - - - - - - - -
 
-volatile UsartPeriph SOOL_USART_DMA_Init(USART_TypeDef* usart_periph_id, uint32_t baud);
+volatile USART_DMA_Periph SOOL_USART_DMA_Init(USART_TypeDef* USARTx, uint32_t baud);
 
 // - - - - - - - - - - - - - - - -
 

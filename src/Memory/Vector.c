@@ -15,8 +15,8 @@ static int Vector_GetTotal(const Vector *v);
 static void Vector_Resize(Vector*, const unsigned int);
 static void Vector_Add(Vector*, void*);
 static void Vector_Set(Vector*, const unsigned int, void*);
-static void* Vector_GetElem(const Vector*, const unsigned int);
-static void Vector_DeleteElem(Vector*, const unsigned int);
+static void* Vector_GetItem(const Vector*, const unsigned int);
+static void Vector_DeleteItem(Vector*, const unsigned int);
 static void Vector_FreeMemory(Vector*);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -30,9 +30,9 @@ Vector SOOL_Vector_Init(const unsigned int initial_capacity) {
 	v.items = malloc(sizeof(void *) * initial_capacity);
 
 	v.Add = Vector_Add;
-	v.DeleteElem = Vector_DeleteElem;
+	v.DeleteItem = Vector_DeleteItem;
 	v.FreeMemory = Vector_FreeMemory;
-	v.GetElem = Vector_GetElem;
+	v.GetItem = Vector_GetItem;
 	v.GetTotal = Vector_GetTotal;
 	v.Set = Vector_Set;
 
@@ -73,7 +73,7 @@ static void Vector_Set(Vector *v, const unsigned int index, void *item) {
 
 }
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-static void* Vector_GetElem(const Vector *v, const unsigned int index) {
+static void* Vector_GetItem(const Vector *v, const unsigned int index) {
 
 	if (index >= 0 && index < v->total)
 		return (v->items[index]);
@@ -81,7 +81,7 @@ static void* Vector_GetElem(const Vector *v, const unsigned int index) {
 
 }
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-static void Vector_DeleteElem(Vector *v, const unsigned int index) {
+static void Vector_DeleteItem(Vector *v, const unsigned int index) {
 
     if (index < 0 || index >= v->total) {
         return;
