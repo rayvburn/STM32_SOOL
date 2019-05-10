@@ -11,25 +11,25 @@
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 // numeric array (Int16)
-static void Array_Int16_Add(volatile Array_Int16 *arr_ptr, int16_t val);
-static void Array_Int16_Clear(volatile Array_Int16 *arr_ptr);
+static void Array_Int16_Add(Array_Int16 *arr_ptr, int16_t val);
+static void Array_Int16_Clear(Array_Int16 *arr_ptr);
 
-static void Array_Int16_Free(volatile Array_Int16 *arr_ptr);
+static void Array_Int16_Free(Array_Int16 *arr_ptr);
 
 // string array
-static void Array_String_AddChar(volatile Array_String *string_ptr, char c);
-static void Array_String_SetString(volatile Array_String *string_ptr, const char *str);
-static char* Array_String_GetString(volatile Array_String *string_ptr);
-static void Array_String_Clear(volatile Array_String *string_ptr);
-static uint8_t Array_String_Resize(volatile Array_String *string_ptr, size_t new_capacity);
-static void Array_String_Free(volatile Array_String *string_ptr);
+static void Array_String_AddChar(Array_String *string_ptr, char c);
+static void Array_String_SetString(Array_String *string_ptr, const char *str);
+static char* Array_String_GetString(Array_String *string_ptr);
+static void Array_String_Clear(Array_String *string_ptr);
+static uint8_t Array_String_Resize(Array_String *string_ptr, size_t new_capacity);
+static void Array_String_Free(Array_String *string_ptr);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
-volatile Array_Int16 SOOL_Array_Int16_Init(const size_t capacity) {
+Array_Int16 SOOL_Array_Int16_Init(const size_t capacity) {
 
-	volatile Array_Int16 arr;
+	Array_Int16 arr;
 	arr.info.capacity = capacity;
 	arr.info.total = 0;
 	arr.info.add_index = 0;
@@ -45,9 +45,9 @@ volatile Array_Int16 SOOL_Array_Int16_Init(const size_t capacity) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-volatile Array_String SOOL_Array_String_Init(const size_t capacity) {
+Array_String SOOL_Array_String_Init(const size_t capacity) {
 
-	volatile Array_String string;
+	Array_String string;
 	string.info.capacity = capacity;
 	string.info.total = 0;
 	string.info.add_index = 0;
@@ -67,7 +67,7 @@ volatile Array_String SOOL_Array_String_Init(const size_t capacity) {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 /* Numeric array */
-static void Array_Int16_Add(volatile Array_Int16 *arr_ptr, int16_t val) {
+static void Array_Int16_Add(Array_Int16 *arr_ptr, int16_t val) {
 
 	if ( arr_ptr->info.add_index == arr_ptr->info.capacity ) {
 		arr_ptr->info.add_index = 0;
@@ -81,7 +81,7 @@ static void Array_Int16_Add(volatile Array_Int16 *arr_ptr, int16_t val) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static void Array_Int16_Clear(volatile Array_Int16 *arr_ptr) {
+static void Array_Int16_Clear(Array_Int16 *arr_ptr) {
 
 	for ( size_t i = 0; i < arr_ptr->info.total; i++ ) {
 		arr_ptr->data[i] = 0;
@@ -93,13 +93,13 @@ static void Array_Int16_Clear(volatile Array_Int16 *arr_ptr) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static void Array_Int16_Free(volatile Array_Int16 *arr_ptr) {
+static void Array_Int16_Free(Array_Int16 *arr_ptr) {
 	free(arr_ptr);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 /* String array */
-static void Array_String_AddChar(volatile Array_String *string_ptr, char c) {
+static void Array_String_AddChar(Array_String *string_ptr, char c) {
 
 	if ( string_ptr->info.add_index == string_ptr->info.capacity ) {
 		string_ptr->info.add_index = 0;
@@ -113,7 +113,7 @@ static void Array_String_AddChar(volatile Array_String *string_ptr, char c) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static void Array_String_SetString(volatile Array_String *string_ptr, const char *str) {
+static void Array_String_SetString(Array_String *string_ptr, const char *str) {
 
 	Array_String_Clear(string_ptr);
 	while (*str) {
@@ -124,7 +124,7 @@ static void Array_String_SetString(volatile Array_String *string_ptr, const char
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static char* Array_String_GetString(volatile Array_String *string_ptr) {
+static char* Array_String_GetString(Array_String *string_ptr) {
 
 	char *ret = (char *)calloc( (size_t)string_ptr->info.total, sizeof(char) );
 	if( !ret ) {
@@ -141,7 +141,7 @@ static char* Array_String_GetString(volatile Array_String *string_ptr) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static void Array_String_Clear(volatile Array_String *string_ptr) {
+static void Array_String_Clear(Array_String *string_ptr) {
 
 	for ( size_t i = 0; i < string_ptr->info.total; i++ ) {
 		string_ptr->data[i] = 0;
@@ -153,14 +153,13 @@ static void Array_String_Clear(volatile Array_String *string_ptr) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t Array_String_Resize(volatile Array_String *string_ptr, const size_t new_capacity) {
+static uint8_t Array_String_Resize(Array_String *string_ptr, const size_t new_capacity) {
 
 	char *ptr_backup = string_ptr->data;
 	string_ptr->data = realloc( (char *)string_ptr->data, new_capacity * sizeof(char) );
 
 	if ( string_ptr->data != NULL ) {
 		Array_String_Clear(string_ptr);
-		string_ptr->info.capacity = new_capacity;
 		return (1);
 	}
 
@@ -173,6 +172,6 @@ static uint8_t Array_String_Resize(volatile Array_String *string_ptr, const size
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static void Array_String_Free(volatile Array_String *string_ptr) {
+static void Array_String_Free(Array_String *string_ptr) {
 	free(string_ptr);
 }

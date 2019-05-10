@@ -28,9 +28,9 @@ struct Array_Int16Struct {
 	Array_Info info;
 	int16_t *data;
 
-	void 	(*Add)(volatile Array_Int16 *arr_ptr, int16_t val);			// acts like a circular buffer
-	void 	(*Clear)(volatile Array_Int16 *arr_ptr);
-	void	(*Free)(volatile Array_Int16 *arr_ptr);
+	void 	(*Add)(Array_Int16 *arr_ptr, int16_t val);			// acts like a circular buffer
+	void 	(*Clear)(Array_Int16 *arr_ptr);
+	void	(*Free)(Array_Int16 *arr_ptr);
 };
 
 // - - - - - - - - - - - - - - - -
@@ -44,19 +44,19 @@ struct Array_StringStruct {
 	Array_Info info;
 	char *data;
 
-	void 	(*AddChar)(volatile Array_String *string_ptr, char c);			// acts like a circular buffer
-	void 	(*SetString)(volatile Array_String *string_ptr, const char *str);
-	char* 	(*GetString)(volatile Array_String *string_ptr); /// IMPORTANT: free memory after finished processing!
-	void 	(*Clear)(volatile Array_String *string_ptr);
-	uint8_t (*Resize)(volatile Array_String *string_ptr, const size_t);
-	void	(*Free)(volatile Array_String *string_ptr);
+	void 	(*AddChar)(Array_String *string_ptr, char c);			// acts like a circular buffer
+	void 	(*SetString)(Array_String *string_ptr, const char *str);
+	char* 	(*GetString)(Array_String *string_ptr); /// IMPORTANT: free memory after finished processing!
+	void 	(*Clear)(Array_String *string_ptr);
+	uint8_t (*Resize)(Array_String *string_ptr, const size_t);
+	void	(*Free)(Array_String *string_ptr);
 
 };
 
 // - - - - - - - - - - - - - - - -
 
-volatile Array_Int16  SOOL_Array_Int16_Init(const size_t capacity);
-volatile Array_String SOOL_Array_String_Init(const size_t capacity);
+Array_Int16  SOOL_Array_Int16_Init(const size_t capacity);
+Array_String SOOL_Array_String_Init(const size_t capacity);
 
 // - - - - - - - - - - - - - - - -
 
