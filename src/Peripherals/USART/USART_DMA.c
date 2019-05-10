@@ -10,11 +10,11 @@
 #include <string.h> 								// strcpy()
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static char* test_arr = {'o', 'p', 'u', 'r', 't'};
-
 static uint8_t USART_DMA_IsRxBufferNotEmpty(volatile USART_DMA_Periph *usart);
-static uint8_t USART_DMA_TX_InterruptHandler(volatile USART_DMA_Periph *usart);
+static uint8_t USART_DMA_IsTxLineBusy(volatile USART_DMA_Periph *usart);
 static uint8_t USART_DMA_Send(volatile USART_DMA_Periph *usart, char *to_send_buf);
+
+static uint8_t USART_DMA_TxInterruptHandler(volatile USART_DMA_Periph *usart);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -23,6 +23,9 @@ typedef struct {
 	uint8_t					irqn;
 	DMA_InterruptFlags		int_flags;
 } USART_DMA_SettingsHelper;
+
+// private non-class function
+static void SOOL_USART_DMA_Copy(volatile USART_DMA_Periph *usart, const USART_DMA_SettingsHelper *rx_settings, const USART_DMA_SettingsHelper *tx_settings);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -35,31 +38,19 @@ volatile USART_DMA_Periph SOOL_USART_DMA_Init(USART_TypeDef* USARTx, uint32_t ba
 	/* NVIC IRQn */
 	uint8_t irqn;
 
-	/* helper structs to store the DMA configuration in a clearer way */
+	/* Helper structs to store the DMA configuration in a clearer way */
 	USART_DMA_SettingsHelper dma_rx;
 	USART_DMA_SettingsHelper dma_tx;
-
-//	/* dma variables */
-//	/*		tx 		*/
-//	DMA_Channel_TypeDef* dma_channel_tx;
-//	uint8_t 			 dma_tx_irqn;
-//	uint8_t 			 dma_tx_channel_id;
-//
-//	/*		rx 		*/
-//	DMA_Channel_TypeDef* dma_channel_rx;
-//	uint8_t dma_rx_irqn;
-//	uint8_t dma_rx_channel_id;
-//	uint32_t dma_rx_tc_flag;
 
 	/* Create a new USART_DMA object */
 	volatile  USART_DMA_Periph usart_obj;
 
 	/* Initialize the peripheral's RX and TX buffers
 	 * with an arbitrary length */
-	usart_obj.rx.buffer = SOOL_Array_String_Init(25);
-	usart_obj.tx.buffer = SOOL_Array_String_Init(25);
+	usart_obj.rx.buffer = SOOL_Array_String_Init(10);
+	usart_obj.tx.buffer = SOOL_Array_String_Init(10);
 
-	/* TODO: remap handling, USART could go to PD/PC when remapped
+	/* TODO: Remap handling, USART could go to PD/PC when remapped
 	 * Reference Manual, p. 183 - AFIO_MAPR */
 	/* port clock */
 	if ( USARTx == USART1 || USARTx == USART2 ) {
@@ -81,13 +72,14 @@ volatile USART_DMA_Periph SOOL_USART_DMA_Init(USART_TypeDef* USARTx, uint32_t ba
 	 * RCC_AHBPeriph_DMA1 is valid for USART1, USART2, USART3 */
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
 
-	/* TODO: remap handling */
+	/* TODO: Remap handling */
 	if ( USARTx == USART1 ) {
 
-		//pins and IRQn
+		// GPIO and IRQn
 		tx_pin = GPIO_Pin_9;
 		rx_pin = GPIO_Pin_10;
 		irqn = USART1_IRQn;
+
 		// TX
 		dma_tx.channel = DMA1_Channel4;
 		dma_tx.irqn = DMA1_Channel4_IRQn;
@@ -95,10 +87,7 @@ volatile USART_DMA_Periph SOOL_USART_DMA_Init(USART_TypeDef* USARTx, uint32_t ba
 		dma_tx.int_flags.ERROR_FLAG = DMA1_FLAG_TE4;
 		dma_tx.int_flags.HALF_FLAG = DMA1_FLAG_HT4;
 		dma_tx.int_flags.GLOBAL_FLAG = DMA1_FLAG_GL4;
-//		dma_channel_tx = DMA1_Channel4;
-//		dma_tx_irqn = DMA1_Channel4_IRQn;
-//		dma_tx_tc_flag = DMA1_FLAG_TC4;
-//		dma_tx_channel_id = 4;
+
 		// RX
 		dma_rx.channel = DMA1_Channel5;
 		dma_rx.irqn = DMA1_Channel5_IRQn;
@@ -106,18 +95,14 @@ volatile USART_DMA_Periph SOOL_USART_DMA_Init(USART_TypeDef* USARTx, uint32_t ba
 		dma_rx.int_flags.ERROR_FLAG = DMA1_FLAG_TE5;
 		dma_rx.int_flags.HALF_FLAG = DMA1_FLAG_HT5;
 		dma_rx.int_flags.GLOBAL_FLAG = DMA1_FLAG_GL5;
-//		dma_channel_rx = DMA1_Channel5;
-//		dma_rx_irqn = DMA1_Channel5_IRQn;
-//		dma_rx_tc_flag = DMA1_FLAG_TC5;
-//		dma_rx_channel_id = 5;
-//		//DMA1_FLAG_
 
 	} else if ( USARTx == USART2 ) {
 
-		//pins and IRQn
+		// GPIO and IRQn
 		tx_pin = GPIO_Pin_2;
 		rx_pin = GPIO_Pin_3;
 		irqn = USART2_IRQn;
+
 		// TX
 		dma_tx.channel = DMA1_Channel7;
 		dma_tx.irqn = DMA1_Channel7_IRQn;
@@ -125,10 +110,7 @@ volatile USART_DMA_Periph SOOL_USART_DMA_Init(USART_TypeDef* USARTx, uint32_t ba
 		dma_tx.int_flags.ERROR_FLAG = DMA1_FLAG_TE7;
 		dma_tx.int_flags.HALF_FLAG = DMA1_FLAG_HT7;
 		dma_tx.int_flags.GLOBAL_FLAG = DMA1_FLAG_GL7;
-//		dma_channel_tx = DMA1_Channel7;
-//		dma_tx_irqn = DMA1_Channel7_IRQn;
-//		dma_tx_tc_flag = DMA1_FLAG_TC7;
-//		dma_tx_channel_id = 7;
+
 		// RX
 		dma_rx.channel = DMA1_Channel6;
 		dma_rx.irqn = DMA1_Channel6_IRQn;
@@ -136,17 +118,14 @@ volatile USART_DMA_Periph SOOL_USART_DMA_Init(USART_TypeDef* USARTx, uint32_t ba
 		dma_rx.int_flags.ERROR_FLAG = DMA1_FLAG_TE6;
 		dma_rx.int_flags.HALF_FLAG = DMA1_FLAG_HT6;
 		dma_rx.int_flags.GLOBAL_FLAG = DMA1_FLAG_GL6;
-//		dma_channel_rx = DMA1_Channel6;
-//		dma_rx_irqn = DMA1_Channel6_IRQn;
-//		dma_rx_tc_flag = DMA1_FLAG_TC6;
-//		dma_rx_channel_id = 6;
 
 	} else if ( USARTx == USART3 ) {
 
-		//pins and IRQn
+		// GPIO and IRQn
 		tx_pin = GPIO_Pin_10;
 		rx_pin = GPIO_Pin_11;
 		irqn = USART3_IRQn;
+
 		// TX
 		dma_tx.channel = DMA1_Channel2;
 		dma_tx.irqn = DMA1_Channel2_IRQn;
@@ -154,10 +133,7 @@ volatile USART_DMA_Periph SOOL_USART_DMA_Init(USART_TypeDef* USARTx, uint32_t ba
 		dma_tx.int_flags.ERROR_FLAG = DMA1_FLAG_TE2;
 		dma_tx.int_flags.HALF_FLAG = DMA1_FLAG_HT2;
 		dma_tx.int_flags.GLOBAL_FLAG = DMA1_FLAG_GL2;
-//		dma_channel_tx = DMA1_Channel2;
-//		dma_tx_irqn = DMA1_Channel2_IRQn;
-//		dma_tx_tc_flag = DMA1_FLAG_TC2;
-//		dma_tx_channel_id = 2;
+
 		// RX
 		dma_rx.channel = DMA1_Channel3;
 		dma_rx.irqn = DMA1_Channel3_IRQn;
@@ -165,10 +141,6 @@ volatile USART_DMA_Periph SOOL_USART_DMA_Init(USART_TypeDef* USARTx, uint32_t ba
 		dma_rx.int_flags.ERROR_FLAG = DMA1_FLAG_TE3;
 		dma_rx.int_flags.HALF_FLAG = DMA1_FLAG_HT3;
 		dma_rx.int_flags.GLOBAL_FLAG = DMA1_FLAG_GL3;
-//		dma_channel_rx = DMA1_Channel3;
-//		dma_rx_irqn = DMA1_Channel3_IRQn;
-//		dma_rx_tc_flag = DMA1_FLAG_TC3;
-//		dma_rx_channel_id = 3;
 
 	}
 
@@ -293,6 +265,7 @@ void SOOL_USART_DMA_Copy(volatile USART_DMA_Periph *usart, const USART_DMA_Setti
 		const USART_DMA_SettingsHelper *tx_settings) {
 
 	/* Fill the Setup structure's fields */
+
 	/* RX */
 	usart->setup.dma_rx.dma_channel = rx_settings->channel;
 	usart->setup.dma_rx.int_flags   = rx_settings->int_flags;
@@ -308,23 +281,12 @@ void SOOL_USART_DMA_Copy(volatile USART_DMA_Periph *usart, const USART_DMA_Setti
 	usart->tx.finished_flag = 0;
 	usart->tx.started_flag = 0;
 
-//	usart_obj.tx.transfer_finished = 0;
-//	usart_obj.rx.new_data_flag = 0;
-//	usart_obj.rx.data_fully_received_flag = 0;
-//
-//
-//	usart_obj.setup.dma_rx.dma_channel = dma_channel_rx;
-//	usart_obj.setup.dma_rx.dma_channel_id = dma_rx_channel_id;
-//	usart_obj.setup.dma_rx.dma_tc_flag = dma_rx_tc_flag;
-//
-//	usart_obj.setup.dma_tx.dma_channel = dma_channel_tx;
-//	usart_obj.setup.dma_tx.dma_channel_id = dma_tx_channel_id;
-//	usart_obj.setup.dma_tx.dma_tc_flag = dma_tx_tc_flag;
-
-	/* Fill USART object's methods */
-	usart->DmaTxIrqHandler = USART_DMA_TX_InterruptHandler;
+	/* Fill USART class'es methods */
 	usart->IsDataReceived = USART_DMA_IsRxBufferNotEmpty;
+
+	usart->IsTxLineBusy = USART_DMA_IsTxLineBusy;
 	usart->Send = USART_DMA_Send;
+	usart->DmaTxIrqHandler = USART_DMA_TxInterruptHandler;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -339,10 +301,18 @@ static uint8_t USART_DMA_IsRxBufferNotEmpty(volatile USART_DMA_Periph *usart) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t USART_DMA_TX_InterruptHandler(volatile USART_DMA_Periph *usart) {
+static uint8_t USART_DMA_IsTxLineBusy(volatile USART_DMA_Periph *usart) {
+	return (usart->tx.started_flag);
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static uint8_t USART_DMA_TxInterruptHandler(volatile USART_DMA_Periph *usart) {
 
 	if ( DMA_GetITStatus(usart->setup.dma_tx.int_flags.ERROR_FLAG) == SET ) {
 
+		/* Transfer Error Interrupt - happens for example when
+		 * peripheral register's address is wrong */
 //		DMA_ClearITPendingBit(usart->setup.dma_tx.int_flags.ERROR_FLAG);
 		DMA_ClearITPendingBit(usart->setup.dma_tx.int_flags.GLOBAL_FLAG);
 		// TODO: some error message
@@ -351,6 +321,7 @@ static uint8_t USART_DMA_TX_InterruptHandler(volatile USART_DMA_Periph *usart) {
 
 	} else if ( DMA_GetITStatus(usart->setup.dma_tx.int_flags.COMPLETE_FLAG) == SET ) {
 
+		/* Transfer Complete Interrupt */
 //		DMA_ClearITPendingBit(usart->setup.dma_tx.int_flags.COMPLETE_FLAG);
 		DMA_ClearITPendingBit(usart->setup.dma_tx.int_flags.GLOBAL_FLAG);
 		DMA_Cmd(usart->setup.dma_tx.dma_channel, DISABLE);
@@ -361,53 +332,42 @@ static uint8_t USART_DMA_TX_InterruptHandler(volatile USART_DMA_Periph *usart) {
 
 	} else if ( DMA_GetITStatus(usart->setup.dma_tx.int_flags.HALF_FLAG) == SET ) {
 
+		/* Half Transfer Interrupt */
 //		DMA_ClearITPendingBit(usart->setup.dma_tx.int_flags.HALF_FLAG);
 		DMA_ClearITPendingBit(usart->setup.dma_tx.int_flags.GLOBAL_FLAG);
 		return (1);
 
 	} else if ( DMA_GetITStatus(usart->setup.dma_tx.int_flags.GLOBAL_FLAG) == SET ) {
 
+		/* Global DMA Channel Interrupt */
 		DMA_ClearITPendingBit(usart->setup.dma_tx.int_flags.GLOBAL_FLAG);
 		return (1);
 
 	} else {
+
+		// indicate that no interrupt flag was recognized and cleared
 		return (0);
 	}
 
-//	if ( DMA_GetITStatus(DMA1_IT_TC7) == SET) {
-//		DMA_ClearITPendingBit(DMA1_IT_TC7);
-//		int abc = 1;
-//		abc++;
-//	}
-//	if ( DMA_GetITStatus(DMA1_IT_HT7) == SET ) {
-//		DMA_ClearITPendingBit(DMA1_IT_HT7);
-//		int abc = 1;
-//		abc++;
-//	}
-//	if ( DMA_GetITStatus(DMA1_IT_TE7) == SET ) {
-//		DMA_ClearITPendingBit(DMA1_IT_TE7);
-//		int abc = 1;
-//		abc++;
-//	}
-//	if ( DMA_GetITStatus(DMA1_IT_GL7) == SET ) {
-//		DMA_ClearITPendingBit(DMA1_IT_GL7);
-//		int abc = 1;
-//		abc++;
-//	}
-
-	//DMA_ClearITPendingBit(usart->setup.dma_tx.dma_tc_flag);
-//	DMA_Cmd(usart->setup.dma_tx.dma_channel, DISABLE);
-//	usart->tx.finished_flag = 1;
-
-	return (1);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 static uint8_t USART_DMA_Send(volatile USART_DMA_Periph *usart, char *to_send_buf) {
 
-	/* Copy contents of the string to be sent */
-	// FIXME: if string is longer than buffer's capacity then realloc()
+	/* Check message length to decide whether reallocation is a must */
+	uint32_t length = (uint32_t)strlen(to_send_buf);
+
+	if ( length > usart->tx.buffer.info.capacity ) {
+
+		// discards volatile - not crucial here
+		if ( !usart->tx.buffer.Resize(&usart->tx.buffer, (size_t)length) ) {
+			//perror("COULD NOT REALLOCATE AN ARRAY");
+		}
+
+	}
+
+	/* Try to copy contents of the string to be sent */
 	strcpy(usart->tx.buffer.data, to_send_buf);
 
 	/* Disable DMA Channel*/
@@ -420,7 +380,7 @@ static uint8_t USART_DMA_Send(volatile USART_DMA_Periph *usart, char *to_send_bu
 	usart->setup.dma_tx.dma_channel->CMAR = (uint32_t)usart->tx.buffer.data;
 
 	/* Change buffer size */
-	usart->setup.dma_tx.dma_channel->CNDTR = strlen(to_send_buf);
+	usart->setup.dma_tx.dma_channel->CNDTR = length;
 
 	/* Start DMA Channel's transfer */
 	DMA_Cmd(usart->setup.dma_tx.dma_channel, ENABLE);
@@ -428,6 +388,7 @@ static uint8_t USART_DMA_Send(volatile USART_DMA_Periph *usart, char *to_send_bu
 	/* Store information that DMA transfer was started */
 	usart->tx.started_flag = 1;
 
+	/* Return 1 on successful sent */
 	return (1);
 
 }

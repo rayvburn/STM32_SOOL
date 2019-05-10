@@ -9,6 +9,7 @@
 #define INCLUDE_MEMORY_ARRAY_H_
 
 #include <stdint.h>
+#include <stddef.h> // size_t
 
 // - - - - - - - - - - - - - - - -
 
@@ -47,14 +48,15 @@ struct Array_StringStruct {
 	void 	(*SetString)(Array_String *string_ptr, const char *str);
 	char* 	(*GetString)(Array_String *string_ptr); /// IMPORTANT: free memory after finished processing!
 	void 	(*Clear)(Array_String *string_ptr);
+	uint8_t (*Resize)(Array_String *string_ptr, const size_t);
 	void	(*Free)(Array_String *string_ptr);
 
 };
 
 // - - - - - - - - - - - - - - - -
 
-Array_Int16  SOOL_Array_Int16_Init(const uint16_t capacity);
-Array_String SOOL_Array_String_Init(const uint16_t capacity);
+Array_Int16  SOOL_Array_Int16_Init(const size_t capacity);
+Array_String SOOL_Array_String_Init(const size_t capacity);
 
 // - - - - - - - - - - - - - - - -
 

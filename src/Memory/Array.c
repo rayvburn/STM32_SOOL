@@ -13,6 +13,7 @@
 // numeric array (Int16)
 static void Array_Int16_Add(Array_Int16 *arr_ptr, int16_t val);
 static void Array_Int16_Clear(Array_Int16 *arr_ptr);
+
 static void Array_Int16_Free(Array_Int16 *arr_ptr);
 
 // string array
@@ -20,12 +21,13 @@ static void Array_String_AddChar(Array_String *string_ptr, char c);
 static void Array_String_SetString(Array_String *string_ptr, const char *str);
 static char* Array_String_GetString(Array_String *string_ptr);
 static void Array_String_Clear(Array_String *string_ptr);
+static uint8_t Array_String_Resize(Array_String *string_ptr, size_t new_capacity);
 static void Array_String_Free(Array_String *string_ptr);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
-Array_Int16 SOOL_Array_Int16_Init(const uint16_t capacity) {
+Array_Int16 SOOL_Array_Int16_Init(const size_t capacity) {
 
 	Array_Int16 arr;
 	arr.info.capacity = capacity;
@@ -43,7 +45,7 @@ Array_Int16 SOOL_Array_Int16_Init(const uint16_t capacity) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-Array_String SOOL_Array_String_Init(const uint16_t capacity) {
+Array_String SOOL_Array_String_Init(const size_t capacity) {
 
 	Array_String string;
 	string.info.capacity = capacity;
@@ -55,6 +57,7 @@ Array_String SOOL_Array_String_Init(const uint16_t capacity) {
 	string.Clear = Array_String_Clear;
 	string.GetString = Array_String_GetString;
 	string.SetString = Array_String_SetString;
+	string.Resize = Array_String_Resize;
 	string.Free = Array_String_Free;
 
 	return (string);
@@ -80,7 +83,7 @@ static void Array_Int16_Add(Array_Int16 *arr_ptr, int16_t val) {
 
 static void Array_Int16_Clear(Array_Int16 *arr_ptr) {
 
-	for ( uint16_t i = 0; i < arr_ptr->info.total; i++ ) {
+	for ( size_t i = 0; i < arr_ptr->info.total; i++ ) {
 		arr_ptr->data[i] = 0;
 	}
 	arr_ptr->info.add_index = 0;
@@ -128,7 +131,7 @@ static char* Array_String_GetString(Array_String *string_ptr) {
 		return NULL;
 	}
 
-	for ( uint16_t i = 0; i < string_ptr->info.total; ++i) {
+	for ( size_t i = 0; i < string_ptr->info.total; ++i) {
 		ret[i] = string_ptr->data[i];
 	}
 
@@ -140,11 +143,30 @@ static char* Array_String_GetString(Array_String *string_ptr) {
 
 static void Array_String_Clear(Array_String *string_ptr) {
 
-	for ( uint16_t i = 0; i < string_ptr->info.total; i++ ) {
+	for ( size_t i = 0; i < string_ptr->info.total; i++ ) {
 		string_ptr->data[i] = 0;
 	}
 	string_ptr->info.add_index = 0;
 	string_ptr->info.total = 0;
+
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static uint8_t Array_String_Resize(Array_String *string_ptr, const size_t new_capacity) {
+
+	char *ptr_backup = string_ptr->data;
+	string_ptr->data = realloc( (char *)string_ptr->data, new_capacity * sizeof(char) );
+
+	if ( string_ptr->data != NULL ) {
+		Array_String_Clear(string_ptr);
+		return (1);
+	}
+
+	// if the reallocation failed - restore a previous pointer and return 0
+	string_ptr->data = ptr_backup;
+	// TODO: some error message
+	return (0);
 
 }
 

@@ -45,17 +45,17 @@ typedef struct {
 
 /* USART coupled with DMA - DMA TX channel configuration */
 typedef struct {
-	DMA_Channel_TypeDef* 	dma_channel;
-	DMA_InterruptFlags		int_flags;
+	DMA_Channel_TypeDef* dma_channel;
+	DMA_InterruptFlags	 int_flags;
 } USART_DMA_TxConfig;
 
 // - - - - - - - - - - - - - - - -
 
 /* USART coupled with DMA configuration */
 typedef struct {
-	USART_TypeDef*			usart_id;
-	USART_DMA_RxConfig		dma_rx;
-	USART_DMA_TxConfig 		dma_tx;
+	USART_TypeDef*		usart_id;
+	USART_DMA_RxConfig	dma_rx;
+	USART_DMA_TxConfig 	dma_tx;
 } USART_DMA_Config;
 
 // - - - - - - - - - - - - - - - -
@@ -75,19 +75,31 @@ typedef struct {
 
 // - - - - - - - - - - - - - - - -
 
+/* Forward declaration */
 struct USART_DMA_PeriphStruct;
 typedef struct USART_DMA_PeriphStruct USART_DMA_Periph;
 
+/* USART_DMA `class` */
 struct USART_DMA_PeriphStruct {
 
 	USART_DMA_Config 	setup;
 	USART_Rx			rx;
 	USART_Tx			tx;
 
-	// methods
-	uint8_t (*Send)(volatile USART_DMA_Periph*, char*);
+	// Methods
+	// RX section
 	uint8_t (*IsDataReceived)(volatile USART_DMA_Periph*);
+	void	(*ClearRxBuffer)(volatile USART_DMA_Periph*);
+	uint8_t (*DmaRxIrqHandler)(volatile USART_DMA_Periph*);
+
+	// TX section
+	uint8_t (*IsTxLineBusy)(volatile USART_DMA_Periph*);
+	uint8_t (*Send)(volatile USART_DMA_Periph*, char*);
+	void	(*ClearTxBuffer)(volatile USART_DMA_Periph*);
 	uint8_t (*DmaTxIrqHandler)(volatile USART_DMA_Periph*);
+
+	// General
+	void 	(*Destroy)(volatile USART_DMA_Periph*);	// frees the memory taken by buffers
 
 };
 
