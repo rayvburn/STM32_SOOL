@@ -33,6 +33,9 @@
  * https://github.com/mubes/blackmagic/blob/bluepill/src/platforms/stm32/traceswoasync.c
  */
 
+/* IMPORTANT NOTE: beware of breakpoints during debugging - DMA is very sensitive to some interrupts
+ * during its job - dropping into a breakpoint blocks and never releases an initialized transfer */
+
 // - - - - - - - - - - - - - - - -
 
 /* USART coupled with DMA - DMA RX channel configuration */
@@ -64,15 +67,12 @@ typedef struct {
 typedef struct {
 	Array_String 		buffer;
 	uint8_t 			new_data_flag;
-	uint8_t				idle_line_flag;
 } USART_Rx;
 
 // - - - - - - - - - - - - - - - -
 
 typedef struct {
 	Array_String 		buffer;
-	uint8_t 			started_flag;
-	uint8_t				finished_flag;
 } USART_Tx;
 
 // - - - - - - - - - - - - - - - -
@@ -82,10 +82,6 @@ struct USART_DMA_PeriphStruct;
 typedef struct USART_DMA_PeriphStruct USART_DMA_Periph;
 
 /* USART_DMA `class` */
-
-/* FIXME: there is an issue connected with initiating a smaller buffer than needed
- * for a whole transmission via RX line; resize method is probably too slow and a part of data
- * which was not loaded into RX buffer is lost */
 struct USART_DMA_PeriphStruct {
 
 	USART_DMA_Config 	setup;
@@ -96,7 +92,6 @@ struct USART_DMA_PeriphStruct {
 	// RX section
 	void	(*ActivateReading)(volatile USART_DMA_Periph*);
 	uint8_t (*IsDataReceived)(volatile USART_DMA_Periph*);
-//	void	(*SetDataRead)(volatile USART_DMA_Periph*);
 	const volatile Array_String* (*GetRxData)(volatile USART_DMA_Periph*); // Use this method instead of raw ArrayString operations because some calculations are performed here (it is not possible to count number of bytes read from DMA on the fly)
 	void	(*ClearRxBuffer)(volatile USART_DMA_Periph*);
 	uint8_t (*DmaRxIrqHandler)(volatile USART_DMA_Periph*);
@@ -109,7 +104,8 @@ struct USART_DMA_PeriphStruct {
 
 	// General
 	uint8_t (*IdleLineIrqHandler)(volatile USART_DMA_Periph*);
-	void 	(*DestroyBuffers)(volatile USART_DMA_Periph*);	// frees the memory taken by buffers
+	void	(*RestoreBuffersInitialSize)(volatile USART_DMA_Periph*);
+	void 	(*Destroy)(volatile USART_DMA_Periph*);	// frees memory taken by buffers, stops USART and DMA (USART_DMA instance needs re-initialization then)
 
 };
 
