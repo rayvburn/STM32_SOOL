@@ -25,41 +25,25 @@
 
 // - - - - - - - - - - - - - - - -
 
-/* References:
- * https://elektronika327.blogspot.com/2017/08/28-stm32f4-usart-rx-oraz-tx-z-dma.html
- * http://stm32f4-discovery.net/2017/07/stm32-tutorial-efficiently-receive-uart-data-using-dma/
- * https://github.com/avislab/STM32F103/blob/master/Example_BMP280/main.c
- * https://stackoverflow.com/questions/43298708/stm32-implementing-uart-in-dma-mode
- * https://github.com/mubes/blackmagic/blob/bluepill/src/platforms/stm32/traceswoasync.c
- */
-
 /* IMPORTANT NOTE: beware of breakpoints during debugging - DMA is very sensitive to some interrupts
- * during its job - dropping into a breakpoint blocks and never releases an initialized transfer */
+ * during its job - getting into a breakpoint blocks and never releases an initialized transfer */
 
 // - - - - - - - - - - - - - - - -
 
-/* USART coupled with DMA - DMA RX channel configuration */
+/* USART coupled with DMA - DMA RX/TX channel configuration */
 typedef struct {
-	DMA_Channel_TypeDef* 	dma_channel;
-	DMA_InterruptFlags		int_flags;
-} USART_DMA_RxConfig;
-
-// - - - - - - - - - - - - - - - -
-
-/* USART coupled with DMA - DMA TX channel configuration */
-typedef struct {
-	DMA_Channel_TypeDef* dma_channel;
+	DMA_Channel_TypeDef* DMA_Channelx;
 	DMA_InterruptFlags	 int_flags;
-} USART_DMA_TxConfig;
+} USART_DMA_LineConfig;
 
 // - - - - - - - - - - - - - - - -
 
 /* USART coupled with DMA configuration */
 typedef struct {
-	USART_TypeDef*		usart_id;
-	USART_DMA_RxConfig	dma_rx;
-	USART_DMA_TxConfig 	dma_tx;
-	uint32_t			BUF_INIT_SIZE;
+	USART_TypeDef*		 USARTx;
+	USART_DMA_LineConfig dma_rx;
+	USART_DMA_LineConfig dma_tx;
+	uint32_t			 BUF_INIT_SIZE;
 } USART_DMA_Config;
 
 // - - - - - - - - - - - - - - - -
@@ -81,6 +65,8 @@ typedef struct {
 struct USART_DMA_PeriphStruct;
 typedef struct USART_DMA_PeriphStruct USART_DMA_Periph;
 
+// - - - - - - - - - - - - - - - -
+
 /* USART_DMA `class` */
 struct USART_DMA_PeriphStruct {
 
@@ -88,9 +74,9 @@ struct USART_DMA_PeriphStruct {
 	USART_Rx			rx;
 	USART_Tx			tx;
 
-	// Methods
 	// RX section
 	void	(*ActivateReading)(volatile USART_DMA_Periph*);
+	void	(*DeactivateReading)(volatile USART_DMA_Periph*);
 	uint8_t (*IsDataReceived)(volatile USART_DMA_Periph*);
 	const volatile Array_String* (*GetRxData)(volatile USART_DMA_Periph*); // Use this method instead of raw ArrayString operations because some calculations are performed here (it is not possible to count number of bytes read from DMA on the fly)
 	void	(*ClearRxBuffer)(volatile USART_DMA_Periph*);
@@ -104,7 +90,7 @@ struct USART_DMA_PeriphStruct {
 
 	// General
 	uint8_t (*IdleLineIrqHandler)(volatile USART_DMA_Periph*);
-	void	(*RestoreBuffersInitialSize)(volatile USART_DMA_Periph*);
+	uint8_t	(*RestoreBuffersInitialSize)(volatile USART_DMA_Periph*);
 	void 	(*Destroy)(volatile USART_DMA_Periph*);	// frees memory taken by buffers, stops USART and DMA (USART_DMA instance needs re-initialization then)
 
 };
