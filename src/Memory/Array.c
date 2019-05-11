@@ -143,7 +143,11 @@ static char* Array_String_GetString(Array_String *string_ptr) {
 
 static void Array_String_Clear(Array_String *string_ptr) {
 
-	for ( size_t i = 0; i < string_ptr->info.total; i++ ) {
+	/* NOTE: this needs to be done on the full string length
+	 * because when used by DMA there is no way to count number
+	 * of items on the fly */
+//	for ( size_t i = 0; i < string_ptr->info.total; i++ ) {
+	for ( size_t i = 0; i < string_ptr->info.capacity; i++ ) {
 		string_ptr->data[i] = 0;
 	}
 	string_ptr->info.add_index = 0;
