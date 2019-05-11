@@ -328,7 +328,8 @@ static void USART_DMA_SetupAndStartDmaReading(volatile USART_DMA_Periph *usart, 
 	usart->setup.dma_rx.dma_channel->CPAR = (uint32_t)&usart->setup.usart_id->DR;
 
 	/* Update memory base register address */
-	usart->setup.dma_rx.dma_channel->CMAR = (uint32_t)&usart->rx.buffer.data[buf_start_pos];			//	usart->setup.dma_rx.dma_channel->CMAR = (uint32_t)usart->rx.buffer.data;
+//	usart->setup.dma_rx.dma_channel->CMAR = (uint32_t)usart->rx.buffer.data;
+	usart->setup.dma_rx.dma_channel->CMAR = (uint32_t)&usart->rx.buffer.data[buf_start_pos];
 
 	/* Change buffer size - bigger data will come in parts */
 	usart->setup.dma_rx.dma_channel->CNDTR = usart->setup.BUF_INIT_SIZE;
@@ -353,8 +354,32 @@ static void USART_DMA_ActivateReading(volatile USART_DMA_Periph *usart) {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 static void USART_DMA_RestartReading(volatile USART_DMA_Periph *usart, const size_t buf_start_pos) {
+//
+//
+//
+//	/* Reset the Idle Line flag */
+//	usart->rx.idle_line_flag = 0;
+//
+//	/* Disable DMA Channel*/
+//	DMA_Cmd(usart->setup.dma_rx.dma_channel, DISABLE);
+//
+//	/* Update peripheral's Data Register address */
+//	usart->setup.dma_rx.dma_channel->CPAR = (uint32_t)&usart->setup.usart_id->DR;
+//
+//	/* Update memory base register address */
+//
+//
+//	/* Change buffer size */
+//	usart->setup.dma_rx.dma_channel->CNDTR = 10;
+//
+//	// read usart's dr
+//	//uint16_t test = usart->setup.usart_id->DR;
+//
+//	/* Start DMA Channel's reading */
+//	DMA_Cmd(usart->setup.dma_rx.dma_channel, ENABLE);
 
-	/* This is invoked after TC but not all data was received due to a full RX buffer */
+
+	/* This is invoked after TC but not all data was transmitted due to full RX buffer */
 	USART_DMA_SetupAndStartDmaReading(usart, buf_start_pos);
 
 }
@@ -373,7 +398,7 @@ static uint8_t USART_DMA_IsDataReceived(volatile USART_DMA_Periph *usart) {
 
 static const Array_String* USART_DMA_GetRxData(volatile USART_DMA_Periph *usart) {
 
-	/* Update Array_String info first */
+	/* update Array_String info */
 	usart->rx.buffer.info.total = USART_DMA_GetMaxNonEmptyItemIndex(&usart->rx.buffer) + 1;
 	usart->rx.buffer.info.add_index = usart->rx.buffer.info.total;
 	usart->rx.new_data_flag = 0;
@@ -431,20 +456,19 @@ static uint8_t USART_DMA_RxInterruptHandler(volatile USART_DMA_Periph *usart) {
 
 			/* The line is not in idle state:
 			 * 	- 	number of data to receive was known in advance (no way to tell if it is that case or the next),
-			 * 	-	there are still some data to receive (buffer must be resized) 				*/
-			/* The buffer must be resized in both cases - make it bigger by a constant value 	*/
-			char *old_addr = usart->rx.buffer.data;
-			if ( !usart->rx.buffer.Resize(&usart->rx.buffer, usart->rx.buffer.info.capacity + usart->setup.BUF_INIT_SIZE) ) {
-//			uint16_t old_capacity = usart->rx.buffer.info.capacity;
-//			if ( !usart->rx.buffer.Resize(&usart->rx.buffer, 50) ) {
+			 * 	-	there are still some data to receive (buffer must be resized)
+			 */
+			/* The buffer must be resized in both cases - make it 2 times bigger */
+			if ( !usart->rx.buffer.Resize(&usart->rx.buffer, 2 * usart->rx.buffer.info.capacity) ) {
 				// FIXME: unable to resize - data will be lost, this is not a good situation - print some error
+				int abc = 0;
+				abc++;
 			}
-			char *new_addr = usart->rx.buffer.data;
 
 			/* Try to continue reading making the message continuously written into buffer;
 			 * usually this resize takes too long and data is lost */
-			USART_DMA_RestartReading(usart, usart->rx.buffer.info.capacity - usart->setup.BUF_INIT_SIZE);
-//			USART_DMA_RestartReading(usart, 0);
+			USART_DMA_RestartReading(usart, usart->rx.buffer.info.capacity / 2);
+//			usart->ActivateReading(usart);
 
 		}
 		return (1);
@@ -563,7 +587,7 @@ static uint8_t USART_DMA_Send(volatile USART_DMA_Periph *usart, char *to_send_bu
 
 	if ( length > usart->tx.buffer.info.capacity ) {
 
-		/* Resize method discards USART's volatile qualifier - not crucial here */
+		// Resize method discards USART's volatile qualifier - not crucial here
 		if ( !usart->tx.buffer.Resize(&usart->tx.buffer, (size_t)length) ) {
 			//perror("COULD NOT REALLOCATE AN ARRAY");
 		}
@@ -580,7 +604,7 @@ static uint8_t USART_DMA_Send(volatile USART_DMA_Periph *usart, char *to_send_bu
 	usart->setup.dma_tx.dma_channel->CPAR = (uint32_t)&usart->setup.usart_id->DR;
 
 	/* Update memory base register address */
-	usart->setup.dma_tx.dma_channel->CMAR = (uint32_t)&usart->tx.buffer.data;
+	usart->setup.dma_tx.dma_channel->CMAR = (uint32_t)usart->tx.buffer.data;
 
 	/* Change buffer size */
 	/* Ref: `can only be written when the channel is disabled` */
@@ -603,4 +627,93 @@ static void	USART_DMA_DestroyBuffers(volatile USART_DMA_Periph *usart) {
 	usart->rx.buffer.Free(&usart->rx.buffer);
 	usart->tx.buffer.Free(&usart->tx.buffer);
 }
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+/*
+uint8_t USART_DMA_SendData(UsartPeriph *usart) {
+
+	DMA_InitTypeDef DMA_InitStructure;
+	DMA_Cmd(usart->setup.dma_tx.dma_channel, ENABLE); 				// enable DMA transfer
+
+	while( !DMA_GetFlagStatus(usart->setup.dma_tx.dma_tc_flag) ); 	// wait until whole buffer will be sent (transfer complete flag)
+	DMA_ClearFlag(usart->setup.dma_tx.dma_tc_flag); 				// clear TC flag
+	DMA_Cmd(usart->setup.dma_tx.dma_channel, DISABLE); 				// disable DMA transfer
+
+	DMA_InitStructure.DMA_PeripheralBaseAddr = usart->setup.usart_periph->DR;
+	DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)usart->tx.tx_buffer.items;
+
+	DMA_Init(usart->setup.dma_tx.dma_channel, &DMA_InitStructure);
+	return (1);
+
+}
+*/
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+//char* TxBuf;
+//int DATA_LEN = 256;
+//
+//
+//void USART_Config(void)
+//{
+//  // USART init
+//  USART_InitTypeDef  USART_InitStructure;
+//
+//  USART_InitStructure.USART_BaudRate = 9600;
+//  USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+//  USART_InitStructure.USART_StopBits = USART_StopBits_1;
+//  USART_InitStructure.USART_Parity = USART_Parity_No;
+//  USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+//  USART_InitStructure.USART_Mode = USART_Mode_Tx | USART_Mode_Rx;
+//
+//	USART_Init(USART1, &USART_InitStructure);
+//
+//	USART_DMACmd(USART1, USART_DMAReq_Rx | USART_DMAReq_Tx, ENABLE);
+//
+//	USART_Cmd(USART1, ENABLE);
+//
+//
+//}
+//
+//void DMA_Config() {
+//
+//	// DMA INIT
+//  DMA_InitTypeDef DMA_InitStructure;
+//
+//  DMA_DeInit(DMA1_Channel4);                                            	// clear DMA config
+//  DMA_InitStructure.DMA_PeripheralBaseAddr = USART1_BASE;  					// source register adress
+//  DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)TxBuf;            		// data block to be send initial address
+//  DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralDST;                    	// transfer direction
+//  DMA_InitStructure.DMA_BufferSize = DATA_LEN;                               	// buffer's length (number of items to send)
+//  DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;      	// auto-increment of address (peripheral's side)
+//  DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;               	// auto-increment of address (buffer's side)
+//  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;	// data size (peripheral)
+//  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;         	// data_size (buffer)
+//  DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;                             // mode
+//  DMA_InitStructure.DMA_Priority = DMA_Priority_VeryHigh;                   // priority
+//  DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;                              // memory to memory setting
+//
+//  DMA_Init(DMA1_Channel4, &DMA_InitStructure);								// save config
+//
+//}
+//
+//void DMA_Start(void)
+//{
+//	DMA_InitTypeDef DMA_InitStructure;
+//
+//	DMA_Cmd(DMA1_Channel4, ENABLE); 																									//Wlaczenie transmisji DMA
+//
+//	while( !DMA_GetFlagStatus(DMA1_FLAG_TC4) ); 	 // DMA1 Channel4 transfer complete flag.																			//Czekaj az zostanie wyslany caly bufor
+//	DMA_ClearFlag(DMA1_FLAG_TC4); 																										//Wyzeruj flage TC4
+//	DMA_Cmd(DMA1_Channel4, DISABLE); 																									//Wylacz transmisje DMA
+//
+//  DMA_InitStructure.DMA_PeripheralBaseAddr = USART1_BASE;
+//  DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)TxBuf;
+//
+//  DMA_Init(DMA1_Channel4, &DMA_InitStructure);																			//Zapis konfiguracji
+//
+//}
+
+
 
