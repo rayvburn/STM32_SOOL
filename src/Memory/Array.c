@@ -159,6 +159,9 @@ static uint8_t Array_String_Resize(Array_String *string_ptr, const size_t new_ca
 	uint16_t old_capacity = string_ptr->info.capacity;
 	char *ptr_backup = string_ptr->data;
 
+	// test
+	size_t test = sizeof(char);
+
 	/* Try to reallocate memory */
 	string_ptr->data = realloc( (char*)string_ptr->data, new_capacity * sizeof(char) );
 

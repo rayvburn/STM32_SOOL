@@ -97,7 +97,7 @@ struct USART_DMA_PeriphStruct {
 	void	(*ActivateReading)(volatile USART_DMA_Periph*);
 	uint8_t (*IsDataReceived)(volatile USART_DMA_Periph*);
 //	void	(*SetDataRead)(volatile USART_DMA_Periph*);
-	const Array_String* (*GetRxData)(volatile USART_DMA_Periph*); // Use this method instead of raw ArrayString operations because some calculations are performed here (it is not possible to count number of bytes read from DMA on the fly)
+	const volatile Array_String* (*GetRxData)(volatile USART_DMA_Periph*); // Use this method instead of raw ArrayString operations because some calculations are performed here (it is not possible to count number of bytes read from DMA on the fly)
 	void	(*ClearRxBuffer)(volatile USART_DMA_Periph*);
 	uint8_t (*DmaRxIrqHandler)(volatile USART_DMA_Periph*);
 
