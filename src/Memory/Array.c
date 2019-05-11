@@ -24,6 +24,9 @@ static void Array_String_Clear(Array_String *string_ptr);
 static uint8_t Array_String_Resize(Array_String *string_ptr, size_t new_capacity);
 static void Array_String_Free(Array_String *string_ptr);
 
+// private
+static uint8_t Array_String_ClearRange(Array_String *string_ptr, const size_t start_index, const size_t end_index);
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
@@ -33,7 +36,7 @@ Array_Int16 SOOL_Array_Int16_Init(const size_t capacity) {
 	arr.info.capacity = capacity;
 	arr.info.total = 0;
 	arr.info.add_index = 0;
-	arr.data = (int16_t *)calloc( (size_t)capacity, sizeof(int16_t) );
+	arr.data = (int16_t *)calloc( capacity, sizeof(int16_t) );
 
 	arr.Add = Array_Int16_Add;
 	arr.Clear = Array_Int16_Clear;
@@ -51,7 +54,7 @@ Array_String SOOL_Array_String_Init(const size_t capacity) {
 	string.info.capacity = capacity;
 	string.info.total = 0;
 	string.info.add_index = 0;
-	string.data = (char *)calloc( (size_t)capacity, sizeof(char) );
+	string.data = (char *)calloc( capacity, sizeof(char) );
 
 	string.AddChar = Array_String_AddChar;
 	string.Clear = Array_String_Clear;
@@ -94,7 +97,7 @@ static void Array_Int16_Clear(Array_Int16 *arr_ptr) {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 static void Array_Int16_Free(Array_Int16 *arr_ptr) {
-	free(arr_ptr);
+	free(arr_ptr->data);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -156,21 +159,31 @@ static void Array_String_Clear(Array_String *string_ptr) {
 static uint8_t Array_String_Resize(Array_String *string_ptr, const size_t new_capacity) {
 
 	/* Backup some info */
-	uint16_t old_capacity = string_ptr->info.capacity;
+	size_t old_capacity = string_ptr->info.capacity;
 	char *ptr_backup = string_ptr->data;
 
 	/* Try to reallocate memory */
-	string_ptr->data = realloc( (char*)string_ptr->data, new_capacity * sizeof(char) );
+//	string_ptr->data = (char *)realloc((char *)string_ptr->data, new_capacity * sizeof(char));
+	string_ptr->data = (char *)realloc((void *)string_ptr->data, new_capacity);
 
 	/* Check if the reallocation was successful */
 	if ( string_ptr->data != NULL ) {
 
-		/* Clear the new part of an Array (if Array is bigger than before) */
-		if ( old_capacity < new_capacity ) {
-			for ( size_t i = old_capacity; i < new_capacity; i++) {
-				string_ptr->data[i] = 0;
-			}
+		/* Check if a base address is the same */
+		if ( string_ptr->data != ptr_backup ) {
+
+			/* Base address is not the same - we have to copy old array contents */
+//			memcpy(string_ptr->data, ptr_backup, old_capacity);
+//			memcpy(ptr_backup, string_ptr->data, old_capacity);
+			/* This is done by realloc */
+
+			/* Let's free old memory block */
+			//free(ptr_backup);
+
 		}
+
+		/* Clear the `new` part of an Array (if Array is bigger than before) */
+		Array_String_ClearRange(string_ptr, old_capacity, (new_capacity - 1));
 
 		/* Update capacity */
 		string_ptr->info.capacity = new_capacity;
@@ -188,6 +201,26 @@ static uint8_t Array_String_Resize(Array_String *string_ptr, const size_t new_ca
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+static uint8_t Array_String_ClearRange(Array_String *string_ptr, const size_t start_index, const size_t end_index) {
+
+	/* Fill with 0s */
+	if ( start_index < end_index ) {
+
+		for ( size_t i = start_index; i <= end_index; i++) {
+			string_ptr->data[i] = 0;
+		}
+		return (1);
+
+	} else {
+
+		return (0);
+
+	}
+
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 static void Array_String_Free(Array_String *string_ptr) {
-	free(string_ptr);
+	free(string_ptr->data);
 }
