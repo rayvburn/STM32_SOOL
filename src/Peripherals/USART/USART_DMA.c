@@ -705,6 +705,12 @@ static void	USART_DMA_Destroy(volatile USART_DMA_Periph *usart) {
 	/* Disable USART_DMA */
 	usart->setup.USARTx->CR1 &= (uint16_t)(~USART_CR1_UE);
 
+	/* Deinit DMA Channel */
+	DMA_DeInit(usart->setup.dma_tx.DMA_Channelx);
+
+	/* Deinit USART */
+	USART_DeInit(usart->setup.USARTx);
+
 	/* Free memory taken by buffers */
 //	usart->rx.buffer.Free(&usart->rx.buffer); // Infinite loop
 //	usart->tx.buffer.Free(&usart->tx.buffer); // Infinite loop
