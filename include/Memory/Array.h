@@ -44,7 +44,7 @@ struct Array_StringStruct {
 	Array_Info info;
 	char *data;
 
-	void 	(*AddChar)(Array_String *string_ptr, char c);			// acts like a circular buffer
+	void 	(*Add)(Array_String *string_ptr, char c);			// acts like a circular buffer
 	void 	(*SetString)(Array_String *string_ptr, const char *str);
 	char* 	(*GetString)(Array_String *string_ptr);
 	void 	(*Clear)(Array_String *string_ptr);
@@ -62,16 +62,16 @@ Array_String SOOL_Array_String_Init(const size_t capacity);
 
 /* Test code: (BEFORE REFACTOR)
 ArrayString str1 = SOOL_ArrayString_Init(15);
-str1.AddChar(&str1, 'o');
-str1.AddChar(&str1, 'p');
-str1.AddChar(&str1, 'a');
-str1.AddChar(&str1, 'f');
-str1.AddChar(&str1, 'v');
-str1.AddChar(&str1, '\n');
+str1.Add(&str1, 'o');
+str1.Add(&str1, 'p');
+str1.Add(&str1, 'a');
+str1.Add(&str1, 'f');
+str1.Add(&str1, 'v');
+str1.Add(&str1, '\n');
 char* str_out = str1.GetString(&str1);
 int a = 2;
 a++;
-free(str_out);
+// free(str_out); DEPRECATED
 str1.SetString(&str1, "OLEASDaWQ KG");
 */
 

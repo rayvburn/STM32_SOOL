@@ -17,7 +17,7 @@ static void Array_Int16_Clear(Array_Int16 *arr_ptr);
 static void Array_Int16_Free(Array_Int16 *arr_ptr);
 
 // string array
-static void Array_String_AddChar(Array_String *string_ptr, char c);
+static void Array_String_Add(Array_String *string_ptr, char c);
 static void Array_String_SetString(Array_String *string_ptr, const char *str);
 //static char* Array_String_GetString(Array_String *string_ptr); 	 // dynamic allocation (memory needs to be freed after finished processing)
 static const char* Array_String_GetString(Array_String *string_ptr); // return pointer to `data` field
@@ -54,7 +54,7 @@ Array_String SOOL_Array_String_Init(const size_t capacity) {
 	string.info.add_index = 0;
 	string.data = (char *)calloc( (size_t)capacity, sizeof(char) );
 
-	string.AddChar = Array_String_AddChar;
+	string.Add = Array_String_Add;
 	string.Clear = Array_String_Clear;
 	string.GetString = Array_String_GetString;
 	string.SetString = Array_String_SetString;
@@ -100,7 +100,7 @@ static void Array_Int16_Free(Array_Int16 *arr_ptr) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 /* String array */
-static void Array_String_AddChar(Array_String *string_ptr, char c) {
+static void Array_String_Add(Array_String *string_ptr, char c) {
 
 	if ( string_ptr->info.add_index == string_ptr->info.capacity ) {
 		string_ptr->info.add_index = 0;
@@ -118,7 +118,7 @@ static void Array_String_SetString(Array_String *string_ptr, const char *str) {
 
 	Array_String_Clear(string_ptr);
 	while (*str) {
-		Array_String_AddChar(string_ptr, *str++); // pointer increment
+		Array_String_Add(string_ptr, *str++); // pointer increment
 	}
 
 }
