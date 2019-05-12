@@ -152,9 +152,18 @@ volatile USART_DMA_Periph SOOL_USART_DMA_Init(USART_TypeDef* USARTx, uint32_t ba
 
 	} else if ( USARTx == USART3 ) {
 
-		// GPIO and IRQn
+		// GPIO
 		tx_pin = GPIO_Pin_10;
 		rx_pin = GPIO_Pin_11;
+
+		/* Check remapping
+		if ( AFIO->MAPR & AFIO_MAPR_USART3_REMAP_FULLREMAP ) {
+		} else if ( AFIO->MAPR & AFIO_MAPR_USART3_REMAP_PARTIALREMAP ) {
+		} else if ( (AFIO->MAPR | AFIO_MAPR_USART3_REMAP_NOREMAP) == 0 ) {
+		}
+		*/
+
+		// IRQn
 		irqn = USART3_IRQn;
 
 		// TX
@@ -299,14 +308,14 @@ static void SOOL_USART_DMA_Copy(volatile USART_DMA_Periph *usart, const USART_DM
 
 	/* RX */
 	usart->setup.dma_rx.DMA_Channelx = rx_settings->channel;
-	usart->setup.dma_rx.int_flags   = rx_settings->int_flags;
+	usart->setup.dma_rx.int_flags    = rx_settings->int_flags;
 
 	// buffer already assigned in this moment
 	usart->rx.new_data_flag = 0;
 
 	/* TX */
 	usart->setup.dma_tx.DMA_Channelx = tx_settings->channel;
-	usart->setup.dma_tx.int_flags   = tx_settings->int_flags;
+	usart->setup.dma_tx.int_flags    = tx_settings->int_flags;
 
 	// buffer already assigned in this moment
 
@@ -335,7 +344,7 @@ static void USART_DMA_SetupAndStartDmaReading(volatile USART_DMA_Periph *usart, 
 		const size_t num_bytes_to_read) {
 
 	/* Disable DMA Channel*/
-	DMA_Cmd(usart->setup.dma_rx.DMA_Channelx, DISABLE);
+	usart->setup.dma_rx.DMA_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN);// DMA_Cmd(usart->setup.dma_rx.DMA_Channelx, DISABLE);
 
 	/* Update peripheral's Data Register address */
 	usart->setup.dma_rx.DMA_Channelx->CPAR = (uint32_t)&usart->setup.USARTx->DR;
@@ -350,17 +359,32 @@ static void USART_DMA_SetupAndStartDmaReading(volatile USART_DMA_Periph *usart, 
 	usart->rx.new_data_flag = 0;
 
 	/* Enable Idle Line interrupt */
-	usart->setup.USARTx->CR1 |= USART_CR1_IDLEIE; // equal to USART_ITConfig(usart->setup.USARTx, USART_IT_IDLE, ENABLE);
+	usart->setup.USARTx->CR1 |= USART_CR1_IDLEIE;
 
 	/* Start DMA Channel's reading */
-	DMA_Cmd(usart->setup.dma_rx.DMA_Channelx, ENABLE);
+	usart->setup.dma_rx.DMA_Channelx->CCR |= DMA_CCR1_EN;// DMA_Cmd(usart->setup.dma_rx.DMA_Channelx, ENABLE);
 
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 static void USART_DMA_ActivateReading(volatile USART_DMA_Periph *usart) {
+
+//	/* Read USART Data Register to prevent old data (unread)
+//	 * to jump into currently collected string;
+//	 * this clears RXNE flag (Reference Manual, p.823, Bit 5) */
+//	uint8_t byte = usart->setup.USARTx->DR;
+//	usart->setup.USARTx->SR &= (~USART_SR_RXNE);
+//
+//	/* Clear DMA TC interrupt bit */
+//	DMA_ClearITPendingBit(usart->setup.dma_rx.int_flags.GLOBAL_FLAG);
+
+	/* Enable USART receiver mode */
+	usart->setup.USARTx->CR1 |= USART_CR1_RE;
+
+	/* Configure and start DMA RX Channel */
 	USART_DMA_SetupAndStartDmaReading(usart, 0, (size_t)usart->rx.buffer.info.capacity);
+
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -368,11 +392,13 @@ static void USART_DMA_ActivateReading(volatile USART_DMA_Periph *usart) {
 static void USART_DMA_DeactivateReading(volatile USART_DMA_Periph *usart) {
 
 	/* Disable DMA Channel*/
-	DMA_Cmd(usart->setup.dma_rx.DMA_Channelx, DISABLE);
-//	usart->setup.dma_rx.DMA_Channelx
+	usart->setup.dma_rx.DMA_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN);// DMA_Cmd(usart->setup.dma_rx.DMA_Channelx, DISABLE);
 
 	/* Disable Idle Line interrupt */
 	usart->setup.USARTx->CR1 &= (uint16_t)(~USART_CR1_IDLEIE);
+
+	/* Disable USART receiver mode */
+	usart->setup.USARTx->CR1 &= (uint16_t)(~USART_CR1_RE);
 
 }
 
