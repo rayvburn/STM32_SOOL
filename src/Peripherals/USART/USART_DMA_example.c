@@ -40,7 +40,7 @@ int main(void)
 	}
 
 	usart_debug.ActivateReading(&usart_debug);
-	usart_debug.Send(&usart_debug, "abcdefpoqwdopqwkdopdasdkaops\n\0");
+	usart_debug.Send(&usart_debug, "bacdefpoqwdopqwkdopdasdkaops\n\0");
 
 	for ( int i = 0; i < 500000; i++ ) {
 		if ( i == 40000 ) {
@@ -56,7 +56,7 @@ int main(void)
 
 	/* Clearing does not protect the following received characters against appending
 	 * the current string - it just clears a whole buffer */
-	usart_debug.ClearRxBuffer(&usart_debug);
+//	usart_debug.ClearRxBuffer(&usart_debug);
 
 	/* Clearing the TX buffer is not needed as long as you are sure
 	 * that previous data weren't longer (in terms of length) than
@@ -78,6 +78,19 @@ int main(void)
 		int abcd = 0;
 		abcd++;
 	}
+
+	for ( int i = 0; i < 500000; i++ ) {
+		if ( i == 40000 ) {
+
+		}
+	}
+
+	usart_debug.RestoreBuffersInitialSize(&usart_debug);
+	usart_debug.ActivateReading(&usart_debug);
+	Array_String str_test = SOOL_Array_String_Init(15);
+	str_test.SetString(&str_test, "tyrueiwoqpowieu");
+
+	usart_debug.Send(&usart_debug, str_test.data);
 
 	for ( int i = 0; i < 500000; i++ ) {
 		if ( i == 40000 ) {
