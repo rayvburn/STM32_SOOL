@@ -19,7 +19,8 @@ static void Array_Int16_Free(Array_Int16 *arr_ptr);
 // string array
 static void Array_String_AddChar(Array_String *string_ptr, char c);
 static void Array_String_SetString(Array_String *string_ptr, const char *str);
-static char* Array_String_GetString(Array_String *string_ptr);
+//static char* Array_String_GetString(Array_String *string_ptr); 	 // dynamic allocation (memory needs to be freed after finished processing)
+static const char* Array_String_GetString(Array_String *string_ptr); // return pointer to `data` field
 static void Array_String_Clear(Array_String *string_ptr);
 static uint8_t Array_String_Resize(Array_String *string_ptr, size_t new_capacity);
 static void Array_String_Free(Array_String *string_ptr);
@@ -124,19 +125,25 @@ static void Array_String_SetString(Array_String *string_ptr, const char *str) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static char* Array_String_GetString(Array_String *string_ptr) {
+/* Dynamic allocation version */
+//static char* Array_String_GetString(Array_String *string_ptr) {
+//
+//	char *ret = (char *)calloc( (size_t)string_ptr->info.total, sizeof(char) );
+//	if( !ret ) {
+//		return NULL;
+//	}
+//
+//	for ( size_t i = 0; i < string_ptr->info.total; ++i) {
+//		ret[i] = string_ptr->data[i];
+//	}
+//
+//	return (ret);
+//
+//}
 
-	char *ret = (char *)calloc( (size_t)string_ptr->info.total, sizeof(char) );
-	if( !ret ) {
-		return NULL;
-	}
-
-	for ( size_t i = 0; i < string_ptr->info.total; ++i) {
-		ret[i] = string_ptr->data[i];
-	}
-
-	return (ret);
-
+/* Return const pointer to `data` field version */
+static const char* Array_String_GetString(Array_String *string_ptr) {
+	return (string_ptr->data);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

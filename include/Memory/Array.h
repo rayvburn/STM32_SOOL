@@ -46,7 +46,7 @@ struct Array_StringStruct {
 
 	void 	(*AddChar)(Array_String *string_ptr, char c);			// acts like a circular buffer
 	void 	(*SetString)(Array_String *string_ptr, const char *str);
-	char* 	(*GetString)(Array_String *string_ptr); /// IMPORTANT: free memory after finished processing!
+	char* 	(*GetString)(Array_String *string_ptr);
 	void 	(*Clear)(Array_String *string_ptr);
 	uint8_t (*Resize)(Array_String *string_ptr, const size_t);
 	void	(*Free)(Array_String *string_ptr);
