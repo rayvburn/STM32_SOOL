@@ -13,11 +13,11 @@
 
 // - - - - - - - - - - - - - - - -
 
-typedef struct {
+struct Array_Info {
 	uint16_t total;
 	uint16_t capacity;
 	uint16_t add_index;	// stores index of an element to-be-added
-} Array_Info;
+};
 
 // - - - - - - - - - - - - - - - -
 
@@ -25,8 +25,8 @@ struct Array_Int16Struct; // forward declaration
 typedef struct Array_Int16Struct Array_Int16;
 
 struct Array_Int16Struct {
-	Array_Info info;
-	int16_t *data;
+	struct Array_Info 	_info;
+	int16_t 			*_data;
 
 	void 	(*Add)(Array_Int16 *arr_ptr, int16_t val);			// acts like a circular buffer
 	void 	(*Clear)(Array_Int16 *arr_ptr);
@@ -41,8 +41,8 @@ typedef struct Array_StringStruct Array_String;
 
 struct Array_StringStruct {
 
-	Array_Info info;
-	char *data;
+	struct Array_Info 	_info;
+	char 				*_data;
 
 	void 	(*Add)(Array_String *string_ptr, char c);			// acts like a circular buffer
 	void 	(*SetString)(Array_String *string_ptr, const char *str);
@@ -55,8 +55,8 @@ struct Array_StringStruct {
 
 // - - - - - - - - - - - - - - - -
 
-Array_Int16  SOOL_Array_Int16_Init(const size_t capacity);
-Array_String SOOL_Array_String_Init(const size_t capacity);
+Array_Int16  SOOL_Memory_Array_Int16_Init(const size_t capacity);
+Array_String SOOL_Memory_Array_String_Init(const size_t capacity);
 
 // - - - - - - - - - - - - - - - -
 

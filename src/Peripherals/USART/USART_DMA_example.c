@@ -14,7 +14,7 @@ int main(void)
 
 	/* clock configuration needed */
 
-	volatile USART_DMA_Periph usart_debug = SOOL_USART_DMA_Init(USART2, 115200, 10); // 26);
+	volatile USART_DMA_Periph usart_debug = SOOL_Periph_USART_DMA_Init(USART2, 115200, 10); // 26);
 
 	/* Place handlers into proper global IRQHandlers */
 	DMA_IRQ_Handler_SetUsartDebug(&usart_debug);
@@ -87,10 +87,10 @@ int main(void)
 
 	usart_debug.RestoreBuffersInitialSize(&usart_debug);
 	usart_debug.ActivateReading(&usart_debug);
-	Array_String str_test = SOOL_Array_String_Init(15);
+	Array_String str_test = SOOL_Memory_Array_String_Init(15);
 	str_test.SetString(&str_test, "tyrueiwoqpowieu");
 
-	usart_debug.Send(&usart_debug, str_test.data);
+	usart_debug.Send(&usart_debug, str_test._data);
 
 	for ( int i = 0; i < 500000; i++ ) {
 		if ( i == 40000 ) {

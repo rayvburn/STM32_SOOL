@@ -12,10 +12,10 @@ static void SOOL_PinSwitch_SetHigh(const PinSwitch *obj_ptr);
 static void SOOL_PinSwitch_SetLow (const PinSwitch *obj_ptr);
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-PinSwitch SOOL_PinSwitch_Init(SOOL_PinConfigNoInt setup) {
+PinSwitch SOOL_Effectors_PinSwitch_Init(SOOL_PinConfigNoInt setup) {
 
 	PinSwitch obj;
-	obj.setup = setup;
+	obj._setup = setup;
 	obj.SetHigh = SOOL_PinSwitch_SetHigh;
 	obj.SetLow = SOOL_PinSwitch_SetLow;
 	return (obj);
@@ -25,10 +25,10 @@ PinSwitch SOOL_PinSwitch_Init(SOOL_PinConfigNoInt setup) {
 // =============================================================================================
 
 static void SOOL_PinSwitch_SetHigh(const PinSwitch *obj_ptr) {
-	GPIO_SetBits(obj_ptr->setup.gpio_port, obj_ptr->setup.gpio_pin);
+	GPIO_SetBits(obj_ptr->_setup.gpio.port, obj_ptr->_setup.gpio.pin);
 }
 
 static void SOOL_PinSwitch_SetLow (const PinSwitch *obj_ptr) {
-	GPIO_ResetBits(obj_ptr->setup.gpio_port, obj_ptr->setup.gpio_pin);
+	GPIO_ResetBits(obj_ptr->_setup.gpio.port, obj_ptr->_setup.gpio.pin);
 }
 

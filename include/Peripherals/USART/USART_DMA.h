@@ -30,32 +30,32 @@
 
 // - - - - - - - - - - - - - - - -
 
-/* USART coupled with DMA - DMA RX/TX channel configuration */
-typedef struct {
-	DMA_Channel_TypeDef* DMA_Channelx;
-	DMA_InterruptFlags	 int_flags;
-} USART_DMA_LineConfig;
+///* USART coupled with DMA - DMA RX/TX channel configuration */
+//typedef struct {
+//	DMA_Channel_TypeDef* DMA_Channelx;
+//	DMA_InterruptFlags	 int_flags;
+//} USART_DMA_LineConfig;
 
 // - - - - - - - - - - - - - - - -
 
 /* USART coupled with DMA configuration */
-typedef struct {
-	USART_TypeDef*		 USARTx;
-	USART_DMA_LineConfig dma_rx;
-	USART_DMA_LineConfig dma_tx;
-	uint32_t			 BUF_INIT_SIZE;
-} USART_DMA_Config;
+struct USART_DMA_Config {
+	USART_TypeDef*		USARTx;
+	DMA_ChannelConfig 	dma_rx;
+	DMA_ChannelConfig 	dma_tx;
+	uint32_t			BUF_INIT_SIZE;
+} ;
 
 // - - - - - - - - - - - - - - - -
 
-typedef struct {
+struct USART_Rx {
 	Array_String 		buffer;
 	uint8_t 			new_data_flag;
 } USART_Rx;
 
 // - - - - - - - - - - - - - - - -
 
-typedef struct {
+struct USART_Tx {
 	Array_String 		buffer;
 } USART_Tx;
 
@@ -70,9 +70,9 @@ typedef struct USART_DMA_PeriphStruct USART_DMA_Periph;
 /* USART_DMA `class` */
 struct USART_DMA_PeriphStruct {
 
-	USART_DMA_Config 	setup;
-	USART_Rx			rx;
-	USART_Tx			tx;
+	struct USART_DMA_Config 	_setup;
+	struct USART_Rx				_rx;
+	struct USART_Tx				_tx;
 
 	// RX section
 	void	(*ActivateReading)(volatile USART_DMA_Periph*); 			// restarts reading starting from first buffer element
@@ -80,16 +80,16 @@ struct USART_DMA_PeriphStruct {
 	uint8_t (*IsDataReceived)(volatile USART_DMA_Periph*); 				// returns info whether data was received - based on USART Idle line detection
 	const volatile Array_String* (*GetRxData)(volatile USART_DMA_Periph*); // returns a pointer to a buffer - IMPORTANT: use this method instead of raw ArrayString operations because some calculations are performed here (it is not possible to count number of bytes read from DMA on the fly)
 	void	(*ClearRxBuffer)(volatile USART_DMA_Periph*); 				// clears whole buffer (NOTE: does not set incoming data pointer to the buffer's start)
-	uint8_t (*DmaRxIrqHandler)(volatile USART_DMA_Periph*); 			// interrupt callback function which needs to be put into global DMA IRQHandler
+	uint8_t (*_DmaRxIrqHandler)(volatile USART_DMA_Periph*); 			// interrupt callback function which needs to be put into global DMA IRQHandler
 
 	// TX section
 	uint8_t (*IsTxLineBusy)(volatile USART_DMA_Periph*); 				// returns info whether TX DMA is currently working
 	uint8_t (*Send)(volatile USART_DMA_Periph*, char*); 				// copies given data into buffer and fires up the transfer
 	void	(*ClearTxBuffer)(volatile USART_DMA_Periph*); 				// clears whole buffer
-	uint8_t (*DmaTxIrqHandler)(volatile USART_DMA_Periph*); 			// interrupt callback function which needs to be put into global DMA IRQHandler
+	uint8_t (*_DmaTxIrqHandler)(volatile USART_DMA_Periph*); 			// interrupt callback function which needs to be put into global DMA IRQHandler
 
 	// General
-	uint8_t (*IdleLineIrqHandler)(volatile USART_DMA_Periph*); 			// interrupt callback function which needs to be put into global USART IRQHandler
+	uint8_t (*_IdleLineIrqHandler)(volatile USART_DMA_Periph*); 			// interrupt callback function which needs to be put into global USART IRQHandler
 	uint8_t	(*RestoreBuffersInitialSize)(volatile USART_DMA_Periph*); 	// brings back the initial size of buffers by reallocating memory (only if buffer's length is actually bigger than initial size)
 	void 	(*Destroy)(volatile USART_DMA_Periph*);						// frees memory taken by buffers, stops USART and DMA (USART_DMA instance needs re-initialization then)
 
@@ -97,7 +97,7 @@ struct USART_DMA_PeriphStruct {
 
 // - - - - - - - - - - - - - - - -
 
-volatile USART_DMA_Periph SOOL_USART_DMA_Init(USART_TypeDef* USARTx, uint32_t baud, size_t buf_size);
+volatile USART_DMA_Periph SOOL_Periph_USART_DMA_Init(USART_TypeDef* USARTx, uint32_t baud, size_t buf_size);
 
 // - - - - - - - - - - - - - - - -
 

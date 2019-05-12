@@ -26,9 +26,9 @@ typedef struct VectorStruct Vector;
 struct VectorStruct {
 
 	// fields
-    void **items;	// vector of pointers to pointers
-    int capacity;
-    int total;
+    void **_items;	// vector of pointers to pointers
+    int _capacity;
+    int _total;
 
     // functions
     int 	(*GetTotal)(const Vector *v);
@@ -42,7 +42,7 @@ struct VectorStruct {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-Vector SOOL_Vector_Init(const unsigned int initial_capacity);
+Vector SOOL_Memory_Vector_Init(const unsigned int initial_capacity);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 

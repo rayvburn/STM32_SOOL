@@ -21,14 +21,14 @@ typedef struct PinSwitchStruct PinSwitch;
 
 // define a structure
 struct PinSwitchStruct {
-	SOOL_PinConfigNoInt setup;				// pin switcher is not interrupt-driven
+	SOOL_PinConfigNoInt _setup;				// pin switcher is not interrupt-driven
 	void (*SetHigh)(const PinSwitch*);
 	void (*SetLow)(const PinSwitch*);
 };
 
 // - - - - - - - - - - -
 
-PinSwitch SOOL_PinSwitch_Init(SOOL_PinConfigNoInt setup);
+PinSwitch SOOL_Effectors_PinSwitch_Init(SOOL_PinConfigNoInt setup);
 
 // - - - - - - - - - - -
 

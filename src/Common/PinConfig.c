@@ -13,21 +13,21 @@
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 // private functions declarations
-static void SOOL_PinConfig_EnableAPBClock(GPIO_TypeDef* port);
-static void SOOL_PinConfig_SetEXTILineEXTIPinSourceIRQn(uint16_t pin, uint32_t *exti_ln, uint8_t *pin_src, uint8_t *irqn);
-static void SOOL_PinConfig_SetEXTIPortSource(const GPIO_TypeDef* port, uint8_t *port_src);
+static void PinConfig_EnableAPBClock(GPIO_TypeDef* port);
+static void PinConfig_SetEXTILineEXTIPinSourceIRQn(uint16_t pin, uint32_t *exti_ln, uint8_t *pin_src, uint8_t *irqn);
+static void PinConfig_SetEXTIPortSource(const GPIO_TypeDef* port, uint8_t *port_src);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-SOOL_PinConfigNoInt SOOL_PinConfig_Initialize_NoInt(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const GPIOMode_TypeDef gpio_mode) {
+SOOL_PinConfigNoInt SOOL_Common_PinConfig_Initialize_NoInt(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const GPIOMode_TypeDef gpio_mode) {
 
 	// copy values into structure
 	SOOL_PinConfigNoInt config;
-	config.gpio_port = gpio_port;
-	config.gpio_pin = gpio_pin;
+	config.gpio.port = gpio_port;
+	config.gpio.pin = gpio_pin;
 
 	// start the clock
-	SOOL_PinConfig_EnableAPBClock(gpio_port);
+	PinConfig_EnableAPBClock(gpio_port);
 
 	// initialize pin
 	GPIO_InitTypeDef gpio;
@@ -43,7 +43,7 @@ SOOL_PinConfigNoInt SOOL_PinConfig_Initialize_NoInt(GPIO_TypeDef* gpio_port, con
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-SOOL_PinConfigInt SOOL_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin,
+SOOL_PinConfigInt SOOL_Common_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin,
 					const EXTITrigger_TypeDef exti_trigger) {
 
 	/* object to be filled with given values
@@ -61,16 +61,15 @@ SOOL_PinConfigInt SOOL_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, const u
 	 * @defgroup EXTI_Exported_Constants
 	 * @defgroup EXTI_Lines
 	 */
-	config.exti_line = 0x00;
-	config.exti_line = 0x00;
+	config.exti.line = 0x00;
 
 	uint32_t exti_ln;
 	uint8_t pin_src, port_src, irqn;
 
-	SOOL_PinConfig_SetEXTIPortSource(gpio_port, &port_src);
-	SOOL_PinConfig_SetEXTILineEXTIPinSourceIRQn(gpio_pin, &exti_ln, &pin_src, &irqn);
+	PinConfig_SetEXTIPortSource(gpio_port, &port_src);
+	PinConfig_SetEXTILineEXTIPinSourceIRQn(gpio_pin, &exti_ln, &pin_src, &irqn);
 
-	SOOL_PinConfig_EnableAPBClock(gpio_port);
+	PinConfig_EnableAPBClock(gpio_port);
 
 	// alternative function clock
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
@@ -99,16 +98,16 @@ SOOL_PinConfigInt SOOL_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, const u
 
 	// gpio-specific struct fields
 
-	config.gpio_port = gpio_port;
-	config.gpio_pin = gpio_pin;
-	config.exti_line = exti_ln;
-	config.port_source = port_src;
-	config.pin_source = pin_src;
-	config.irq_channel = irqn;
+	config.gpio.port = gpio_port;
+	config.gpio.pin = gpio_pin;
+	config.exti.line = exti_ln;
+	config.exti.port_src = port_src;
+	config.exti.pin_src = pin_src;
+	config.nvic.irqn = irqn;
 
 	// inittypedef struct fields
-	config.exti_setup = exti;
-	config.nvic_setup = nvic;
+	config.exti.setup = exti;
+	config.nvic.setup = nvic;
 
 	EXTI_Init(&exti);
 	GPIO_EXTILineConfig(port_src, pin_src);
@@ -120,16 +119,16 @@ SOOL_PinConfigInt SOOL_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, const u
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-void SOOL_PinConfig_NvicSwitch(SOOL_PinConfigInt *config, const FunctionalState state) {
-	config->nvic_setup.NVIC_IRQChannelCmd = state;
-	NVIC_Init(&(config->nvic_setup));
+void SOOL_Common_PinConfig_NvicSwitch(SOOL_PinConfigInt *config, const FunctionalState state) {
+	config->nvic.setup.NVIC_IRQChannelCmd = state;
+	NVIC_Init(&(config->nvic.setup));
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-void SOOL_PinConfig_ExtiSwitch(SOOL_PinConfigInt *config, const FunctionalState state) {
-	config->exti_setup.EXTI_LineCmd = state;
-	EXTI_Init(&(config->exti_setup));
+void SOOL_Common_PinConfig_ExtiSwitch(SOOL_PinConfigInt *config, const FunctionalState state) {
+	config->exti.setup.EXTI_LineCmd = state;
+	EXTI_Init(&(config->exti.setup));
 }
 
 // =============================================================================================
@@ -137,7 +136,7 @@ void SOOL_PinConfig_ExtiSwitch(SOOL_PinConfigInt *config, const FunctionalState 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // private function
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-static void SOOL_PinConfig_EnableAPBClock(GPIO_TypeDef* port) {
+static void PinConfig_EnableAPBClock(GPIO_TypeDef* port) {
 
 	if ( port == GPIOA ) {
 		RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
@@ -154,7 +153,7 @@ static void SOOL_PinConfig_EnableAPBClock(GPIO_TypeDef* port) {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // private function
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-static void SOOL_PinConfig_SetEXTILineEXTIPinSourceIRQn(uint16_t pin, uint32_t *exti_ln,
+static void PinConfig_SetEXTILineEXTIPinSourceIRQn(uint16_t pin, uint32_t *exti_ln,
 										 	  	uint8_t *pin_src, uint8_t *irqn) {
 
 	switch(pin) {
@@ -246,7 +245,7 @@ static void SOOL_PinConfig_SetEXTILineEXTIPinSourceIRQn(uint16_t pin, uint32_t *
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // private function
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-static void SOOL_PinConfig_SetEXTIPortSource(const GPIO_TypeDef* port, uint8_t *port_src) {
+static void PinConfig_SetEXTIPortSource(const GPIO_TypeDef* port, uint8_t *port_src) {
 
 	if ( port == GPIOA ) {
 		*port_src = GPIO_PortSourceGPIOA;
