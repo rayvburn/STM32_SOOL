@@ -344,7 +344,7 @@ static void USART_DMA_SetupAndStartDmaReading(volatile USART_DMA_Periph *usart, 
 		const size_t num_bytes_to_read) {
 
 	/* Disable DMA Channel*/
-	usart->setup.dma_rx.DMA_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN);// DMA_Cmd(usart->setup.dma_rx.DMA_Channelx, DISABLE);
+	usart->setup.dma_rx.DMA_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN); // DMA_Cmd(usart->setup.dma_rx.DMA_Channelx, DISABLE);
 
 	/* Update peripheral's Data Register address */
 	usart->setup.dma_rx.DMA_Channelx->CPAR = (uint32_t)&usart->setup.USARTx->DR;
@@ -362,7 +362,7 @@ static void USART_DMA_SetupAndStartDmaReading(volatile USART_DMA_Periph *usart, 
 	usart->setup.USARTx->CR1 |= USART_CR1_IDLEIE;
 
 	/* Start DMA Channel's reading */
-	usart->setup.dma_rx.DMA_Channelx->CCR |= DMA_CCR1_EN;// DMA_Cmd(usart->setup.dma_rx.DMA_Channelx, ENABLE);
+	usart->setup.dma_rx.DMA_Channelx->CCR |= DMA_CCR1_EN; // DMA_Cmd(usart->setup.dma_rx.DMA_Channelx, ENABLE);
 
 }
 
@@ -370,6 +370,8 @@ static void USART_DMA_SetupAndStartDmaReading(volatile USART_DMA_Periph *usart, 
 
 static void USART_DMA_ActivateReading(volatile USART_DMA_Periph *usart) {
 
+	/* NOTE: below created as a fix for cluttering buffer with old data issue;
+	 * after investigation - switching receiver mode ON and OFF solved that */
 //	/* Read USART Data Register to prevent old data (unread)
 //	 * to jump into currently collected string;
 //	 * this clears RXNE flag (Reference Manual, p.823, Bit 5) */
@@ -392,7 +394,7 @@ static void USART_DMA_ActivateReading(volatile USART_DMA_Periph *usart) {
 static void USART_DMA_DeactivateReading(volatile USART_DMA_Periph *usart) {
 
 	/* Disable DMA Channel*/
-	usart->setup.dma_rx.DMA_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN);// DMA_Cmd(usart->setup.dma_rx.DMA_Channelx, DISABLE);
+	usart->setup.dma_rx.DMA_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN); // DMA_Cmd(usart->setup.dma_rx.DMA_Channelx, DISABLE);
 
 	/* Disable Idle Line interrupt */
 	usart->setup.USARTx->CR1 &= (uint16_t)(~USART_CR1_IDLEIE);
@@ -483,7 +485,7 @@ static uint8_t USART_DMA_RxInterruptHandler(volatile USART_DMA_Periph *usart) {
 
 		/* Check whether RX line is idle - if yes then disable DMA RX Channel,
 		 * otherwise resize the buffer as it is full */
-		DMA_Cmd(usart->setup.dma_rx.DMA_Channelx, DISABLE);
+		usart->setup.dma_rx.DMA_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN); // DMA_Cmd(usart->setup.dma_rx.DMA_Channelx, DISABLE);
 
 		/* Disable USART Idle Line Detection (no need to do that after successful flag clearance) */
 //		usart->setup.USARTx->CR1 &= (uint16_t)(~USART_CR1_IDLEIE); // equal to USART_ITConfig(usart->setup.USARTx, USART_IT_IDLE, DISABLE);
@@ -598,7 +600,9 @@ static uint8_t USART_DMA_TxInterruptHandler(volatile USART_DMA_Periph *usart) {
 		/* Transfer Complete Interrupt */
 //		DMA_ClearITPendingBit(usart->setup.dma_tx.int_flags.COMPLETE_FLAG);
 		DMA_ClearITPendingBit(usart->setup.dma_tx.int_flags.GLOBAL_FLAG);
-		DMA_Cmd(usart->setup.dma_tx.DMA_Channelx, DISABLE);
+
+		/* Disable DMA Channel */
+		usart->setup.dma_tx.DMA_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN);// DMA_Cmd(usart->setup.dma_tx.DMA_Channelx, DISABLE);
 
 		return (1);
 
@@ -645,7 +649,7 @@ static uint8_t USART_DMA_Send(volatile USART_DMA_Periph *usart, char *to_send_bu
 	strcpy(usart->tx.buffer.data, to_send_buf); // beware of `&`, this is not a typical array
 
 	/* Disable DMA Channel*/
-	DMA_Cmd(usart->setup.dma_tx.DMA_Channelx, DISABLE);
+	usart->setup.dma_tx.DMA_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN);// DMA_Cmd(usart->setup.dma_tx.DMA_Channelx, DISABLE);
 
 	/* Update peripheral's Data Register address */
 	usart->setup.dma_tx.DMA_Channelx->CPAR = (uint32_t)&usart->setup.USARTx->DR;
@@ -658,7 +662,7 @@ static uint8_t USART_DMA_Send(volatile USART_DMA_Periph *usart, char *to_send_bu
 	usart->setup.dma_tx.DMA_Channelx->CNDTR = length;
 
 	/* Start DMA Channel's transfer */
-	DMA_Cmd(usart->setup.dma_tx.DMA_Channelx, ENABLE);
+	usart->setup.dma_tx.DMA_Channelx->CCR |= DMA_CCR1_EN;// DMA_Cmd(usart->setup.dma_tx.DMA_Channelx, ENABLE);
 
 	/* Return 1 on successful sent */
 	return (1);
@@ -702,8 +706,8 @@ static void	USART_DMA_Destroy(volatile USART_DMA_Periph *usart) {
 	usart->setup.USARTx->CR1 &= (uint16_t)(~USART_CR1_UE);
 
 	/* Free memory taken by buffers */
-//	usart->rx.buffer.Free(&usart->rx.buffer);
-//	usart->tx.buffer.Free(&usart->tx.buffer);
+//	usart->rx.buffer.Free(&usart->rx.buffer); // Infinite loop
+//	usart->tx.buffer.Free(&usart->tx.buffer); // Infinite loop
 	usart->rx.buffer.Resize(&usart->rx.buffer, 0);
 	usart->tx.buffer.Resize(&usart->tx.buffer, 0);
 
