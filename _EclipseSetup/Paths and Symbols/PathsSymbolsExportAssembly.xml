@@ -5,56 +5,28 @@
 <includepath>${ProjDirPath}/StdPeriph_Driver/inc</includepath>
 <includepath>${ProjDirPath}/CMSIS/device</includepath>
 <includepath>${ProjDirPath}/CMSIS/core</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Common</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Flow</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/LedDisplay</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Maths</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Memory</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Peripherals/ADC</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Peripherals/GPIO</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Peripherals/I2C</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Peripherals/TIM</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Peripherals/USART</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Sensors/Button</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Sensors/IrReceiver</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Sensors/Potentiometer</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Effectors/PinSwitch</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Effectors/SparkFun_EasyDriver_stepper_driver</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Effectors/TB6600_stepper_driver</includepath>
+<includepath workspace_path="true">/STM32_SOOL/inc</includepath>
 
 </language>
 <language name="S">
 <includepath>${ProjDirPath}/StdPeriph_Driver/inc</includepath>
 <includepath>${ProjDirPath}/CMSIS/device</includepath>
 <includepath>${ProjDirPath}/CMSIS/core</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Common</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Flow</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/LedDisplay</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Maths</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Memory</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Peripherals/ADC</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Peripherals/GPIO</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Peripherals/I2C</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Peripherals/TIM</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Peripherals/USART</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Sensors/Button</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Sensors/IrReceiver</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Sensors/Potentiometer</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Effectors/PinSwitch</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Effectors/SparkFun_EasyDriver_stepper_driver</includepath>
-<includepath workspace_path="true">/STM32_SOOL/include/Effectors/TB6600_stepper_driver</includepath>
-
-</language>
-<language name="s">
-<includepath>${ProjDirPath}/StdPeriph_Driver/inc</includepath>
-<includepath>${ProjDirPath}/CMSIS/device</includepath>
-<includepath>${ProjDirPath}/CMSIS/core</includepath>
+<includepath workspace_path="true">/STM32_SOOL/inc</includepath>
 
 </language>
 <language name="Assembly Source File">
 <includepath>${ProjDirPath}/StdPeriph_Driver/inc</includepath>
 <includepath>${ProjDirPath}/CMSIS/device</includepath>
 <includepath>${ProjDirPath}/CMSIS/core</includepath>
+<includepath workspace_path="true">/STM32_SOOL/inc</includepath>
+
+</language>
+<language name="s">
+<includepath>${ProjDirPath}/StdPeriph_Driver/inc</includepath>
+<includepath>${ProjDirPath}/CMSIS/device</includepath>
+<includepath>${ProjDirPath}/CMSIS/core</includepath>
+<includepath workspace_path="true">/STM32_SOOL/inc</includepath>
 
 </language>
 </section>
@@ -101,10 +73,10 @@
 </macro>
 
 </language>
-<language name="s">
+<language name="Assembly Source File">
 
 </language>
-<language name="Assembly Source File">
+<language name="s">
 
 </language>
 </section>

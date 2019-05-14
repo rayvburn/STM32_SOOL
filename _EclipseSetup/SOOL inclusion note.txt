@@ -1,16 +1,14 @@
-STM32_SOOL must be added as a static library to the workspace!
+Firstly, STM32_SOOL must be added as a static library to the workspace!
+
+***************** STEPS RELATED TO THE ECLIPSE PROJECT WITH STM32_SOOL LIBRARY  **********************
 
 o Project -> Properties
 	o C/C++ Build
 		o Settings
 			o Tool Settings
-			- Includes
+			- MCU GCC Compiler -> Includes   AND(!)   MCU GCC Assembler -> General
 			- Add include path (File System...)
-			- choose STM32_SOOL folder
-
-in main.c put #includes based on folder structure:
-
-#include <include/Sensors/Potentiometer/Potentiometer.h>
+			- choose STM32_SOOL's `inc` folder (like: "${workspace_loc:/STM32_SOOL/inc}")
 
 
 +
@@ -21,7 +19,7 @@ o Project -> Properties
 	o C/C++ General
 		o Paths and Symbols
 			o Includes
-				o Add (directory path) ("/STM32_SOOL") for each Language
+				o Add (directory path) ("/STM32_SOOL/inc") for each Language
 
 
 +
@@ -32,16 +30,35 @@ o Project -> Properties
 	o C/C++ General
 		o Paths and Symbols
 			o References
-				o Tick STM32_SOOL/Debug (Debug is crucial!)			
+				o Tick STM32_SOOL->Debug (Crucial!, Debug may be blocked, tick Release then)
 
 
 
 +
 
 
+***************** THESE STEPS ARE RELATED TO THE PROJECT WHICH SHOULD INCLUDE STM32_SOOL LIBRARY **********************
 
 o Project -> Properties
 	o C/C++ General
 		o Paths and Symbols
+			o Includes
+				o Add (directory path) ("/STM32_SOOL/inc") for each Language
+
+
++
+
+
+		
+o Project -> Properties
+	o C/C++ General
+		o Paths and Symbols
 			o Library Paths
-				o Add "/STM32_SOOL/Debug" ("/Debug" is crucial!, this is a directory where .a file is generated in)
+				o Add "/STM32_SOOL/Debug" ("/Debug" is crucial!, this is the directory where .a file is generated in)
+
+
+
+
+in main.c put #includes based on folder structure:
+
+#include <sool/Sensors/Potentiometer/Potentiometer.h>
