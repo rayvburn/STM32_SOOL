@@ -19,7 +19,14 @@ void EXTI_IRQ_Handler_SetObj(volatile void *obj_ptr) { }
 
 // -----------------------------------------------
 
-/* IRQHandlers definitions */
+/* IRQHandlers definitions
+ * --------------------------
+ * NOTE: do not forget to delete every instance of interrupt handler
+ * when you stop using related `class`' object (the one which triggers
+ * interrupt) because application will go into infinite loop when a different
+ * line in the same handler will trigger interrupt (method = indefinite pointer then)
+ * --------------------------
+ */
 void EXTI0_IRQHandler()   	{ /* only 1 object can trigger interrupts on this line */ }
 void EXTI1_IRQHandler()   	{ /* only 1 object can trigger interrupts on this line */ }
 void EXTI2_IRQHandler()   	{ /* only 1 object can trigger interrupts on this line */ }
