@@ -9,7 +9,7 @@
 #define INCLUDE_PERIPHERALS_USART_USART_DMA_H_
 
 // ST libs
-#include "sool/Memory/Array.h"
+#include <sool/Memory/Array/ArrayChar.h>
 #include "sool/Peripherals/DMA/Common.h"
 
 #include "stm32f10x.h"
@@ -42,14 +42,14 @@ struct _SOOL_USART_DMA_Config {
 // - - - - - - - - - - - - - - - -
 
 struct _SOOL_USART_Rx {
-	Array_String 		buffer;
+	SOOL_Array_Char 		buffer;
 	uint8_t 			new_data_flag;
 } USART_Rx;
 
 // - - - - - - - - - - - - - - - -
 
 struct _SOOL_USART_Tx {
-	Array_String 		buffer;
+	SOOL_Array_Char 		buffer;
 } USART_Tx;
 
 // - - - - - - - - - - - - - - - -
@@ -71,7 +71,7 @@ struct _SOOL_USART_DMA_Struct {
 	void	(*ActivateReading)(volatile SOOL_USART_DMA*); 			// restarts reading starting from first buffer element
 	void	(*DeactivateReading)(volatile SOOL_USART_DMA*); 			// disables DMA and USART idle interrupts
 	uint8_t (*IsDataReceived)(volatile SOOL_USART_DMA*); 				// returns info whether data was received - based on USART Idle line detection
-	const volatile Array_String* (*GetRxData)(volatile SOOL_USART_DMA*); // returns a pointer to a buffer - IMPORTANT: use this method instead of raw ArrayString operations because some calculations are performed here (it is not possible to count number of bytes read from DMA on the fly)
+	const volatile SOOL_Array_Char* (*GetRxData)(volatile SOOL_USART_DMA*); // returns a pointer to a buffer - IMPORTANT: use this method instead of raw ArrayString operations because some calculations are performed here (it is not possible to count number of bytes read from DMA on the fly)
 	void	(*ClearRxBuffer)(volatile SOOL_USART_DMA*); 				// clears whole buffer (NOTE: does not set incoming data pointer to the buffer's start)
 	uint8_t (*_DmaRxIrqHandler)(volatile SOOL_USART_DMA*); 			// interrupt callback function which needs to be put into global DMA IRQHandler
 

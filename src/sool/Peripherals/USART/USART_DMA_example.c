@@ -87,7 +87,7 @@ int main(void)
 
 	usart_debug.RestoreBuffersInitialSize(&usart_debug);
 	usart_debug.ActivateReading(&usart_debug);
-	Array_String str_test = SOOL_Memory_Array_String_Init(15);
+	SOOL_Array_Char str_test = SOOL_Memory_Array_Char_Init(15);
 	str_test.SetString(&str_test, "tyrueiwoqpowieu");
 
 	usart_debug.Send(&usart_debug, str_test._data);
@@ -106,7 +106,7 @@ int main(void)
 		}
 	}
 
-	const volatile Array_String* temp = usart_debug.GetRxData(&usart_debug);
+	const volatile SOOL_Array_Char* temp = usart_debug.GetRxData(&usart_debug);
 
 	int abc = 0;
 	abc++;

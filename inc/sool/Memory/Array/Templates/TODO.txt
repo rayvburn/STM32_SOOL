@@ -1,0 +1,4 @@
+https://stackoverflow.com/a/47375011
+http://arnold.uthar.net/index.php?n=Work.TemplatesC
+
+MAKE MACROS instead of copying code between arrays of different types
