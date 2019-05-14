@@ -16,49 +16,39 @@
 
 // - - - - - - - - - - -
 
-//typedef struct {
-//	GPIO_TypeDef*		gpio_port;		// @ref Peripheral_declaration
-//	uint16_t 			gpio_pin;		// @ref GPIO_pins
-//} SOOL_PinConfigNoInt;
-
-// - - - - - - - - - - -
-
-struct PinConfigGPIO {
+struct _SOOL_PinConfigGPIO {
 	GPIO_TypeDef*		port;		// @ref Peripheral_declaration
 	uint16_t 			pin;		// @ref GPIO_pins
 };
 
-struct PinConfigEXTI {
+// - - - - - - - - - - -
+
+struct _SOOL_PinConfigEXTI {
 	uint32_t			line;		// @ref EXTI_Lines
 	uint8_t				port_src;	// @ref GPIO_Port_Sources
-	uint8_t				pin_src;		// @ref GPIO_Pin_sources
+	uint8_t				pin_src;	// @ref GPIO_Pin_sources
 	EXTI_InitTypeDef	setup;
 };
 
-struct PinConfigNVIC {
-	uint8_t				irqn;	// @ref IRQn_Type
+// - - - - - - - - - - -
+
+struct _SOOL_PinConfigNVIC {
+	uint8_t				irqn;		// @ref IRQn_Type
 	NVIC_InitTypeDef	setup;
 };
-//
-//typedef struct {
-//	GPIO_TypeDef*		gpio_port;		// @ref Peripheral_declaration
-//	uint16_t 			gpio_pin;		// @ref GPIO_pins
-//	uint32_t			exti_line;		// @ref EXTI_Lines
-//	uint8_t				port_source;	// @ref GPIO_Port_Sources
-//	uint8_t				pin_source;		// @ref GPIO_Pin_sources
-//	EXTI_InitTypeDef	exti_setup;
-//	uint8_t				irq_channel;	// @ref IRQn_Type
-//	NVIC_InitTypeDef	nvic_setup;
-//} SOOL_PinConfigInt;
+
+// - - - - - - - - - - -
 
 typedef struct {
-	struct PinConfigGPIO gpio;
+	struct _SOOL_PinConfigGPIO gpio;
 } SOOL_PinConfigNoInt;
 
+// - - - - - - - - - - -
+
 typedef struct {
-	struct PinConfigGPIO gpio;
-	struct PinConfigEXTI exti;
-	struct PinConfigNVIC nvic;
+	struct _SOOL_PinConfigGPIO gpio;
+	struct _SOOL_PinConfigEXTI exti;
+	struct _SOOL_PinConfigNVIC nvic;
 } SOOL_PinConfigInt;
 
 // - - - - - - - - - - -

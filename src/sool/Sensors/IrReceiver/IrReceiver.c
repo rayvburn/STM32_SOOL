@@ -14,17 +14,17 @@
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t 	IrReceiver_GetReceptionFlag	(volatile IrReceiver *ir_ptr);
-static uint8_t 	IrReceiver_GetCurrentState	(const volatile IrReceiver *ir_ptr);
-static uint32_t IrReceiver_GetLastEdgeTime	(const volatile IrReceiver *ir_ptr);
-static uint8_t 	IrReceiver_IsStateStable	(const volatile IrReceiver *ir_ptr, const uint32_t req_gap);
-static uint8_t 	IrReceiver_InterruptHandler	(volatile IrReceiver *ir_ptr);
+static uint8_t 	IrReceiver_GetReceptionFlag	(volatile SOOL_IrReceiver *ir_ptr);
+static uint8_t 	IrReceiver_GetCurrentState	(const volatile SOOL_IrReceiver *ir_ptr);
+static uint32_t IrReceiver_GetLastEdgeTime	(const volatile SOOL_IrReceiver *ir_ptr);
+static uint8_t 	IrReceiver_IsStateStable	(const volatile SOOL_IrReceiver *ir_ptr, const uint32_t req_gap);
+static uint8_t 	IrReceiver_InterruptHandler	(volatile SOOL_IrReceiver *ir_ptr);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-volatile IrReceiver SOOL_Sensors_IrReceiver_Init(SOOL_PinConfigInt setup) {
+volatile SOOL_IrReceiver SOOL_Sensors_IrReceiver_Init(SOOL_PinConfigInt setup) {
 
-	volatile IrReceiver obj;
+	volatile SOOL_IrReceiver obj;
 
 	// setup
 //	obj._setup = setup; // infinite loop?
@@ -59,7 +59,7 @@ volatile IrReceiver SOOL_Sensors_IrReceiver_Init(SOOL_PinConfigInt setup) {
 
 // =============================================================================================
 
-static uint8_t IrReceiver_GetReceptionFlag(volatile IrReceiver *ir_ptr) {
+static uint8_t IrReceiver_GetReceptionFlag(volatile SOOL_IrReceiver *ir_ptr) {
 	uint8_t temp = ir_ptr->_state.received_flag;
 	ir_ptr->_state.received_flag = 0;
 	return (temp);
@@ -67,19 +67,19 @@ static uint8_t IrReceiver_GetReceptionFlag(volatile IrReceiver *ir_ptr) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t IrReceiver_GetCurrentState(const volatile IrReceiver *ir_ptr) {
+static uint8_t IrReceiver_GetCurrentState(const volatile SOOL_IrReceiver *ir_ptr) {
 	return (GPIO_ReadInputDataBit(ir_ptr->_setup.gpio.port, ir_ptr->_setup.gpio.pin));
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint32_t IrReceiver_GetLastEdgeTime(const volatile IrReceiver *ir_ptr) {
+static uint32_t IrReceiver_GetLastEdgeTime(const volatile SOOL_IrReceiver *ir_ptr) {
 	return (ir_ptr->_state.last_edge_time);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t IrReceiver_IsStateStable(const volatile IrReceiver *ir_ptr, const uint32_t req_gap) {
+static uint8_t IrReceiver_IsStateStable(const volatile SOOL_IrReceiver *ir_ptr, const uint32_t req_gap) {
 	if ( SysTick_GetHundredthsOfSec() - ir_ptr->_state.last_edge_time > req_gap) {
 //	if ( 2 > 0 ) {
 		// a given time has elapsed
@@ -90,7 +90,7 @@ static uint8_t IrReceiver_IsStateStable(const volatile IrReceiver *ir_ptr, const
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t IrReceiver_InterruptHandler(volatile IrReceiver *ir_ptr) {
+static uint8_t IrReceiver_InterruptHandler(volatile SOOL_IrReceiver *ir_ptr) {
 
 	if ( EXTI_GetITStatus(ir_ptr->_setup.exti.line) == RESET ) {
 		// interrupt request on different EXTI Line

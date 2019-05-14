@@ -20,46 +20,46 @@
 
 /* Methods */
 // RX
-static void 	USART_DMA_ActivateReading(volatile USART_DMA_Periph *usart);
-static void 	USART_DMA_DeactivateReading(volatile USART_DMA_Periph *usart);
-static uint8_t 	USART_DMA_IsDataReceived(volatile USART_DMA_Periph *usart);
-static const volatile Array_String* USART_DMA_GetRxData(volatile USART_DMA_Periph *usart);
-static void		USART_DMA_ClearRxBuffer(volatile USART_DMA_Periph *usart);
+static void 	USART_DMA_ActivateReading(volatile SOOL_USART_DMA *usart);
+static void 	USART_DMA_DeactivateReading(volatile SOOL_USART_DMA *usart);
+static uint8_t 	USART_DMA_IsDataReceived(volatile SOOL_USART_DMA *usart);
+static const volatile Array_String* USART_DMA_GetRxData(volatile SOOL_USART_DMA *usart);
+static void		USART_DMA_ClearRxBuffer(volatile SOOL_USART_DMA *usart);
 
 // TX
-static uint8_t 	USART_DMA_IsTxLineBusy(volatile USART_DMA_Periph *usart);
-static uint8_t 	USART_DMA_Send(volatile USART_DMA_Periph *usart, char *to_send_buf);
-static void		USART_DMA_ClearTxBuffer(volatile USART_DMA_Periph *usart);
+static uint8_t 	USART_DMA_IsTxLineBusy(volatile SOOL_USART_DMA *usart);
+static uint8_t 	USART_DMA_Send(volatile SOOL_USART_DMA *usart, char *to_send_buf);
+static void		USART_DMA_ClearTxBuffer(volatile SOOL_USART_DMA *usart);
 
 // IRQ
-static uint8_t 	USART_DMA_RxInterruptHandler(volatile USART_DMA_Periph *usart);
-static uint8_t 	USART_DMA_TxInterruptHandler(volatile USART_DMA_Periph *usart);
-static uint8_t 	USART_DMA_IdleInterruptHandler(volatile USART_DMA_Periph *usart);
+static uint8_t 	USART_DMA_RxInterruptHandler(volatile SOOL_USART_DMA *usart);
+static uint8_t 	USART_DMA_TxInterruptHandler(volatile SOOL_USART_DMA *usart);
+static uint8_t 	USART_DMA_IdleInterruptHandler(volatile SOOL_USART_DMA *usart);
 
 // General
-static uint8_t	USART_DMA_RestoreBuffersInitialSize(volatile USART_DMA_Periph *usart);
-static void		USART_DMA_Destroy(volatile USART_DMA_Periph *usart);
+static uint8_t	USART_DMA_RestoreBuffersInitialSize(volatile SOOL_USART_DMA *usart);
+static void		USART_DMA_Destroy(volatile SOOL_USART_DMA *usart);
 
 // private class function
-static void 	USART_DMA_SetupAndStartDmaReading(volatile USART_DMA_Periph *usart, const size_t buf_start_pos, const size_t num_bytes_to_read);
-static void 	USART_DMA_RestartReading(volatile USART_DMA_Periph *usart, const size_t buf_start_pos, const size_t num_bytes_to_read);
+static void 	USART_DMA_SetupAndStartDmaReading(volatile SOOL_USART_DMA *usart, const size_t buf_start_pos, const size_t num_bytes_to_read);
+static void 	USART_DMA_RestartReading(volatile SOOL_USART_DMA *usart, const size_t buf_start_pos, const size_t num_bytes_to_read);
 static uint16_t USART_DMA_GetMaxNonEmptyItemIndex(volatile Array_String *arr);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 /* Helpers */
 typedef struct {
-	DMA_Channel_TypeDef* 	  channel;
-	uint8_t					  irqn;
-	struct DMA_InterruptFlags int_flags;
+	DMA_Channel_TypeDef* 	  		channel;
+	uint8_t					  		irqn;
+	struct _SOOL_DMA_InterruptFlags int_flags;
 } USART_DMA_SettingsHelper;
 
 // private non-class function
-static void SOOL_Periph_USART_DMA_Copy(volatile USART_DMA_Periph *usart, const USART_DMA_SettingsHelper *rx_settings, const USART_DMA_SettingsHelper *tx_settings);
+static void SOOL_Periph_USART_DMA_Copy(volatile SOOL_USART_DMA *usart, const USART_DMA_SettingsHelper *rx_settings, const USART_DMA_SettingsHelper *tx_settings);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-volatile USART_DMA_Periph SOOL_Periph_USART_DMA_Init(USART_TypeDef* USARTx, uint32_t baud, size_t buf_size) {
+volatile SOOL_USART_DMA SOOL_Periph_USART_DMA_Init(USART_TypeDef* USARTx, uint32_t baud, size_t buf_size) {
 
 	/* GPIO setup */
 	GPIO_TypeDef* port;
@@ -73,7 +73,7 @@ volatile USART_DMA_Periph SOOL_Periph_USART_DMA_Init(USART_TypeDef* USARTx, uint
 	USART_DMA_SettingsHelper dma_tx;
 
 	/* Create a new USART_DMA object and save initial buffers' size */
-	volatile  USART_DMA_Periph usart_obj;
+	volatile  SOOL_USART_DMA usart_obj;
 	usart_obj._setup.BUF_INIT_SIZE = buf_size;
 
 	/* Initialize the peripheral's RX and TX buffers
@@ -301,7 +301,7 @@ volatile USART_DMA_Periph SOOL_Periph_USART_DMA_Init(USART_TypeDef* USARTx, uint
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static void SOOL_Periph_USART_DMA_Copy(volatile USART_DMA_Periph *usart, const USART_DMA_SettingsHelper *rx_settings,
+static void SOOL_Periph_USART_DMA_Copy(volatile SOOL_USART_DMA *usart, const USART_DMA_SettingsHelper *rx_settings,
 		const USART_DMA_SettingsHelper *tx_settings) {
 
 	/* Fill the Setup structure's fields */
@@ -340,7 +340,7 @@ static void SOOL_Periph_USART_DMA_Copy(volatile USART_DMA_Periph *usart, const U
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static void USART_DMA_SetupAndStartDmaReading(volatile USART_DMA_Periph *usart, const size_t buf_start_pos,
+static void USART_DMA_SetupAndStartDmaReading(volatile SOOL_USART_DMA *usart, const size_t buf_start_pos,
 		const size_t num_bytes_to_read) {
 
 	/* Disable DMA Channel*/
@@ -368,7 +368,7 @@ static void USART_DMA_SetupAndStartDmaReading(volatile USART_DMA_Periph *usart, 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static void USART_DMA_ActivateReading(volatile USART_DMA_Periph *usart) {
+static void USART_DMA_ActivateReading(volatile SOOL_USART_DMA *usart) {
 
 	/* NOTE: below created as a fix for cluttering buffer with old data issue;
 	 * after investigation - switching receiver mode ON and OFF solved that */
@@ -391,7 +391,7 @@ static void USART_DMA_ActivateReading(volatile USART_DMA_Periph *usart) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static void USART_DMA_DeactivateReading(volatile USART_DMA_Periph *usart) {
+static void USART_DMA_DeactivateReading(volatile SOOL_USART_DMA *usart) {
 
 	/* Disable DMA Channel*/
 	usart->_setup.dma_rx.DMA_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN); // DMA_Cmd(usart->_setup.dma_rx.DMA_Channelx, DISABLE);
@@ -406,7 +406,7 @@ static void USART_DMA_DeactivateReading(volatile USART_DMA_Periph *usart) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static void USART_DMA_RestartReading(volatile USART_DMA_Periph *usart, const size_t buf_start_pos, const size_t num_bytes_to_read) {
+static void USART_DMA_RestartReading(volatile SOOL_USART_DMA *usart, const size_t buf_start_pos, const size_t num_bytes_to_read) {
 
 	/* This is invoked after TC but not all data was transmitted due to a full RX buffer */
 	USART_DMA_SetupAndStartDmaReading(usart, buf_start_pos, num_bytes_to_read);
@@ -415,7 +415,7 @@ static void USART_DMA_RestartReading(volatile USART_DMA_Periph *usart, const siz
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t USART_DMA_IsDataReceived(volatile USART_DMA_Periph *usart) {
+static uint8_t USART_DMA_IsDataReceived(volatile SOOL_USART_DMA *usart) {
 
 //	/* Information about new data could be read only once */
 //	uint8_t temp = usart->_rx.new_data_flag;
@@ -430,7 +430,7 @@ static uint8_t USART_DMA_IsDataReceived(volatile USART_DMA_Periph *usart) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static const volatile Array_String* USART_DMA_GetRxData(volatile USART_DMA_Periph *usart) {
+static const volatile Array_String* USART_DMA_GetRxData(volatile SOOL_USART_DMA *usart) {
 
 	/* update Array_String info */
 	usart->_rx.buffer._info.total = USART_DMA_GetMaxNonEmptyItemIndex(&usart->_rx.buffer) + 1;
@@ -455,14 +455,14 @@ static uint16_t USART_DMA_GetMaxNonEmptyItemIndex(volatile Array_String *arr) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static void	USART_DMA_ClearRxBuffer(volatile USART_DMA_Periph *usart) {
+static void	USART_DMA_ClearRxBuffer(volatile SOOL_USART_DMA *usart) {
 	usart->_rx.buffer.Clear(&usart->_rx.buffer);
 	usart->_rx.new_data_flag = 0;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t USART_DMA_RxInterruptHandler(volatile USART_DMA_Periph *usart) {
+static uint8_t USART_DMA_RxInterruptHandler(volatile SOOL_USART_DMA *usart) {
 
 	/* NOTE on interrupts: GLOBAL_FLAG clears all related interrupts i.e. TC, TE, HT;
 	 * it may be a little faster to clear GLOBAL_FLAG at once than clearing 2 or more
@@ -530,7 +530,7 @@ static uint8_t USART_DMA_RxInterruptHandler(volatile USART_DMA_Periph *usart) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t USART_DMA_IdleInterruptHandler(volatile USART_DMA_Periph *usart) {
+static uint8_t USART_DMA_IdleInterruptHandler(volatile SOOL_USART_DMA *usart) {
 
 	if ( USART_GetITStatus(usart->_setup.USARTx, USART_IT_IDLE) == SET ) {
 
@@ -561,7 +561,7 @@ static uint8_t USART_DMA_IdleInterruptHandler(volatile USART_DMA_Periph *usart) 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t USART_DMA_IsTxLineBusy(volatile USART_DMA_Periph *usart) {
+static uint8_t USART_DMA_IsTxLineBusy(volatile SOOL_USART_DMA *usart) {
 
 	/* Reach information whether DMA transfer was started (usart->_tx.started_flag is DEPRECATED);
 	 * a DMA EN bit raw check is sufficient - it is known in advance that USARTx uses DMA1 */
@@ -571,13 +571,13 @@ static uint8_t USART_DMA_IsTxLineBusy(volatile USART_DMA_Periph *usart) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static void	USART_DMA_ClearTxBuffer(volatile USART_DMA_Periph *usart) {
+static void	USART_DMA_ClearTxBuffer(volatile SOOL_USART_DMA *usart) {
 	usart->_tx.buffer.Clear(&usart->_tx.buffer);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t USART_DMA_TxInterruptHandler(volatile USART_DMA_Periph *usart) {
+static uint8_t USART_DMA_TxInterruptHandler(volatile SOOL_USART_DMA *usart) {
 
 	/* NOTE on interrupts: GLOBAL_FLAG clears all related interrupts i.e. TC, TE, HT;
 	 * it may be a little faster to clear GLOBAL_FLAG at once than clearing 2 or more
@@ -629,7 +629,7 @@ static uint8_t USART_DMA_TxInterruptHandler(volatile USART_DMA_Periph *usart) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t USART_DMA_Send(volatile USART_DMA_Periph *usart, char *to_send_buf) {
+static uint8_t USART_DMA_Send(volatile SOOL_USART_DMA *usart, char *to_send_buf) {
 
 	/* Check message length */
 	uint32_t length = (uint32_t)strlen(to_send_buf);
@@ -671,7 +671,7 @@ static uint8_t USART_DMA_Send(volatile USART_DMA_Periph *usart, char *to_send_bu
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t USART_DMA_RestoreBuffersInitialSize(volatile USART_DMA_Periph *usart) {
+static uint8_t USART_DMA_RestoreBuffersInitialSize(volatile SOOL_USART_DMA *usart) {
 
 	/* `Resize` method discards USART's volatile qualifier - not crucial here */
 	if ( usart->_rx.buffer._info.capacity > usart->_setup.BUF_INIT_SIZE) {
@@ -694,7 +694,7 @@ static uint8_t USART_DMA_RestoreBuffersInitialSize(volatile USART_DMA_Periph *us
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static void	USART_DMA_Destroy(volatile USART_DMA_Periph *usart) {
+static void	USART_DMA_Destroy(volatile SOOL_USART_DMA *usart) {
 
 	/* Disable DMA RX Channel */
 	usart->_setup.dma_rx.DMA_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN);

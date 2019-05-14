@@ -11,25 +11,24 @@
 // - - - - - - - - - - -
 
 #include "sool/Common/PinConfig.h"
-
 #include "stm32f10x.h"
 
 // - - - - - - - - - - -
 
 // forward declare a structure and typedef it to further make use of it inside a structure
-struct PinSwitchStruct;
-typedef struct PinSwitchStruct PinSwitch;
+struct _SOOL_PinSwitchStruct;
+typedef struct _SOOL_PinSwitchStruct SOOL_PinSwitch;
 
 // define a structure
-struct PinSwitchStruct {
-	SOOL_PinConfigNoInt _setup;				// pin switcher is not interrupt-driven
-	void (*SetHigh)(const PinSwitch*);
-	void (*SetLow)(const PinSwitch*);
+struct _SOOL_PinSwitchStruct {
+	SOOL_PinConfigNoInt 	_setup;				// pin switcher is not interrupt-driven
+	void (*SetHigh)(const SOOL_PinSwitch*);
+	void (*SetLow)(const SOOL_PinSwitch*);
 };
 
 // - - - - - - - - - - -
 
-PinSwitch SOOL_Effectors_PinSwitch_Init(SOOL_PinConfigNoInt setup);
+SOOL_PinSwitch SOOL_Effectors_PinSwitch_Init(SOOL_PinConfigNoInt setup);
 
 // - - - - - - - - - - -
 
