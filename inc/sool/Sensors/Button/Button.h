@@ -24,20 +24,20 @@ typedef struct _SOOL_ButtonStruct SOOL_Button;
 
 struct _SOOL_ButtonStruct {
 
-	SOOL_PinConfigInt 				_setup;
+	SOOL_PinConfig_Int 				_setup;
 	struct _SOOL_ButtonStateStruct 	_state;
 
 	uint8_t 	(*GetPushedFlag)(volatile SOOL_Button*); 							// interrupt-driven, clears the flag
 	uint8_t 	(*GetCurrentState)(const volatile SOOL_Button*);
-	void 		(*SetNvicState)(SOOL_PinConfigInt*, const FunctionalState);
-	void 		(*SetExtiState)(SOOL_PinConfigInt*, const FunctionalState);
+	void 		(*SetNvicState)(SOOL_PinConfig_Int*, const FunctionalState);
+	void 		(*SetExtiState)(SOOL_PinConfig_Int*, const FunctionalState);
 	uint8_t 	(*_InterruptHandler)(volatile SOOL_Button*); 						// routine fired in a proper ISR (firstly it must check if interrupt has been triggered on sensor's EXTI line)
 
 };
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-volatile SOOL_Button SOOL_Sensors_Button_Init(SOOL_PinConfigInt setup, const uint8_t active_state);
+volatile SOOL_Button SOOL_Sensor_Button_Init(SOOL_PinConfig_Int setup);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 

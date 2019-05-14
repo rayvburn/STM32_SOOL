@@ -41,7 +41,7 @@ struct _SOOL_PinConfigNVIC {
 
 typedef struct {
 	struct _SOOL_PinConfigGPIO gpio;
-} SOOL_PinConfigNoInt;
+} SOOL_PinConfig_NoInt;
 
 // - - - - - - - - - - -
 
@@ -49,24 +49,24 @@ typedef struct {
 	struct _SOOL_PinConfigGPIO gpio;
 	struct _SOOL_PinConfigEXTI exti;
 	struct _SOOL_PinConfigNVIC nvic;
-} SOOL_PinConfigInt;
+} SOOL_PinConfig_Int;
 
 // - - - - - - - - - - -
 
 /// \brief Initializes a non-interrupt pin; hard-coded 50 MHz speed
-extern SOOL_PinConfigNoInt	SOOL_GPIO_PinConfig_Initialize_NoInt(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const GPIOMode_TypeDef gpio_mode);
+extern SOOL_PinConfig_NoInt	SOOL_GPIO_PinConfig_Initialize_NoInt(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const GPIOMode_TypeDef gpio_mode);
 
 /// \brief Initializes an interrupt pin; hard-coded Internal Pull-Up
-extern SOOL_PinConfigInt	SOOL_GPIO_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const EXTITrigger_TypeDef exti_trigger);
+extern SOOL_PinConfig_Int	SOOL_GPIO_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const EXTITrigger_TypeDef exti_trigger);
 
 /// \brief Initializes an unused pin; internal pull-up prevents pin's state changes caused by noisy environment
 extern void					SOOL_GPIO_PinConfig_Initialize_Unused(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin);
 
 /// \brief NVIC interrupts switcher ( on (ENABLE) or off (DISABLE) )
-extern void	 				SOOL_GPIO_PinConfig_NvicSwitch(SOOL_PinConfigInt *config, const FunctionalState state);
+extern void	 				SOOL_GPIO_PinConfig_NvicSwitch(SOOL_PinConfig_Int *config, const FunctionalState state);
 
 /// \brief EXTI interrupts switcher ( on (ENABLE) or off (DISABLE) )
-extern void	 				SOOL_GPIO_PinConfig_ExtiSwitch(SOOL_PinConfigInt *config, const FunctionalState state);
+extern void	 				SOOL_GPIO_PinConfig_ExtiSwitch(SOOL_PinConfig_Int *config, const FunctionalState state);
 
 // - - - - - - - - - - -
 

@@ -12,7 +12,7 @@ static void SOOL_PinSwitch_SetHigh(const SOOL_PinSwitch *obj_ptr);
 static void SOOL_PinSwitch_SetLow (const SOOL_PinSwitch *obj_ptr);
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-SOOL_PinSwitch SOOL_Effectors_PinSwitch_Init(SOOL_PinConfigNoInt setup) {
+SOOL_PinSwitch SOOL_Effector_PinSwitch_Init(SOOL_PinConfig_NoInt setup) {
 
 	SOOL_PinSwitch obj;
 	obj._setup = setup;

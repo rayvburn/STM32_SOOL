@@ -19,10 +19,10 @@ static void PinConfig_SetEXTIPortSource(const GPIO_TypeDef* port, uint8_t *port_
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-SOOL_PinConfigNoInt SOOL_GPIO_PinConfig_Initialize_NoInt(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const GPIOMode_TypeDef gpio_mode) {
+SOOL_PinConfig_NoInt SOOL_GPIO_PinConfig_Initialize_NoInt(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const GPIOMode_TypeDef gpio_mode) {
 
 	// copy values into structure
-	SOOL_PinConfigNoInt config;
+	SOOL_PinConfig_NoInt config;
 	config.gpio.port = gpio_port;
 	config.gpio.pin = gpio_pin;
 
@@ -43,13 +43,13 @@ SOOL_PinConfigNoInt SOOL_GPIO_PinConfig_Initialize_NoInt(GPIO_TypeDef* gpio_port
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-SOOL_PinConfigInt SOOL_GPIO_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin,
+SOOL_PinConfig_Int SOOL_GPIO_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin,
 					const EXTITrigger_TypeDef exti_trigger) {
 
 	/* object to be filled with given values
 	 * and peripherals on which it depends
 	 * will be started */
-	SOOL_PinConfigInt config;
+	SOOL_PinConfig_Int config;
 
 	/*
 	 * Prevents from improper EXTI_Line values in defined-to-be structs
@@ -133,14 +133,14 @@ void SOOL_GPIO_PinConfig_Initialize_Unused(GPIO_TypeDef* gpio_port, const uint16
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-void SOOL_GPIO_PinConfig_NvicSwitch(SOOL_PinConfigInt *config, const FunctionalState state) {
+void SOOL_GPIO_PinConfig_NvicSwitch(SOOL_PinConfig_Int *config, const FunctionalState state) {
 	config->nvic.setup.NVIC_IRQChannelCmd = state;
 	NVIC_Init(&(config->nvic.setup));
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-void SOOL_GPIO_PinConfig_ExtiSwitch(SOOL_PinConfigInt *config, const FunctionalState state) {
+void SOOL_GPIO_PinConfig_ExtiSwitch(SOOL_PinConfig_Int *config, const FunctionalState state) {
 	config->exti.setup.EXTI_LineCmd = state;
 	EXTI_Init(&(config->exti.setup));
 }

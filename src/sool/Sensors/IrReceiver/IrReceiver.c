@@ -22,7 +22,7 @@ static uint8_t 	IrReceiver_InterruptHandler	(volatile SOOL_IrReceiver *ir_ptr);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-volatile SOOL_IrReceiver SOOL_Sensors_IrReceiver_Init(SOOL_PinConfigInt setup) {
+volatile SOOL_IrReceiver SOOL_Sensor_IrReceiver_Init(SOOL_PinConfig_Int setup) {
 
 	volatile SOOL_IrReceiver obj;
 

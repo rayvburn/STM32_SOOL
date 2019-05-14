@@ -15,7 +15,7 @@ static uint8_t Button_InterruptHandler(volatile SOOL_Button *button_ptr);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-volatile SOOL_Button SOOL_Sensors_Button_Init(SOOL_PinConfigInt setup, const uint8_t active_state) {
+volatile SOOL_Button SOOL_Sensor_Button_Init(SOOL_PinConfig_Int setup) {
 
 	volatile SOOL_Button button;
 
@@ -31,7 +31,15 @@ volatile SOOL_Button SOOL_Sensors_Button_Init(SOOL_PinConfigInt setup, const uin
 
 	// state initialization
 	button._state.pushed_flag = 0;
-	button._state.active_state = active_state;
+
+	// based on a given trigger, detect the active state (during push)
+	if ( setup.exti.setup.EXTI_Trigger == EXTI_Trigger_Rising ) {
+		button._state.active_state = 1;
+	} else if ( setup.exti.setup.EXTI_Trigger == EXTI_Trigger_Falling ) {
+		button._state.active_state = 0;
+	} else {
+		/* ERROR - no other trigger allowed */
+	}
 
 	// interrupt-switching functions
 	button.SetNvicState = SOOL_GPIO_PinConfig_NvicSwitch;
