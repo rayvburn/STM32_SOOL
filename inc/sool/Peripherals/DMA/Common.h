@@ -26,7 +26,7 @@ struct _SOOL_DMA_InterruptFlags {
 typedef struct {
 	DMA_Channel_TypeDef* 			DMA_Channelx;
 	struct _SOOL_DMA_InterruptFlags	int_flags;
-} SOOL_DMA_ChannelConfig;
+} _SOOL_DMA_ChannelConfig;
 
 // - - - - - - - - - - - - - - - -
 

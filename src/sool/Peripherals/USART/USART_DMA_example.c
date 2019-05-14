@@ -5,8 +5,8 @@
  *      Author: user
  */
 
-#include "sool/IRQn/DMA_IRQ.h"
-#include "sool/IRQn/USART_IRQ.h"
+#include <sool/IRQn/IRQ_DMA.h>
+#include <sool/IRQn/IRQ_USART.h>
 #include "sool/Peripherals/USART/USART_DMA.h"
 
 int main(void)
@@ -17,8 +17,8 @@ int main(void)
 	volatile SOOL_USART_DMA usart_debug = SOOL_Periph_USART_DMA_Init(USART2, 115200, 10); // 26);
 
 	/* Place handlers into proper global IRQHandlers */
-	SOOL_DMA_IRQn_SetUsartDebug(&usart_debug);
-	SOOL_USART_IRQn_SetUsartDebug(&usart_debug);
+	SOOL_IRQn_DMA_SetUsartDebug(&usart_debug);
+	SOOL_IRQn_USART_SetUsartDebug(&usart_debug);
 	// -------------------------------------------
 
 	usart_debug.ActivateReading(&usart_debug);

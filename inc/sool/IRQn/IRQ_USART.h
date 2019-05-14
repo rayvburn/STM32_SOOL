@@ -13,7 +13,7 @@
 // ====================================================================================
 
 /* add some Setter function to copy the objects here */
-extern void SOOL_USART_IRQn_SetObj (volatile void *obj_ptr);
+extern void SOOL_IRQn_USART_SetObj (volatile void *obj_ptr);
 
 /* IRQHandlers declaration */
 extern void USART1_IRQHandler();

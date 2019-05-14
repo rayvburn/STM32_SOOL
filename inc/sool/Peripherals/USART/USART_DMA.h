@@ -34,8 +34,8 @@
 /* USART coupled with DMA configuration */
 struct _SOOL_USART_DMA_Config {
 	USART_TypeDef*		USARTx;
-	SOOL_DMA_ChannelConfig 	dma_rx;
-	SOOL_DMA_ChannelConfig 	dma_tx;
+	_SOOL_DMA_ChannelConfig 	dma_rx;
+	_SOOL_DMA_ChannelConfig 	dma_tx;
 	uint32_t			BUF_INIT_SIZE;
 } ;
 

@@ -5,7 +5,7 @@
  *      Author: user
  */
 
-#include "sool/IRQn/USART_IRQ.h"
+#include <sool/IRQn/IRQ_USART.h>
 
 // ====================================================================================
 /* USART_IRQ definition file template */
@@ -15,7 +15,7 @@
 //static volatile void *obj;
 
 /* add some Setter function to copy the objects here */
-void SOOL_USART_IRQn_SetObj (volatile void *obj_ptr) { }
+void SOOL_IRQn_USART_SetObj (volatile void *obj_ptr) { }
 
 // -----------------------------------------------
 

@@ -59,19 +59,19 @@ static uint8_t Button_GetCurrentState(const volatile SOOL_Button *button_ptr) {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 static uint8_t Button_InterruptHandler(volatile SOOL_Button *button_ptr) {
 
-	if (EXTI_GetITStatus(button_ptr->_setup.exti.line) == SET ) {
-
-		/* check current state */
-		if ( GPIO_ReadInputDataBit(button_ptr->_setup.gpio.port, button_ptr->_setup.gpio.pin) == button_ptr->_state.active_state ) {
-			button_ptr->_state.pushed_flag = 1;
-		}
-
-		/* clear interrupt flag */
-		EXTI_ClearITPendingBit(button_ptr->_setup.exti.line);
-
-		return (1);
-
+	if ( EXTI_GetITStatus(button_ptr->_setup.exti.line) == RESET ) {
+		// interrupt request on different EXTI Line
+		return (0);
 	}
-	return (0);
+
+	/* check current state */
+	if ( GPIO_ReadInputDataBit(button_ptr->_setup.gpio.port, button_ptr->_setup.gpio.pin) == button_ptr->_state.active_state ) {
+		button_ptr->_state.pushed_flag = 1;
+	}
+
+	/* clear interrupt flag - on purpose placed after state check */
+	EXTI_ClearITPendingBit(button_ptr->_setup.exti.line);
+
+	return (1);
 
 }

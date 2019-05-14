@@ -5,7 +5,7 @@
  *      Author: user
  */
 
-#include "sool/IRQn/DMA_IRQ.h"
+#include <sool/IRQn/IRQ_DMA.h>
 
 // ====================================================================================
 /* DMA_IRQ definition file template */
@@ -15,7 +15,7 @@
 //static volatile void *obj;
 
 /* add some Setter function to copy the objects here */
-void SOOL_DMA_IRQn_SetObj (volatile void *obj_ptr) { }
+void SOOL_IRQn_DMA_SetObj (volatile void *obj_ptr) { }
 
 // -----------------------------------------------
 
