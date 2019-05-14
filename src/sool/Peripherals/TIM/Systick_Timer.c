@@ -18,7 +18,11 @@ volatile static uint8_t tenths_counter = 0;
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-void SOOL_SysTick_DefaultConfig() {
+/**
+ * Configures SysTick to `tick` 100 times per second;
+ * internally counts elapsed tenth`s of second and seconds
+ * inside the ISR  */
+void SOOL_Periph_SysTick_DefaultConfig() {
 	SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK);
 	SysTick_Config( SystemCoreClock / 100 ); // MCU-specific variable
 }
@@ -45,6 +49,6 @@ void SysTick_Handler() {
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-uint32_t SOOL_SysTick_GetSec() 				{ 	return (seconds_elapsed);		}
-uint32_t SOOL_SysTick_GetTenthsOfSec() 		{	return (tenths_elapsed);		}
-uint32_t SOOL_SysTick_GetHundredthsOfSec() 	{	return (hundredths_elapsed); 	}
+uint32_t SOOL_Periph_SysTick_GetSec() 				{ 	return (seconds_elapsed);		}
+uint32_t SOOL_Periph_SysTick_GetTenthsOfSec() 		{	return (tenths_elapsed);		}
+uint32_t SOOL_Periph_SysTick_GetHundredthsOfSec() 	{	return (hundredths_elapsed); 	}

@@ -10,15 +10,10 @@
 
 #include "misc.h"
 
-/**
- * Configures SysTick to `tick` 100 times per second;
- * internally counts elapsed tenth`s of second and seconds
- * inside the ISR
- */
-extern void 	SOOL_SysTick_DefaultConfig();
-extern uint32_t SOOL_SysTick_GetSec();
-extern uint32_t	SOOL_SysTick_GetTenthsOfSec();
-extern uint32_t	SOOL_SysTick_GetHundredthsOfSec();
+extern void 	SOOL_Periph_SysTick_DefaultConfig();
+extern uint32_t SOOL_Periph_SysTick_GetSec();
+extern uint32_t	SOOL_Periph_SysTick_GetTenthsOfSec();
+extern uint32_t	SOOL_Periph_SysTick_GetHundredthsOfSec();
 
 /* Core Interrupt Service Routine for SysTick */
 extern void 	SysTick_Handler();

@@ -48,6 +48,7 @@ struct _SOOL_IrReceiverStruct {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+/** NOTE: uses SysTick configured as SOOL_SysTick_DefaultConfig() */
 volatile SOOL_IrReceiver SOOL_Sensors_IrReceiver_Init(SOOL_PinConfigInt setup);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
