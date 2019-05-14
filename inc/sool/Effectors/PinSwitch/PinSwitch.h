@@ -10,7 +10,7 @@
 
 // - - - - - - - - - - -
 
-#include <sool/Peripherals/GPIO/PinConfig.h>
+#include <sool/Peripherals/GPIO/PinConfig_NoInt.h>
 
 #include "stm32f10x.h"
 

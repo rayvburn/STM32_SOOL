@@ -8,10 +8,9 @@
 #ifndef SENSORS_IRRECEIVER_H_
 #define SENSORS_IRRECEIVER_H_
 
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-#include <sool/Peripherals/GPIO/PinConfig.h>
-
+#include <sool/Peripherals/GPIO/PinConfig_Int.h>
 #include "stm32f10x.h"
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 /// \brief TSOP3123/1736 IR receiver controller

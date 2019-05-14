@@ -1,45 +1,16 @@
 /*
- * PinConfig.c
+ * PinConfig_Int.c
  *
- *  Created on: 25.04.2019
+ *  Created on: 15.05.2019
  *      Author: user
  */
 
-#include <sool/Peripherals/GPIO/PinConfig.h>
-#include "stm32f10x_gpio.h"
-#include "stm32f10x_exti.h"
-#include "stm32f10x_rcc.h"
+#include <sool/Peripherals/GPIO/PinConfig_Int.h>
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-// private functions declarations
-static void PinConfig_EnableAPBClock(GPIO_TypeDef* port);
 static void PinConfig_SetEXTILineEXTIPinSourceIRQn(uint16_t pin, uint32_t *exti_ln, uint8_t *pin_src, uint8_t *irqn);
 static void PinConfig_SetEXTIPortSource(const GPIO_TypeDef* port, uint8_t *port_src);
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-SOOL_PinConfig_NoInt SOOL_GPIO_PinConfig_Initialize_NoInt(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const GPIOMode_TypeDef gpio_mode) {
-
-	// copy values into structure
-	SOOL_PinConfig_NoInt config;
-	config.gpio.port = gpio_port;
-	config.gpio.pin = gpio_pin;
-
-	// start the clock
-	PinConfig_EnableAPBClock(gpio_port);
-
-	// initialize pin
-	GPIO_InitTypeDef gpio;
-	GPIO_StructInit(&gpio);
-	gpio.GPIO_Pin = gpio_pin;
-	gpio.GPIO_Speed = GPIO_Speed_50MHz;
-	gpio.GPIO_Mode = gpio_mode;
-	GPIO_Init(gpio_port, &gpio);
-
-	return (config);
-
-}
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -69,7 +40,7 @@ SOOL_PinConfig_Int SOOL_GPIO_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, c
 	PinConfig_SetEXTIPortSource(gpio_port, &port_src);
 	PinConfig_SetEXTILineEXTIPinSourceIRQn(gpio_pin, &exti_ln, &pin_src, &irqn);
 
-	PinConfig_EnableAPBClock(gpio_port);
+	SOOL_GPIO_PinConfig_EnableAPBClock(gpio_port);
 
 	// alternative function clock
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
@@ -119,20 +90,7 @@ SOOL_PinConfig_Int SOOL_GPIO_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, c
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-void SOOL_GPIO_PinConfig_Initialize_Unused(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin) {
-
-	PinConfig_EnableAPBClock(gpio_port);
-	GPIO_InitTypeDef gpio;
-	GPIO_StructInit(&gpio);
-	gpio.GPIO_Pin = gpio_pin;
-	gpio.GPIO_Speed = GPIO_Speed_2MHz;
-	gpio.GPIO_Mode = GPIO_Mode_IPU;
-	GPIO_Init(gpio_port, &gpio);
-
-}
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
+/// \brief NVIC interrupts switcher ( on (ENABLE) or off (DISABLE) )
 void SOOL_GPIO_PinConfig_NvicSwitch(SOOL_PinConfig_Int *config, const FunctionalState state) {
 	config->nvic.setup.NVIC_IRQChannelCmd = state;
 	NVIC_Init(&(config->nvic.setup));
@@ -140,28 +98,10 @@ void SOOL_GPIO_PinConfig_NvicSwitch(SOOL_PinConfig_Int *config, const Functional
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+/// \brief EXTI interrupts switcher ( on (ENABLE) or off (DISABLE) )
 void SOOL_GPIO_PinConfig_ExtiSwitch(SOOL_PinConfig_Int *config, const FunctionalState state) {
 	config->exti.setup.EXTI_LineCmd = state;
 	EXTI_Init(&(config->exti.setup));
-}
-
-// =============================================================================================
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-// private function
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-static void PinConfig_EnableAPBClock(GPIO_TypeDef* port) {
-
-	if ( port == GPIOA ) {
-		RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
-	} else if ( port == GPIOB ) {
-		RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
-	} else if ( port == GPIOC ) {
-		RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE);
-	} else if ( port == GPIOD ) {
-		RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOD, ENABLE);
-	}
-
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
