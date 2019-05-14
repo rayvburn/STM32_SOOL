@@ -13,7 +13,7 @@
 // ====================================================================================
 
 /* add some Setter function to copy the objects here */
-extern void EXTI_IRQ_Handler_SetObj (volatile void *obj_ptr);
+extern void SOOL_EXTI_IRQn_SetObj (volatile void *obj_ptr);
 
 /* IRQHandlers declaration */
 extern void EXTI0_IRQHandler();

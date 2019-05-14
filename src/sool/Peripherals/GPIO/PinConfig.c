@@ -5,7 +5,7 @@
  *      Author: user
  */
 
-#include "sool/Common/PinConfig.h"
+#include <sool/Peripherals/GPIO/PinConfig.h>
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_exti.h"
 #include "stm32f10x_rcc.h"
@@ -19,7 +19,7 @@ static void PinConfig_SetEXTIPortSource(const GPIO_TypeDef* port, uint8_t *port_
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-SOOL_PinConfigNoInt SOOL_Common_PinConfig_Initialize_NoInt(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const GPIOMode_TypeDef gpio_mode) {
+SOOL_PinConfigNoInt SOOL_GPIO_PinConfig_Initialize_NoInt(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const GPIOMode_TypeDef gpio_mode) {
 
 	// copy values into structure
 	SOOL_PinConfigNoInt config;
@@ -43,7 +43,7 @@ SOOL_PinConfigNoInt SOOL_Common_PinConfig_Initialize_NoInt(GPIO_TypeDef* gpio_po
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-SOOL_PinConfigInt SOOL_Common_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin,
+SOOL_PinConfigInt SOOL_GPIO_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin,
 					const EXTITrigger_TypeDef exti_trigger) {
 
 	/* object to be filled with given values
@@ -119,14 +119,28 @@ SOOL_PinConfigInt SOOL_Common_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-void SOOL_Common_PinConfig_NvicSwitch(SOOL_PinConfigInt *config, const FunctionalState state) {
+void SOOL_GPIO_PinConfig_Initialize_Unused(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin) {
+
+	PinConfig_EnableAPBClock(gpio_port);
+	GPIO_InitTypeDef gpio;
+	GPIO_StructInit(&gpio);
+	gpio.GPIO_Pin = gpio_pin;
+	gpio.GPIO_Speed = GPIO_Speed_2MHz;
+	gpio.GPIO_Mode = GPIO_Mode_IPU;
+	GPIO_Init(gpio_port, &gpio);
+
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+void SOOL_GPIO_PinConfig_NvicSwitch(SOOL_PinConfigInt *config, const FunctionalState state) {
 	config->nvic.setup.NVIC_IRQChannelCmd = state;
 	NVIC_Init(&(config->nvic.setup));
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-void SOOL_Common_PinConfig_ExtiSwitch(SOOL_PinConfigInt *config, const FunctionalState state) {
+void SOOL_GPIO_PinConfig_ExtiSwitch(SOOL_PinConfigInt *config, const FunctionalState state) {
 	config->exti.setup.EXTI_LineCmd = state;
 	EXTI_Init(&(config->exti.setup));
 }

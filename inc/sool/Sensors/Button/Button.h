@@ -8,7 +8,7 @@
 #ifndef INC_SOOL_SENSORS_BUTTON_BUTTON_H_
 #define INC_SOOL_SENSORS_BUTTON_BUTTON_H_
 
-#include "sool/Common/PinConfig.h"
+#include <sool/Peripherals/GPIO/PinConfig.h>
 #include <stdint.h>
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

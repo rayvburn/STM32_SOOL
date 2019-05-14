@@ -15,7 +15,7 @@
 //static volatile void *obj;
 
 /* add some Setter function to copy the objects here */
-void USART_IRQ_Handler_SetObj (volatile void *obj_ptr) { }
+void SOOL_USART_IRQn_SetObj (volatile void *obj_ptr) { }
 
 // -----------------------------------------------
 

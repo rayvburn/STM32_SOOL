@@ -18,7 +18,7 @@ volatile static uint8_t tenths_counter = 0;
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-void SysTick_Configuration() {
+void SOOL_SysTick_DefaultConfig() {
 	SysTick_CLKSourceConfig(SysTick_CLKSource_HCLK);
 	SysTick_Config( SystemCoreClock / 100 ); // MCU-specific variable
 }
@@ -45,6 +45,6 @@ void SysTick_Handler() {
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-uint32_t SysTick_GetSeconds() 			{ 	return (seconds_elapsed);		}
-uint32_t SysTick_GetTenthsOfSec() 		{	return (tenths_elapsed);		}
-uint32_t SysTick_GetHundredthsOfSec() 	{	return (hundredths_elapsed); 	}
+uint32_t SOOL_SysTick_GetSec() 				{ 	return (seconds_elapsed);		}
+uint32_t SOOL_SysTick_GetTenthsOfSec() 		{	return (tenths_elapsed);		}
+uint32_t SOOL_SysTick_GetHundredthsOfSec() 	{	return (hundredths_elapsed); 	}

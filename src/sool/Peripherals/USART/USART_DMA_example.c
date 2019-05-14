@@ -17,8 +17,8 @@ int main(void)
 	volatile SOOL_USART_DMA usart_debug = SOOL_Periph_USART_DMA_Init(USART2, 115200, 10); // 26);
 
 	/* Place handlers into proper global IRQHandlers */
-	DMA_IRQ_Handler_SetUsartDebug(&usart_debug);
-	USART_IRQ_Handler_SetUsartDebug(&usart_debug);
+	SOOL_DMA_IRQn_SetUsartDebug(&usart_debug);
+	SOOL_USART_IRQn_SetUsartDebug(&usart_debug);
 	// -------------------------------------------
 
 	usart_debug.ActivateReading(&usart_debug);

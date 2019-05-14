@@ -9,7 +9,7 @@
 #define SENSORS_IRRECEIVER_H_
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-#include <sool/Common/PinConfig.h>
+#include <sool/Peripherals/GPIO/PinConfig.h>
 
 #include "stm32f10x.h"
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

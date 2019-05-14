@@ -14,7 +14,7 @@
  * with default settings (72 MHz for F103C8T6) */
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-void STM_PinRemapDefault() {
+void SOOL_PinRemapDefault() {
 
 	// RCC->APB2ENR |= RCC_APB2ENR_AFIOEN;     		 		// ENABLE clock for alternate function
 	// AFIO->MAPR |= AFIO_MAPR_SWJ_CFG_JTAGDISABLE;  		// disable JTDI on PA15
@@ -34,7 +34,7 @@ void STM_PinRemapDefault() {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-void STM_ClockConfigDefault() {
+void SOOL_ClockConfigDefault() {
 
 	RCC_DeInit();
 	RCC_HSEConfig(RCC_HSE_ON); 									// enable external high speed oscillator

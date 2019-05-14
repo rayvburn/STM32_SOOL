@@ -11,6 +11,9 @@
 #include "sool/Peripherals/TIM/Systick_Timer.h" // DEPRECATED?
 #include <stdint.h>
 
+
+//extern uint8_t SOOL_FSM_AddState(const uint8_t state_id, uint8_t (*TransitionFunction)(...));
+
 typedef enum {
 
 	IDLE_BLINKING = 0,

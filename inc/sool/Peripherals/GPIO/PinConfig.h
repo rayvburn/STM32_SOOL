@@ -5,14 +5,14 @@
  *      Author: user
  */
 
-#ifndef COMMON_PINCONFIG_H_
-#define COMMON_PINCONFIG_H_
+#ifndef SOOL_PERIPHERALS_GPIO_PINCONFIG_H_
+#define SOOL_PERIPHERALS_GPIO_PINCONFIG_H_
 
 // - - - - - - - - - - -
 
 #include "stm32f10x.h"
 #include "stm32f10x_exti.h"
-#include "misc.h" // NVIC
+#include "misc.h" 			// NVIC
 
 // - - - - - - - - - - -
 
@@ -54,17 +54,20 @@ typedef struct {
 // - - - - - - - - - - -
 
 /// \brief Initializes a non-interrupt pin; hard-coded 50 MHz speed
-extern SOOL_PinConfigNoInt	SOOL_Common_PinConfig_Initialize_NoInt(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const GPIOMode_TypeDef gpio_mode);
+extern SOOL_PinConfigNoInt	SOOL_GPIO_PinConfig_Initialize_NoInt(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const GPIOMode_TypeDef gpio_mode);
 
-/// \brief Initializes a interrupt pin; hard-coded Internal Pull-Up
-extern SOOL_PinConfigInt	SOOL_Common_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const EXTITrigger_TypeDef exti_trigger);
+/// \brief Initializes an interrupt pin; hard-coded Internal Pull-Up
+extern SOOL_PinConfigInt	SOOL_GPIO_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const EXTITrigger_TypeDef exti_trigger);
+
+/// \brief Initializes an unused pin; internal pull-up prevents pin's state changes caused by noisy environment
+extern void					SOOL_GPIO_PinConfig_Initialize_Unused(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin);
 
 /// \brief NVIC interrupts switcher ( on (ENABLE) or off (DISABLE) )
-extern void	 				SOOL_Common_PinConfig_NvicSwitch(SOOL_PinConfigInt *config, const FunctionalState state);
+extern void	 				SOOL_GPIO_PinConfig_NvicSwitch(SOOL_PinConfigInt *config, const FunctionalState state);
 
 /// \brief EXTI interrupts switcher ( on (ENABLE) or off (DISABLE) )
-extern void	 				SOOL_Common_PinConfig_ExtiSwitch(SOOL_PinConfigInt *config, const FunctionalState state);
+extern void	 				SOOL_GPIO_PinConfig_ExtiSwitch(SOOL_PinConfigInt *config, const FunctionalState state);
 
 // - - - - - - - - - - -
 
-#endif /* COMMON_PINCONFIG_H_ */
+#endif /* SOOL_PERIPHERALS_GPIO_PINCONFIG_H_ */

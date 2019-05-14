@@ -13,7 +13,7 @@
 // ====================================================================================
 
 /* add some Setter function to copy the objects here */
-extern void DMA_IRQ_Handler_SetObj (volatile void *obj_ptr);
+extern void SOOL_DMA_IRQn_SetObj (volatile void *obj_ptr);
 
 /* IRQHandlers declaration */
 extern void DMA1_Channel1_IRQHandler();		/* DMA1 Channel1 global interrupt                   */
