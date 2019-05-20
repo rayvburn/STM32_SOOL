@@ -42,8 +42,8 @@ volatile SOOL_Button SOOL_Sensor_Button_Init(SOOL_PinConfig_Int setup) {
 	}
 
 	// interrupt-switching functions
-	button.SetNvicState = SOOL_GPIO_PinConfig_NvicSwitch;
-	button.SetExtiState = SOOL_GPIO_PinConfig_ExtiSwitch;
+	button.SetNvicState = SOOL_Periph_GPIO_PinConfig_NvicSwitch;
+	button.SetExtiState = SOOL_Periph_GPIO_PinConfig_ExtiSwitch;
 
 	// other functions
 	button.GetPushedFlag = Button_GetPushedFlag;

@@ -14,7 +14,7 @@ static void PinConfig_SetEXTIPortSource(const GPIO_TypeDef* port, uint8_t *port_
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-SOOL_PinConfig_Int SOOL_GPIO_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin,
+SOOL_PinConfig_Int SOOL_Periph_GPIO_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin,
 					const EXTITrigger_TypeDef exti_trigger) {
 
 	/* object to be filled with given values
@@ -40,7 +40,7 @@ SOOL_PinConfig_Int SOOL_GPIO_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, c
 	PinConfig_SetEXTIPortSource(gpio_port, &port_src);
 	PinConfig_SetEXTILineEXTIPinSourceIRQn(gpio_pin, &exti_ln, &pin_src, &irqn);
 
-	SOOL_GPIO_PinConfig_EnableAPBClock(gpio_port);
+	SOOL_Periph_GPIO_PinConfig_EnableAPBClock(gpio_port);
 
 	// alternative function clock
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
@@ -91,7 +91,7 @@ SOOL_PinConfig_Int SOOL_GPIO_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, c
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 /// \brief NVIC interrupts switcher ( on (ENABLE) or off (DISABLE) )
-void SOOL_GPIO_PinConfig_NvicSwitch(SOOL_PinConfig_Int *config, const FunctionalState state) {
+void SOOL_Periph_GPIO_PinConfig_NvicSwitch(SOOL_PinConfig_Int *config, const FunctionalState state) {
 	config->nvic.setup.NVIC_IRQChannelCmd = state;
 	NVIC_Init(&(config->nvic.setup));
 }
@@ -99,7 +99,7 @@ void SOOL_GPIO_PinConfig_NvicSwitch(SOOL_PinConfig_Int *config, const Functional
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 /// \brief EXTI interrupts switcher ( on (ENABLE) or off (DISABLE) )
-void SOOL_GPIO_PinConfig_ExtiSwitch(SOOL_PinConfig_Int *config, const FunctionalState state) {
+void SOOL_Periph_GPIO_PinConfig_ExtiSwitch(SOOL_PinConfig_Int *config, const FunctionalState state) {
 	config->exti.setup.EXTI_LineCmd = state;
 	EXTI_Init(&(config->exti.setup));
 }

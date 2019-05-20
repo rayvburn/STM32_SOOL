@@ -20,7 +20,7 @@ void SFM_SwitchToState(FSMStates state_to_get_into) {
 	current_state = state_to_get_into;
 	state_changed = 1;
 	if ( min_duration != 0 ) {	// if duration is set to 0 then limit is not valid
-		state_start_time = SOOL_Periph_SysTick_GetTenthsOfSec();
+		state_start_time = SOOL_Periph_TIM_SysTick_GetTenthsOfSec();
 	}
 }
 
@@ -49,7 +49,7 @@ uint8_t SFM_IsTimingTerminalConditionFulfilled() {
 		return 1;
 	}
 
-	if ( (SOOL_Periph_SysTick_GetTenthsOfSec() - state_start_time) >= min_duration ) {
+	if ( (SOOL_Periph_TIM_SysTick_GetTenthsOfSec() - state_start_time) >= min_duration ) {
 		return 1;
 	}
 

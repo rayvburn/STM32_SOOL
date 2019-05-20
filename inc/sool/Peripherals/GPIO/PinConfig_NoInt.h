@@ -19,7 +19,7 @@ typedef struct {
 // - - - - - - - - - - -
 
 /// \brief Initializes a non-interrupt pin; hard-coded 50 MHz speed
-extern SOOL_PinConfig_NoInt	SOOL_GPIO_PinConfig_Initialize_NoInt(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const GPIOMode_TypeDef gpio_mode);
+extern SOOL_PinConfig_NoInt	SOOL_Periph_GPIO_PinConfig_Initialize_NoInt(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const GPIOMode_TypeDef gpio_mode);
 
 // - - - - - - - - - - -
 

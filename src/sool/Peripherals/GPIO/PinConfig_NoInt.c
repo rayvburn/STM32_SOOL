@@ -9,7 +9,7 @@
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-SOOL_PinConfig_NoInt SOOL_GPIO_PinConfig_Initialize_NoInt(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const GPIOMode_TypeDef gpio_mode) {
+SOOL_PinConfig_NoInt SOOL_Periph_GPIO_PinConfig_Initialize_NoInt(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const GPIOMode_TypeDef gpio_mode) {
 
 	// copy values into structure
 	SOOL_PinConfig_NoInt config;
@@ -17,7 +17,7 @@ SOOL_PinConfig_NoInt SOOL_GPIO_PinConfig_Initialize_NoInt(GPIO_TypeDef* gpio_por
 	config.gpio.pin = gpio_pin;
 
 	// start the clock
-	SOOL_GPIO_PinConfig_EnableAPBClock(gpio_port);
+	SOOL_Periph_GPIO_PinConfig_EnableAPBClock(gpio_port);
 
 	// initialize pin
 	GPIO_InitTypeDef gpio;

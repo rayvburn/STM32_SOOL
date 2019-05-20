@@ -10,7 +10,7 @@
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-void SOOL_GPIO_PinConfig_EnableAPBClock(GPIO_TypeDef* port) {
+void SOOL_Periph_GPIO_PinConfig_EnableAPBClock(GPIO_TypeDef* port) {
 
 	if ( port == GPIOA ) {
 		RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);

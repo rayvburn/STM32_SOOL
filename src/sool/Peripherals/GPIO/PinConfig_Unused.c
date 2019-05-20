@@ -8,9 +8,9 @@
 #include <sool/Peripherals/GPIO/PinConfig_Unused.h>
 #include <sool/Peripherals/GPIO/PinConfig_common.h>
 
-void SOOL_GPIO_PinConfig_Initialize_Unused(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin) {
+void SOOL_Periph_GPIO_PinConfig_Initialize_Unused(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin) {
 
-	SOOL_GPIO_PinConfig_EnableAPBClock(gpio_port);
+	SOOL_Periph_GPIO_PinConfig_EnableAPBClock(gpio_port);
 	GPIO_InitTypeDef gpio;
 	GPIO_StructInit(&gpio);
 	gpio.GPIO_Pin = gpio_pin;

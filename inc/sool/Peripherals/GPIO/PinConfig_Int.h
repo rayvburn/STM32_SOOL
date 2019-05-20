@@ -39,13 +39,13 @@ typedef struct {
 // - - - - - - - - - - -
 
 /// \brief Initializes an interrupt pin; hard-coded Internal Pull-Up
-extern SOOL_PinConfig_Int SOOL_GPIO_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const EXTITrigger_TypeDef exti_trigger);
+extern SOOL_PinConfig_Int SOOL_Periph_GPIO_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin, const EXTITrigger_TypeDef exti_trigger);
 
 /// \brief NVIC interrupts switcher ( on (ENABLE) or off (DISABLE) )
-extern void	SOOL_GPIO_PinConfig_NvicSwitch(SOOL_PinConfig_Int *config, const FunctionalState state);
+extern void	SOOL_Periph_GPIO_PinConfig_NvicSwitch(SOOL_PinConfig_Int *config, const FunctionalState state);
 
 /// \brief EXTI interrupts switcher ( on (ENABLE) or off (DISABLE) )
-extern void	SOOL_GPIO_PinConfig_ExtiSwitch(SOOL_PinConfig_Int *config, const FunctionalState state);
+extern void	SOOL_Periph_GPIO_PinConfig_ExtiSwitch(SOOL_PinConfig_Int *config, const FunctionalState state);
 
 // - - - - - - - - - - -
 

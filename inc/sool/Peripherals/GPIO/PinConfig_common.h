@@ -19,7 +19,7 @@ struct _SOOL_PinConfigGPIO {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-extern void SOOL_GPIO_PinConfig_EnableAPBClock(GPIO_TypeDef* port);
+extern void SOOL_Periph_GPIO_PinConfig_EnableAPBClock(GPIO_TypeDef* port);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 

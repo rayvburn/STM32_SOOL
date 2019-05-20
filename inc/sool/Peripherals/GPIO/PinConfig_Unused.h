@@ -12,7 +12,7 @@
 
 /// \brief Initializes an unused pin; internal pull-up prevents pin's state
 /// changes caused by noisy environment
-extern void SOOL_GPIO_PinConfig_Initialize_Unused(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin);
+extern void SOOL_Periph_GPIO_PinConfig_Initialize_Unused(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin);
 
 
 #endif /* INC_SOOL_PERIPHERALS_GPIO_PINCONFIG_UNUSED_H_ */
