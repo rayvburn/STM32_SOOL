@@ -5,8 +5,8 @@
  *      Author: user
  */
 
-#ifndef INCLUDE_IRQN_DMA_IRQ_H_
-#define INCLUDE_IRQN_DMA_IRQ_H_
+#ifndef INC_SOOL_IRQN_IRQ_DMA_H_
+#define INC_SOOL_IRQN_IRQ_DMA_H_
 
 // ====================================================================================
 /* DMA_IRQ header file template */
@@ -24,4 +24,4 @@ extern void DMA1_Channel5_IRQHandler();		/* DMA1 Channel5 global interrupt      
 extern void DMA1_Channel6_IRQHandler();		/* DMA1 Channel6 global interrupt                   */
 extern void DMA1_Channel7_IRQHandler();		/* DMA1 Channel7 global interrupt                   */
 
-#endif /* INCLUDE_IRQN_DMA_IRQ_H_ */
+#endif /* INC_SOOL_IRQN_IRQ_DMA_H_ */

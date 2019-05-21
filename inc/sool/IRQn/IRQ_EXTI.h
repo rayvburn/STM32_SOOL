@@ -5,8 +5,8 @@
  *      Author: user
  */
 
-#ifndef INCLUDE_IRQN_EXTI_IRQ_H_
-#define INCLUDE_IRQN_EXTI_IRQ_H_
+#ifndef INC_SOOL_IRQN_IRQ_EXTI_H_
+#define INC_SOOL_IRQN_IRQ_EXTI_H_
 
 // ====================================================================================
 /* EXTI_IRQ header file template */
@@ -24,4 +24,4 @@ extern void EXTI4_IRQHandler();
 extern void EXTI9_5_IRQHandler();
 extern void EXTI15_10_IRQHandler();
 
-#endif /* INCLUDE_IRQN_EXTI_IRQ_H_ */
+#endif /* INC_SOOL_IRQN_IRQ_EXTI_H_ */

@@ -5,8 +5,8 @@
  *      Author: user
  */
 
-#ifndef INCLUDE_IRQN_USART_IRQ_H_
-#define INCLUDE_IRQN_USART_IRQ_H_
+#ifndef INC_SOOL_IRQN_IRQ_USART_H_
+#define INC_SOOL_IRQN_IRQ_USART_H_
 
 // ====================================================================================
 /* USART_IRQ header file template */
@@ -20,4 +20,4 @@ extern void USART1_IRQHandler();
 extern void USART2_IRQHandler();
 extern void USART3_IRQHandler();
 
-#endif /* INCLUDE_IRQN_USART_IRQ_H_ */
+#endif /* INC_SOOL_IRQN_IRQ_USART_H_ */
