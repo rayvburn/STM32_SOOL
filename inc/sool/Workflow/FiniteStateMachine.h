@@ -27,14 +27,14 @@ typedef struct _SOOL_FSMStruct SOOL_FSM;
 
 /*
  * Below meant to be some kind of a vector (or C++'s map) storing state id along with state's transition function
+
 //
 //struct _SOOL_FSM_StateInfoStruct {
 //	uint8_t	state_id;
-//	uint8_t (*TransitionFunction)(SOOL_FSM *fsm, uint8_t arg_num, ...);
+//	uint8_t (*TransitionFunction)(SOOL_FSM *fsm); /* before there were another arguments: `uint8_t arg_num, ...` - deprecated as they
 //};
-// 	and corresponding functions
-//	void (*AddState)(SOOL_FSM *fsm, const uint8_t state_id, uint8_t (*TransitionFunction)(SOOL_FSM *fsm, uint8_t arg_num, ...));
-//	uint8_t (*ExecuteTransitionFunction)(SOOL_FSM *fsm);
+//void (*AddState)(SOOL_FSM *fsm, const uint8_t state_id, uint8_t (*TransitionFunction)(SOOL_FSM *fsm, uint8_t arg_num, ...));
+//uint8_t (*ExecuteTransitionFunction)(SOOL_FSM *fsm);
  */
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -46,6 +46,7 @@ typedef struct _SOOL_FSMStruct SOOL_FSM;
 struct _SOOL_FSMStruct {
 
 	struct _SOOL_FSM_StateStruct	_state;
+
 	uint8_t (*SwitchToState)(SOOL_FSM *fsm, uint8_t state_id);
 	void 	(*SetMinStateDuration)(SOOL_FSM *fsm, uint32_t ms);		/* useful when states are switched via push-buttons */
 	uint8_t (*GetCurrentState)(SOOL_FSM *fsm);						/* to be used in main's while(1) to choose proper handler */
@@ -66,28 +67,5 @@ struct _SOOL_FSMStruct {
 extern SOOL_FSM SOOL_Workflow_FSM_Init(uint8_t init_state_id, uint8_t execute_on_entry, uint32_t min_duration_ms);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-
-
-
-
-//extern uint8_t SOOL_FSM_AddState(const uint8_t state_id, uint8_t (*TransitionFunction)(...));
-
-//typedef enum {
-//
-//	IDLE_BLINKING = 0,
-//	ARM_BULLET_ADJUSTMENTS,
-//	ACCELERATING,
-//	BULLET_ROLLING,
-//	BULLET_STOPPED,
-//
-//} FSMStates;
-//
-//extern void 		SFM_SwitchToState(FSMStates);
-//extern void			SFM_SetMinStateDuration(uint32_t tithings_of_sec);
-//extern uint8_t 		SFM_GetStateTransitionFlag();
-//extern FSMStates	SFM_GetLastState();
-//extern FSMStates	SFM_GetCurrentState();
-//extern uint8_t		SFM_IsTimingTerminalConditionFulfilled();
 
 #endif /* FINITESTATEMACHINE_H_ */
