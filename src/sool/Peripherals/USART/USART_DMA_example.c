@@ -14,15 +14,15 @@ int main(void)
 
 	/* clock configuration needed */
 
-	volatile SOOL_USART_DMA usart_debug = SOOL_Periph_USART_DMA_Init(USART2, 115200, 10); // 26);
+	volatile SOOL_USART_DMA usart_dbg = SOOL_Periph_USART_DMA_Init(USART2, 115200, 10); // 26);
 
 	/* Place handlers into proper global IRQHandlers */
-	SOOL_IRQn_DMA_SetUsartDebug(&usart_debug);
-	SOOL_IRQn_USART_SetUsartDebug(&usart_debug);
+	SOOL_IRQn_DMA_SetUsartDebug(&usart_dbg);
+	SOOL_IRQn_USART_SetUsartDebug(&usart_dbg);
 	// -------------------------------------------
 
-	usart_debug.ActivateReading(&usart_debug);
-	usart_debug.Send(&usart_debug, "123456\n\0");
+	usart_dbg.ActivateReading(&usart_dbg);
+	usart_dbg.Send(&usart_dbg, "123456\n\0");
 
 	for ( int i = 0; i < 500000; i++ ) {
 		if ( i == 40000 ) {
@@ -30,8 +30,8 @@ int main(void)
 		}
 	}
 
-	usart_debug.ActivateReading(&usart_debug);
-	usart_debug.Send(&usart_debug, "abcdefre\n\0");
+	usart_dbg.ActivateReading(&usart_dbg);
+	usart_dbg.Send(&usart_dbg, "abcdefre\n\0");
 
 	for ( int i = 0; i < 500000; i++ ) {
 		if ( i == 40000 ) {
@@ -39,8 +39,8 @@ int main(void)
 		}
 	}
 
-	usart_debug.ActivateReading(&usart_debug);
-	usart_debug.Send(&usart_debug, "bacdefpoqwdopqwkdopdasdkaops\n\0");
+	usart_dbg.ActivateReading(&usart_dbg);
+	usart_dbg.Send(&usart_dbg, "bacdefpoqwdopqwkdopdasdkaops\n\0");
 
 	for ( int i = 0; i < 500000; i++ ) {
 		if ( i == 40000 ) {
@@ -61,19 +61,19 @@ int main(void)
 	/* Clearing the TX buffer is not needed as long as you are sure
 	 * that previous data weren't longer (in terms of length) than
 	 * the following (unnecessary characters need to be trimmed) */
-	usart_debug.Send(&usart_debug, "123456789 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33\n");
+	usart_dbg.Send(&usart_dbg, "123456789 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33\n");
 	for ( int i = 0; i < 500000; i++ ) {
 		if ( i == 40000 ) {
 
 		}
 	}
 
-	usart_debug.DeactivateReading(&usart_debug);
-	usart_debug.Send(&usart_debug, "poiuyewq");
+	usart_dbg.DeactivateReading(&usart_dbg);
+	usart_dbg.Send(&usart_dbg, "poiuyewq");
 
 
 	uint8_t line_was_busy = 0;
-	if ( usart_debug.IsTxLineBusy(&usart_debug) ) {
+	if ( usart_dbg.IsTxLineBusy(&usart_dbg) ) {
 		line_was_busy = 1;
 		int abcd = 0;
 		abcd++;
@@ -85,12 +85,12 @@ int main(void)
 		}
 	}
 
-	usart_debug.RestoreBuffersInitialSize(&usart_debug);
-	usart_debug.ActivateReading(&usart_debug);
+	usart_dbg.RestoreBuffersInitialSize(&usart_dbg);
+	usart_dbg.ActivateReading(&usart_dbg);
 	SOOL_Array_Char str_test = SOOL_Memory_Array_Char_Init(15);
 	str_test.SetString(&str_test, "tyrueiwoqpowieu");
 
-	usart_debug.Send(&usart_debug, str_test._data);
+	usart_dbg.Send(&usart_dbg, str_test._data);
 
 	for ( int i = 0; i < 500000; i++ ) {
 		if ( i == 40000 ) {
@@ -98,7 +98,7 @@ int main(void)
 		}
 	}
 
-	uint8_t data_rec = usart_debug.IsDataReceived(&usart_debug);
+	uint8_t data_rec = usart_dbg.IsDataReceived(&usart_dbg);
 
 	for ( int i = 0; i < 500000; i++ ) {
 		if ( i == 40000 ) {
@@ -106,25 +106,25 @@ int main(void)
 		}
 	}
 
-	const volatile SOOL_Array_Char* temp = usart_debug.GetRxData(&usart_debug);
+	const volatile SOOL_Array_Char* temp = usart_dbg.GetRxData(&usart_dbg);
 
 	int abc = 0;
 	abc++;
 	abc++;
 
-	data_rec = usart_debug.IsDataReceived(&usart_debug);
+	data_rec = usart_dbg.IsDataReceived(&usart_dbg);
 	abc++;
 	abc++;
 
-	usart_debug.ClearRxBuffer(&usart_debug);
+	usart_dbg.ClearRxBuffer(&usart_dbg);
 	abc++;
 	abc++;
 
-	usart_debug.RestoreBuffersInitialSize(&usart_debug);
+	usart_dbg.RestoreBuffersInitialSize(&usart_dbg);
 	abc++;
 	abc++;
 
-	usart_debug.Destroy(&usart_debug);
+	usart_dbg.Destroy(&usart_dbg);
 	abc++;
 	abc++;
 
