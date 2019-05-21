@@ -59,6 +59,15 @@ static void SOOL_Periph_USART_DMA_Copy(volatile SOOL_USART_DMA *usart, const USA
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+/**
+ * This function does handle only TX/RX pins of the USART and DMA peripherals interface - if any
+ * remapping, which changes CK/CTS/RTS pins ports and numbers, is done then must be handled
+ * separately
+ * @param USARTx
+ * @param baud
+ * @param buf_size
+ * @return
+ */
 volatile SOOL_USART_DMA SOOL_Periph_USART_DMA_Init(USART_TypeDef* USARTx, uint32_t baud, size_t buf_size) {
 
 	/* GPIO setup */
@@ -81,15 +90,49 @@ volatile SOOL_USART_DMA SOOL_Periph_USART_DMA_Init(USART_TypeDef* USARTx, uint32
 	usart_obj._rx.buffer = SOOL_Memory_Array_Char_Init(buf_size);
 	usart_obj._tx.buffer = SOOL_Memory_Array_Char_Init(buf_size);
 
-	/* TODO: Remap handling, USART could go to PD/PC when remapped
-	 * Reference Manual, p. 183 - AFIO_MAPR */
-	/* port clock */
-	if ( USARTx == USART1 || USARTx == USART2 ) {
-		RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
-		port = GPIOA;
+	/* Start port clock considering remapping (Reference Manual, p. 183 - AFIO_MAPR) */
+	if ( USARTx == USART1 ) {
+
+		/* Check remapping register */
+		if ( AFIO->MAPR & AFIO_MAPR_USART1_REMAP ) {
+			/* Remapped */
+			RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
+			port = GPIOB;
+		} else {
+			/* No remap */
+			RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+			port = GPIOA;
+		}
+
+	} else if ( USARTx == USART2 ) {
+
+		/* Check remapping register */
+		if ( AFIO->MAPR & AFIO_MAPR_USART2_REMAP ) {
+			/* Remapped */
+			RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOD, ENABLE);
+			port = GPIOD;
+		} else {
+			/* No remap */
+			RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA, ENABLE);
+			port = GPIOA;
+		}
+
 	} else if ( USARTx == USART3 ) {
-		RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
-		port = GPIOB;
+
+		if ( AFIO->MAPR & AFIO_MAPR_USART3_REMAP_FULLREMAP ) {
+			/* Fully remapped */
+			RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOD, ENABLE);
+			port = GPIOD;
+		} else if ( AFIO->MAPR & AFIO_MAPR_USART3_REMAP_PARTIALREMAP ) {
+			/* Partially remapped */
+			RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC, ENABLE); /* NOTE: this applies only to RX and TX pins, advanced control must be handled separately! -> 01: Partial remap (TX/PC10, RX/PC11, CK/PC12, CTS/PB13, RTS/PB14) */
+			port = GPIOC;
+		} else {
+			/* No remap */
+			RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
+			port = GPIOB;
+		}
+
 	}
 
 	/* clock - alternative function */
@@ -103,12 +146,22 @@ volatile SOOL_USART_DMA SOOL_Periph_USART_DMA_Init(USART_TypeDef* USARTx, uint32
 	 * RCC_AHBPeriph_DMA1 is valid for USART1, USART2, USART3 */
 	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
 
-	/* TODO: Remap handling */
 	if ( USARTx == USART1 ) {
 
-		// GPIO and IRQn
-		tx_pin = GPIO_Pin_9;
-		rx_pin = GPIO_Pin_10;
+		/* Check remapping register */
+		if ( AFIO->MAPR & AFIO_MAPR_USART1_REMAP ) {
+			/* Remapped */
+			// GPIO
+			tx_pin = GPIO_Pin_6;
+			rx_pin = GPIO_Pin_7;
+		} else {
+			/* No remap */
+			// GPIO
+			tx_pin = GPIO_Pin_9;
+			rx_pin = GPIO_Pin_10;
+		}
+
+		// IRQn
 		irqn = USART1_IRQn;
 
 		// TX
@@ -129,9 +182,20 @@ volatile SOOL_USART_DMA SOOL_Periph_USART_DMA_Init(USART_TypeDef* USARTx, uint32
 
 	} else if ( USARTx == USART2 ) {
 
-		// GPIO and IRQn
-		tx_pin = GPIO_Pin_2;
-		rx_pin = GPIO_Pin_3;
+		/* Check remapping register */
+		if ( AFIO->MAPR & AFIO_MAPR_USART2_REMAP ) {
+			/* Remapped */
+			// GPIO
+			tx_pin = GPIO_Pin_5;
+			rx_pin = GPIO_Pin_6;
+		} else {
+			/* No remap */
+			// GPIO
+			tx_pin = GPIO_Pin_2;
+			rx_pin = GPIO_Pin_3;
+		}
+
+		// IRQn
 		irqn = USART2_IRQn;
 
 		// TX
@@ -152,16 +216,22 @@ volatile SOOL_USART_DMA SOOL_Periph_USART_DMA_Init(USART_TypeDef* USARTx, uint32
 
 	} else if ( USARTx == USART3 ) {
 
-		// GPIO
-		tx_pin = GPIO_Pin_10;
-		rx_pin = GPIO_Pin_11;
-
-		/* Check remapping
 		if ( AFIO->MAPR & AFIO_MAPR_USART3_REMAP_FULLREMAP ) {
+			/* Fully remapped */
+			// GPIO
+			tx_pin = GPIO_Pin_8;
+			rx_pin = GPIO_Pin_9;
 		} else if ( AFIO->MAPR & AFIO_MAPR_USART3_REMAP_PARTIALREMAP ) {
-		} else if ( (AFIO->MAPR | AFIO_MAPR_USART3_REMAP_NOREMAP) == 0 ) {
+			/* Partially remapped */
+			// GPIO
+			tx_pin = GPIO_Pin_10;
+			rx_pin = GPIO_Pin_11;
+		} else {
+			/* No remap */
+			// GPIO
+			tx_pin = GPIO_Pin_10;
+			rx_pin = GPIO_Pin_11;
 		}
-		*/
 
 		// IRQn
 		irqn = USART3_IRQn;
