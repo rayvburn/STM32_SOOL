@@ -6,7 +6,7 @@
  */
 
 //#include "IrReceiver.h"
-#include "sool/Peripherals/TIM/Systick_Timer.h"
+#include <sool/Peripherals/TIM/SystickTimer.h>
 #include "sool/Sensors/IrReceiver/IrReceiver.h"
 #include "stm32f10x_exti.h"
 #include "stm32f10x_gpio.h"
@@ -80,12 +80,13 @@ static uint32_t IrReceiver_GetLastEdgeTime(const volatile SOOL_IrReceiver *ir_pt
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 static uint8_t IrReceiver_IsStateStable(const volatile SOOL_IrReceiver *ir_ptr, const uint32_t req_gap) {
-	if ( SOOL_Periph_TIM_SysTick_GetHundredthsOfSec() - ir_ptr->_state.last_edge_time > req_gap) {
-//	if ( 2 > 0 ) {
+
+	if ( SOOL_Periph_TIM_SysTick_GetMillis() - ir_ptr->_state.last_edge_time > req_gap) {
 		// a given time has elapsed
 		return (1);
 	}
 	return (0);
+
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -101,7 +102,7 @@ static uint8_t IrReceiver_InterruptHandler(volatile SOOL_IrReceiver *ir_ptr) {
 	EXTI_ClearITPendingBit( ir_ptr->_setup.exti.line );
 
 	// process interrupt handler
-	ir_ptr->_state.last_edge_time = SOOL_Periph_TIM_SysTick_GetHundredthsOfSec();
+	ir_ptr->_state.last_edge_time = SOOL_Periph_TIM_SysTick_GetMillis();
 	ir_ptr->_state.last_state_int = GPIO_ReadInputDataBit(ir_ptr->_setup.gpio.port, ir_ptr->_setup.gpio.pin);
 
 	// set received flag only when input in low state (sensor is active low)

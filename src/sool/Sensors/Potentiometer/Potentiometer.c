@@ -5,8 +5,8 @@
  *      Author: user
  */
 
+#include <sool/Peripherals/ADC/DMA_oldAPI.h>
 #include "sool/Maths/Filters.h"
-#include "sool/Peripherals/ADC/DMA.h"
 #include "sool/Sensors/Potentiometer/Potentiometer.h"
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_rcc.h"
