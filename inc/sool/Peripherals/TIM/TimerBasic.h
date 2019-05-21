@@ -10,15 +10,26 @@
 
 #include "Timer_common.h"
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+/* Forward declaration */
+struct _SOOL_TimerBasicStruct;
+typedef struct _SOOL_TimerBasicStruct SOOL_TimerBasic;
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 /** Provides basic periodical events handling feature */
-typedef struct {
-	TIM_TypeDef* TIMx;
-	void (*Start)(volatile *SOOL_TimerBasic);
-	void (*Stop)(volatile *SOOL_TimerBasic);
-	void (*InterruptCustomFcn)(volatile *SOOL_TimerBasic); /* invoked from inside of _InterruptHandler */
-	void (*_InterruptHandler)(volatile *SOOL_TimerBasic);
-} SOOL_TimerBasic;
+struct _SOOL_TimerBasicStruct {
+	TIM_TypeDef* 	_TIMx;
+	void (*Start)(volatile SOOL_TimerBasic*);
+	void (*Stop)(volatile SOOL_TimerBasic*);
+	uint8_t (*_InterruptHandler)(volatile SOOL_TimerBasic*);
+};
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 extern volatile SOOL_TimerBasic SOOL_Periph_TIM_TimerBasic_Init(TIM_TypeDef* TIMx, uint16_t prescaler, uint16_t period);
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 #endif /* INC_SOOL_PERIPHERALS_TIM_TIMERBASIC_H_ */
