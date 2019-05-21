@@ -10,12 +10,24 @@
 
 #include "misc.h"
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 extern void 	SOOL_Periph_TIM_SysTick_DefaultConfig();
+extern uint32_t SOOL_Periph_TIM_SysTick_GetMillis();
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+#ifdef SOOL_SYSTICK_EXTENDED_VERSION
 extern uint32_t SOOL_Periph_TIM_SysTick_GetSec();
 extern uint32_t	SOOL_Periph_TIM_SysTick_GetTenthsOfSec();
 extern uint32_t	SOOL_Periph_TIM_SysTick_GetHundredthsOfSec();
+#endif
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 /* Core Interrupt Service Routine for SysTick */
 extern void 	SysTick_Handler();
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 #endif /* SYSTICK_TIMER_H_ */
