@@ -8,7 +8,7 @@
 #ifndef DMA_H_
 #define DMA_H_
 
-#include "sool/Peripherals/ADC/ADC.h"
+#include <sool/Peripherals/ADC/ADC_oldAPI.h>
 #include "sool/Sensors/Potentiometer/Potentiometer.h"
 #include "stm32f10x.h"
 

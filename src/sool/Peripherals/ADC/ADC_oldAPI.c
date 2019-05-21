@@ -5,7 +5,7 @@
  *      Author: user
  */
 
-#include "sool/Peripherals/ADC/ADC.h"
+#include <sool/Peripherals/ADC/ADC_oldAPI.h>
 #include "stm32f10x_adc.h"
 #include "stm32f10x_rcc.h"
 #include "misc.h" // NVIC
