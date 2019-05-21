@@ -635,7 +635,7 @@ static uint8_t USART_DMA_IsTxLineBusy(volatile SOOL_USART_DMA *usart) {
 
 	/* Reach information whether DMA transfer was started (usart->_tx.started_flag is DEPRECATED);
 	 * a DMA EN bit raw check is sufficient - it is known in advance that USARTx uses DMA1 */
-	return (usart->_setup.dma_tx.DMA_Channelx->CCR | DMA_CCR1_EN);
+	return (usart->_setup.dma_tx.DMA_Channelx->CCR & DMA_CCR1_EN);
 
 }
 
