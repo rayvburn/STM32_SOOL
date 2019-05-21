@@ -8,7 +8,7 @@
 #ifndef FINITESTATEMACHINE_H_
 #define FINITESTATEMACHINE_H_
 
-#include "sool/Peripherals/TIM/Systick_Timer.h" // DEPRECATED?
+#include <sool/Peripherals/TIM/SystickTimer.h> // DEPRECATED?
 #include <stdint.h>
 
 
