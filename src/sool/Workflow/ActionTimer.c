@@ -6,6 +6,7 @@
  */
 
 #include "sool/Workflow/ActionTimer.h"
+#include <sool/Workflow/Time_common.h> // computeTimeDifference()
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -87,18 +88,21 @@ static uint32_t ActionTimer_GetTimeDiff(SOOL_ActionTimer *action_timer) {
 
 static void ActionTimer_ComputeTimeDifference(SOOL_ActionTimer *action_timer) {
 
-	/* Check if a timer's overflow has occurred */
-	if ( action_timer->_timer.time_end < action_timer->_timer.time_start ) {
+//	/* Check if a timer's overflow has occurred */
+//	if ( action_timer->_timer.time_end < action_timer->_timer.time_start ) {
+//
+//		/* Overflow has occurred */
+//		//action_timer->_timer.time_diff = (UINT32_MAX - action_timer->_timer.time_start) + action_timer->_timer.time_end;
+//		action_timer->_timer.time_diff = (4294967295U - action_timer->_timer.time_start) + action_timer->_timer.time_end;
+//
+//	} else {
+//
+//		/* No overflow */
+//		action_timer->_timer.time_diff = action_timer->_timer.time_end - action_timer->_timer.time_start;
+//
+//	}
 
-		/* Overflow has occurred */
-		action_timer->_timer.time_diff = (UINT32_MAX - action_timer->_timer.time_start) + action_timer->_timer.time_end;
-
-	} else {
-
-		/* No overflow */
-		action_timer->_timer.time_diff = action_timer->_timer.time_end - action_timer->_timer.time_start;
-
-	}
+	action_timer->_timer.time_diff = SOOL_Workflow_Common_ComputeTimeDifference(action_timer->_timer.time_start, action_timer->_timer.time_end);
 
 }
 

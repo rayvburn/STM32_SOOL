@@ -16,7 +16,7 @@
 struct _SOOL_FSM_StateStruct {
 	uint8_t  current;
 	uint8_t  last;
-	uint32_t MIN_DURATION;
+	uint32_t min_duration;
 	uint8_t  transition_flag;
 	uint32_t start_time;
 };
@@ -31,7 +31,7 @@ typedef struct _SOOL_FSMStruct SOOL_FSM;
 //
 //struct _SOOL_FSM_StateInfoStruct {
 //	uint8_t	state_id;
-//	uint8_t (*TransitionFunction)(SOOL_FSM *fsm); /* before there were another arguments: `uint8_t arg_num, ...` - deprecated as they
+//	uint8_t (*TransitionFunction)(SOOL_FSM *fsm); // (NOTE: before there were another arguments: `uint8_t arg_num, ...` - deprecated as they ..)
 //};
 //void (*AddState)(SOOL_FSM *fsm, const uint8_t state_id, uint8_t (*TransitionFunction)(SOOL_FSM *fsm, uint8_t arg_num, ...));
 //uint8_t (*ExecuteTransitionFunction)(SOOL_FSM *fsm);
@@ -50,6 +50,7 @@ struct _SOOL_FSMStruct {
 	uint8_t (*SwitchToState)(SOOL_FSM *fsm, uint8_t state_id);
 	void 	(*SetMinStateDuration)(SOOL_FSM *fsm, uint32_t ms);		/* useful when states are switched via push-buttons */
 	uint8_t (*GetCurrentState)(SOOL_FSM *fsm);						/* to be used in main's while(1) to choose proper handler */
+	uint32_t (*GetStateDuration)(SOOL_FSM *fsm);
 	uint8_t (*GetStateTransitionFlag)(SOOL_FSM *fsm); 				/* useful for handling events after state switch */
 	uint8_t (*IsTerminalConditionFulfilled)(SOOL_FSM *fsm, uint8_t predicate);
 
