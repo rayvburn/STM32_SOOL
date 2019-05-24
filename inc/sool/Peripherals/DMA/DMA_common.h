@@ -23,10 +23,10 @@ struct _SOOL_DMA_InterruptFlags {
 	uint32_t					GLOBAL_FLAG;	// optional
 };
 
-typedef struct {
+struct _SOOL_DMA_ChannelConfig {
 	DMA_Channel_TypeDef* 			DMA_Channelx;
 	struct _SOOL_DMA_InterruptFlags	int_flags;
-} _SOOL_DMA_ChannelConfig;
+} ;
 
 // - - - - - - - - - - - - - - - -
 
