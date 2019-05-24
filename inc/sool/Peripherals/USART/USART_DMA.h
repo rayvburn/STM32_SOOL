@@ -9,9 +9,6 @@
 #define INCLUDE_PERIPHERALS_USART_USART_DMA_H_
 
 // ST libs
-#include <sool/Memory/Array/ArrayChar.h>
-#include "sool/Peripherals/DMA/Common.h"
-
 #include "stm32f10x.h"
 #include "stm32f10x_usart.h"
 #include "stm32f10x_dma.h"
@@ -23,6 +20,8 @@
 #include <string.h>
 
 // SOOL
+#include <sool/Memory/Array/ArrayChar.h>
+#include <sool/Peripherals/DMA/DMA_common.h>
 
 // - - - - - - - - - - - - - - - -
 
@@ -33,17 +32,17 @@
 
 /* USART coupled with DMA configuration */
 struct _SOOL_USART_DMA_Config {
-	USART_TypeDef*		USARTx;
-	_SOOL_DMA_ChannelConfig 	dma_rx;
-	_SOOL_DMA_ChannelConfig 	dma_tx;
-	uint32_t			BUF_INIT_SIZE;
+	USART_TypeDef*					USARTx;
+	struct _SOOL_DMA_ChannelConfig 	dma_rx;
+	struct _SOOL_DMA_ChannelConfig 	dma_tx;
+	uint32_t						BUF_INIT_SIZE;
 } ;
 
 // - - - - - - - - - - - - - - - -
 
 struct _SOOL_USART_Rx {
 	SOOL_Array_Char 		buffer;
-	uint8_t 			new_data_flag;
+	uint8_t 				new_data_flag;
 } USART_Rx;
 
 // - - - - - - - - - - - - - - - -
@@ -77,7 +76,7 @@ struct _SOOL_USART_DMA_Struct {
 
 	// TX section
 	uint8_t (*IsTxLineBusy)(volatile SOOL_USART_DMA*); 				// returns info whether TX DMA is currently working
-	uint8_t (*Send)(volatile SOOL_USART_DMA*, char*); 				// copies given data into buffer and fires up the transfer
+	uint8_t (*Send)(volatile SOOL_USART_DMA*, const char*); 		// copies given data into buffer and fires up the transfer
 	void	(*ClearTxBuffer)(volatile SOOL_USART_DMA*); 				// clears whole buffer
 	uint8_t (*_DmaTxIrqHandler)(volatile SOOL_USART_DMA*); 			// interrupt callback function which needs to be put into global DMA IRQHandler
 
