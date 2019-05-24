@@ -28,7 +28,7 @@ static void		USART_DMA_ClearRxBuffer(volatile SOOL_USART_DMA *usart);
 
 // TX
 static uint8_t 	USART_DMA_IsTxLineBusy(volatile SOOL_USART_DMA *usart);
-static uint8_t 	USART_DMA_Send(volatile SOOL_USART_DMA *usart, char *to_send_buf);
+static uint8_t 	USART_DMA_Send(volatile SOOL_USART_DMA *usart, const char *to_send_buf);
 static void		USART_DMA_ClearTxBuffer(volatile SOOL_USART_DMA *usart);
 
 // IRQ
@@ -699,7 +699,7 @@ static uint8_t USART_DMA_TxInterruptHandler(volatile SOOL_USART_DMA *usart) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t USART_DMA_Send(volatile SOOL_USART_DMA *usart, char *to_send_buf) {
+static uint8_t USART_DMA_Send(volatile SOOL_USART_DMA *usart, const char *to_send_buf) {
 
 	/* Check message length */
 	uint32_t length = (uint32_t)strlen(to_send_buf);
