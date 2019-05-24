@@ -12,6 +12,7 @@
 
 /* Char array */
 static void Array_Char_Add(SOOL_Array_Char *string_ptr, char c);
+static void Array_Char_Append(SOOL_Array_Char *string_ptr, const char *str);
 static void Array_Char_SetString(SOOL_Array_Char *string_ptr, const char *str);
 //static char* Array_Char_GetString(Array_String *string_ptr); 	 // dynamic allocation (memory needs to be freed after finished processing)
 static const char* Array_Char_GetString(SOOL_Array_Char *string_ptr); // return pointer to `data` field
@@ -30,6 +31,7 @@ SOOL_Array_Char SOOL_Memory_Array_Char_Init(const size_t capacity) {
 	string._data = (char *)calloc( (size_t)capacity, sizeof(char) );
 
 	string.Add = Array_Char_Add;
+	string.Append = Array_Char_Append;
 	string.Clear = Array_Char_Clear;
 	string.GetString = Array_Char_GetString;
 	string.SetString = Array_Char_SetString;
@@ -51,6 +53,24 @@ static void Array_Char_Add(SOOL_Array_Char *string_ptr, char c) {
 	}
 	string_ptr->_data[string_ptr->_info.add_index] = c;
 	string_ptr->_info.add_index++;
+
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static void Array_Char_Append(SOOL_Array_Char *string_ptr, const char *str) {
+
+	/* Iterate over whole string (each ends with a 0 */
+	while (*str) {
+
+		/* Check whether the string should be resized due to too small buffer */
+		if ( string_ptr->_info.capacity <= string_ptr->_info.total ) { 		// `<=` instead of `==` and `if` instead of `while` here just in case, SOOL_Array_Char acts as a circular buffer when using public functions only (not modifying its contents
+			Array_Char_Resize(string_ptr, string_ptr->_info.capacity + 1);
+		}
+
+		/* We're safe to add another character to the buffer */
+		Array_Char_Add(string_ptr, *str++); // pointer increment
+	}
 
 }
 

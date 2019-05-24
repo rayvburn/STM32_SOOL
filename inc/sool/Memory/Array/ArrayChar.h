@@ -23,7 +23,8 @@ struct _SOOL_Array_CharStruct {
 	char 						*_data;
 
 	void 	(*Add)(SOOL_Array_Char *string_ptr, char c);			// acts like a circular buffer
-	void 	(*SetString)(SOOL_Array_Char *string_ptr, const char *str);
+	void	(*Append)(SOOL_Array_Char *string_ptr, const char *str); // keeps adding a given string to the end of Array_Char but RESIZES the buffer as it becomes too small to store a given string
+	void 	(*SetString)(SOOL_Array_Char *string_ptr, const char *str); // if str is longer than Array_Char capacity then values from the start of the array will be overwritten
 	const char* 	(*GetString)(SOOL_Array_Char *string_ptr);
 	void 	(*Clear)(SOOL_Array_Char *string_ptr);
 	uint8_t (*Resize)(SOOL_Array_Char *string_ptr, const size_t);
