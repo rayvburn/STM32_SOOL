@@ -52,7 +52,7 @@ struct _SOOL_FSMStruct {
 	uint8_t (*GetCurrentState)(SOOL_FSM *fsm);						/* to be used in main's while(1) to choose proper handler */
 	uint32_t (*GetStateDuration)(SOOL_FSM *fsm);
 	uint8_t (*GetStateTransitionFlag)(SOOL_FSM *fsm); 				/* useful for handling events after state switch */
-	uint8_t (*IsTerminalConditionFulfilled)(SOOL_FSM *fsm, uint8_t predicate);
+	uint8_t (*IsTerminalConditionFulfilled)(SOOL_FSM *fsm, uint8_t predicate); /* this also check timing terminal condition which prevents calling `on-exit` action multiple times */
 
 };
 

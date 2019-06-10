@@ -126,13 +126,17 @@ static uint8_t FSM_IsTimingTerminalConditionFulfilled(SOOL_FSM *fsm) {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 /**
- * Checks whether state's terminal condition is fulfilled
+ * Checks whether state's terminal condition is fulfilled;
+ * Timing terminal condition is check to prevent calling On-Exit action multiple times
  * @param fsm
- * @param predicate - logically-and`ed set of flags (like: cond1 & cond2 & cond3)
- * @return 1 when terminal predicate is fulfilled
+ * @param predicate - logically-and`ed set of flags (like: cond1 && cond2 && cond3)
+ * @return 1 when terminal predicate is fulfilled AND(!) timing terminal condition is fulfilled
  */
 static uint8_t FSM_IsTerminalConditionFulfilled(SOOL_FSM *fsm, uint8_t predicate) {
-	if ( predicate ) { return (1); } else { return (0); }
+	if ( FSM_IsTimingTerminalConditionFulfilled(fsm) ) {
+		if ( predicate ) { return (1); } else { return (0); }
+	}
+	return (0);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
