@@ -9,9 +9,11 @@
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static void TimerBasic_Start(volatile SOOL_TimerBasic *timer);
-static void TimerBasic_Stop(volatile SOOL_TimerBasic *timer);
-static uint8_t TimerBasic_InterruptHandler(volatile SOOL_TimerBasic *timer);
+static void TimerBasic_Start(volatile SOOL_TimerBasic *timer_ptr);
+static void TimerBasic_Stop(volatile SOOL_TimerBasic *timer_ptr);
+static void TimerBasic_EnableNVIC(volatile SOOL_TimerBasic *timer_ptr);
+static void TimerBasic_DisableNVIC(volatile SOOL_TimerBasic *timer_ptr);
+static uint8_t TimerBasic_InterruptHandler(volatile SOOL_TimerBasic *timer_ptr);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -21,7 +23,8 @@ static uint8_t TimerBasic_InterruptHandler(volatile SOOL_TimerBasic *timer);
  * @param period - period (decremented value is loaded into TimeBaseInit structure)
  * @return
  */
-volatile SOOL_TimerBasic SOOL_Periph_TIM_TimerBasic_Init(TIM_TypeDef* TIMx, uint16_t prescaler, uint16_t period) {
+volatile SOOL_TimerBasic SOOL_Periph_TIM_TimerBasic_Init(TIM_TypeDef* TIMx, uint16_t prescaler,
+		uint16_t period, SOOL_Periph_TIM_IRQnType irqn_type) {
 
 	/* Object to be returned from the initializer */
 	volatile SOOL_TimerBasic timer;
@@ -44,17 +47,39 @@ volatile SOOL_TimerBasic SOOL_Periph_TIM_TimerBasic_Init(TIM_TypeDef* TIMx, uint
 	TIM_Cmd(TIMx, DISABLE);
 
 	NVIC_InitTypeDef nvic;
-	nvic.NVIC_IRQChannel = SOOL_Periph_TIM_GetIRQnType(TIMx);
+	nvic.NVIC_IRQChannel = SOOL_Periph_TIM_GetIRQnType(TIMx, irqn_type); // FIXME: wrong IRQn returned for TIM1
 	nvic.NVIC_IRQChannelPreemptionPriority = 0;
 	nvic.NVIC_IRQChannelSubPriority = 0;
-	nvic.NVIC_IRQChannelCmd = ENABLE;
+
+	/* What's tricky there - when ENABLE is set NVIC will immediately trigger interrupt
+	 * after NVIC_Init() call. The interrupt must have been handled by non (yet) existing
+	 * object which produces `infinite loop`.
+	 * SOLUTION: in IRQHandler namespace firstly initialize object's pointer to 0
+	 * and in ISR check whether the object has already been initialized and copied
+	 * to the IRQn namespace.
+	 * It will produce few interrupts which will not be handled but later on everything
+	 * will run fine.
+	 *
+	 * Example:
+	 * if ( (timer_basic_ptr != 0) && (timer_basic_ptr->_InterruptHandler(timer_basic_ptr)) ) {
+	 * }
+	 */
+	nvic.NVIC_IRQChannelCmd = DISABLE;
 	NVIC_Init(&nvic);
 
 	/* Save class' fields */
+	timer._setup.TIMx = TIMx;
+	timer._setup.NVIC_IRQ_channel = nvic.NVIC_IRQChannel;
+
+	/* Set class' methods */
 	timer.Start = TimerBasic_Start;
 	timer.Stop = TimerBasic_Stop;
-	timer._TIMx = TIMx;
+	timer.EnableNVIC = TimerBasic_EnableNVIC;
+	timer.DisableNVIC = TimerBasic_DisableNVIC;
 	timer._InterruptHandler = TimerBasic_InterruptHandler;
+
+	// IT_Update surely needs to be cleared when `NVIC_IRQChannelCmd == ENABLE`
+//	TIMx->SR = (uint16_t)~TIM_IT_Update;
 
 	return (timer);
 
@@ -62,30 +87,52 @@ volatile SOOL_TimerBasic SOOL_Periph_TIM_TimerBasic_Init(TIM_TypeDef* TIMx, uint
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static void TimerBasic_Start(volatile SOOL_TimerBasic *timer) {
+static void TimerBasic_Start(volatile SOOL_TimerBasic *timer_ptr) {
 	/* Enable the TIM Counter */
-	timer->_TIMx->CR1 |= TIM_CR1_CEN;
+	timer_ptr->_setup.TIMx->CR1 |= TIM_CR1_CEN;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static void TimerBasic_Stop(volatile SOOL_TimerBasic *timer) {
+static void TimerBasic_Stop(volatile SOOL_TimerBasic *timer_ptr) {
 	/* Disable the TIM Counter */
-	timer->_TIMx->CR1 &= (uint16_t)(~((uint16_t)TIM_CR1_CEN));
+	timer_ptr->_setup.TIMx->CR1 &= (uint16_t)(~((uint16_t)TIM_CR1_CEN));
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t TimerBasic_InterruptHandler(volatile SOOL_TimerBasic *timer) {
+static void TimerBasic_EnableNVIC(volatile SOOL_TimerBasic *timer_ptr) {
+
+	// from ST's `misc.c`
+	/* Enable the Selected IRQ Channels --------------------------------------*/
+    NVIC->ISER[timer_ptr->_setup.NVIC_IRQ_channel >> 0x05] =
+      (uint32_t)0x01 << (timer_ptr->_setup.NVIC_IRQ_channel & (uint8_t)0x1F);
+
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static void TimerBasic_DisableNVIC(volatile SOOL_TimerBasic *timer_ptr) {
+
+	// from ST's `misc.c`
+    /* Disable the Selected IRQ Channels -------------------------------------*/
+    NVIC->ICER[timer_ptr->_setup.NVIC_IRQ_channel >> 0x05] =
+      (uint32_t)0x01 << (timer_ptr->_setup.NVIC_IRQ_channel & (uint8_t)0x1F);
+
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static uint8_t TimerBasic_InterruptHandler(volatile SOOL_TimerBasic *timer_ptr) {
 
 	/* Check if update interrupt flag of the timer is set */
-	if (TIM_GetITStatus(timer->_TIMx, TIM_IT_Update) == RESET) {
+	if (TIM_GetITStatus(timer_ptr->_setup.TIMx, TIM_IT_Update) == RESET) {
 		// not this timer overflowed (different IRQn)
 		return (0);
 	}
 
 	/* Clear IT pending bit */
-	timer->_TIMx->SR = (uint16_t)~TIM_IT_Update; // TIM_ClearITPendingBit(timer->_TIMx, TIM_IT_Update);
+	timer_ptr->_setup.TIMx->SR = (uint16_t)~TIM_IT_Update; // TIM_ClearITPendingBit(timer->_TIMx, TIM_IT_Update);
 	return (1);
 
 }
