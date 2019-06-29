@@ -26,7 +26,7 @@ struct _SOOL_TimerInputCaptureStateStruct {
 struct _SOOL_TimerInputCaptureSetupStruct {
 	uint16_t TIM_IT_CCx; 		// channel compare ID
 	uint16_t TIM_FLAG_CCxOF;	// overcapture
-	uint16_t TIM_Channel_X;		// CCRx register content
+	uint16_t TIM_Channel_X;		// acquisition of the CCRx register content
 };
 
 /**
@@ -36,7 +36,7 @@ struct _SOOL_TimerInputCaptureSetupStruct {
 struct _SOOL_TimerInputCaptureStruct {
 
 	// base section --------------------------------------------------------
-	SOOL_TimerBasic tim_basic;
+	SOOL_TimerBasic base;
 
 	// derived section -----------------------------------------------------
 	struct _SOOL_TimerInputCaptureStateStruct _state;
@@ -44,6 +44,10 @@ struct _SOOL_TimerInputCaptureStruct {
 
 	void (*Start)(volatile SOOL_TimerInputCapture*);
 	void (*Stop)(volatile SOOL_TimerInputCapture*);
+
+	void (*ReinitIC)(volatile SOOL_TimerInputCapture*);
+	void (*DisableIC)(volatile SOOL_TimerInputCapture*);	// Disable InputCapture
+
 	uint16_t (*GetSavedCounterVal)(const volatile SOOL_TimerInputCapture*);
 	uint8_t (*_InterruptHandler)(volatile SOOL_TimerInputCapture*);
 
@@ -51,7 +55,9 @@ struct _SOOL_TimerInputCaptureStruct {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-extern volatile SOOL_TimerInputCapture SOOL_Periph_TIM_TimerInputCapture_Init(TIM_TypeDef* TIMx, uint16_t prescaler, uint16_t period);
+//extern volatile SOOL_TimerInputCapture SOOL_Periph_TIM_TimerInputCapture_Init(TIM_TypeDef* TIMx, uint16_t prescaler, uint16_t period);
+extern volatile SOOL_TimerInputCapture SOOL_Periph_TIM_TimerInputCapture_Init(TIM_TypeDef* TIMx,
+		uint16_t prescaler, uint16_t period, uint16_t channel, uint16_t ic_polarity);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
