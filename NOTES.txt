@@ -1,0 +1,2 @@
+o 	`private` fields of a `class` are marked with underscore `_` before the name, it is not recommended to operate on them directly in the infinite loop - instead of that use `class' methods`
+o 	`inheritance` is done by putting a base class inside derived class'es structure - because of that a `base` name inside a `class` structure is reserved; unfortunately base `class` methods access is via `.` operator (like base.{FIELD}) which is not very convenient for multi-level inheritance
