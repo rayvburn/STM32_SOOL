@@ -8,6 +8,9 @@
 #include <sool/Sensors/Sonar/Sonar.h>
 #include <sool/Peripherals/TIM/TimerInputCapture.h>
 
+// GPIO initialization
+#include <sool/Peripherals/GPIO/PinConfig_NoInt.h>
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 static uint8_t Sonar_StartMeasurement(volatile SOOL_Sonar *sonar_ptr);
@@ -32,7 +35,7 @@ static uint16_t Sonar_ConvertPulseTimeToCm(uint16_t timer_counter);
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 // helper - single timer for all sonars
-static typedef struct {
+typedef struct {
 	uint16_t		TIMEOUT_PRESCALER;
 	uint16_t		TIMEOUT_PERIOD;
 	uint16_t 		TIM_Channel_X;
@@ -66,6 +69,8 @@ volatile SOOL_Sonar SOOL_Sensor_Sonar_InitFull(uint16_t trig_pin, GPIO_TypeDef* 
 
 	/* Create input-event driven timer */
 	timer = SOOL_Periph_TIM_TimerInputCapture_Init(TIMx, prescaler_us, period_tout_dist, tim_channel, TIM_ICPolarity_BothEdge);
+
+	TIM_SetCompare1(TIMx, 10);
 
 	return (sonar);
 
@@ -121,14 +126,14 @@ static uint16_t Sonar_GetDistanceCm(const volatile SOOL_Sonar *sonar_ptr) {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 static void Sonar_ReinitTimer() {
-	timer = SOOL_Periph_TIM_TimerInputCapture_Init(timer.tim_basic._TIMx, timer_setup.TIMEOUT_PRESCALER,
+	timer = SOOL_Periph_TIM_TimerInputCapture_Init(timer.base._setup.TIMx, timer_setup.TIMEOUT_PRESCALER,
 						timer_setup.TIMEOUT_PERIOD, timer_setup.TIM_Channel_X, TIM_ICPolarity_BothEdge);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 static void Sonar_FreeTimer() {
-	TIM_DeInit(timer.tim_basic._TIMx);
+	TIM_DeInit(timer.base._setup.TIMx);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -208,10 +213,12 @@ static volatile SOOL_Sonar Sonar_InitializeClass(uint16_t trig_pin, GPIO_TypeDef
 	volatile SOOL_Sonar sonar;
 
 	// helper
-	SOOL_PinConfig_NoInt trig_cfg = SOOL_Periph_GPIO_PinConfig_Initialize_NoInt(trig_port, trig_pin, GPIO_Mode_Out_PP);
+//	SOOL_PinConfig_NoInt trig_cfg = SOOL_Periph_GPIO_PinConfig_Initialize_NoInt(trig_port, trig_pin, GPIO_Mode_Out_PP);
+//
+//	sonar._setup.trigger = SOOL_Effector_PinSwitch_Init(trig_cfg);
+//	sonar._setup.echo = SOOL_Periph_GPIO_PinConfig_Initialize_Int(echo_port, echo_pin, EXTI_Trigger_Rising_Falling);
+	// FIXME: PINS INITIALIZATION - which type to choose IN_FLOATING or AF_PP
 
-	sonar._setup.trigger = SOOL_Effector_PinSwitch_Init(trig_cfg);
-	sonar._setup.echo = SOOL_Periph_GPIO_PinConfig_Initialize_Int(echo_port, echo_pin, EXTI_Trigger_Rising_Falling);
 
 	sonar.DidTimeout = Sonar_DidTimeout;
 	sonar.GetDistanceCm = Sonar_GetDistanceCm;
@@ -226,7 +233,9 @@ static volatile SOOL_Sonar Sonar_InitializeClass(uint16_t trig_pin, GPIO_TypeDef
 	sonar.StartMeasurement = Sonar_StartMeasurement;
 
 	sonar._EXTI_InterruptHandler = Sonar_EXTI_InterruptHandler;
-	sonar._TIM_InterruptHandler = Sonar_TIM_InterruptHandler;
+	// TODO
+	sonar._TIM_OC_InterruptHandler;
+	sonar._TIM_IC_InterruptHandler;// = Sonar_TIM_InterruptHandler;
 
 	sonar.ReinitTimer = Sonar_ReinitTimer;
 	sonar.FreeTimer = Sonar_FreeTimer;

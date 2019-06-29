@@ -8,10 +8,9 @@
 #ifndef INC_SOOL_SENSORS_SONAR_SONAR_H_
 #define INC_SOOL_SENSORS_SONAR_SONAR_H_
 
-#include <sool/Peripherals/GPIO/PinConfig_Int.h>
-#include <sool/Peripherals/GPIO/PinConfig_NoInt.h>
 #include "stm32f10x_tim.h"
-
+#include <sool/Peripherals/GPIO/PinConfig_Int.h>	// Echo
+#include "sool/Effectors/PinSwitch/PinSwitch.h"		// Trigger
 //#include "stm32f10x.h"
 
 /// \brief HC-SR04 sonar range finder controller
@@ -85,7 +84,8 @@ struct _SOOL_SonarStruct {
 	void 		(*FreeTimer)(void);
 
 	uint8_t 	(*_EXTI_InterruptHandler)(volatile SOOL_Sonar*); 		// routine fired in a proper ISR (firstly it must check if interrupt has been triggered on sensor's EXTI line)
-	uint8_t 	(*_TIM_InterruptHandler)(volatile SOOL_Sonar*);
+	uint8_t 	(*_TIM_OC_InterruptHandler)(volatile SOOL_Sonar*);
+	uint8_t 	(*_TIM_IC_InterruptHandler)(volatile SOOL_Sonar*);
 
 };
 
