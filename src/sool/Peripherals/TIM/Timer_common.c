@@ -38,11 +38,31 @@ void SOOL_Periph_TIM_EnableAPBClock(TIM_TypeDef* TIMx) {
 
 }
 
-uint8_t SOOL_Periph_TIM_GetIRQnType(TIM_TypeDef* TIMx) {
+uint8_t SOOL_Periph_TIM_GetIRQnType(TIM_TypeDef* TIMx, SOOL_Periph_TIM_IRQnType irqn_type) {
 
 	/* Left only those which are supported by STM32F103x8 */
 
-	if (        TIMx == TIM1  ) {	return (TIM1_UP_IRQn);
+	if ( TIMx == TIM1  ) {
+
+		// further investigation is needed for TIM1
+		switch (irqn_type) {
+		case(SOOL_PERIPH_TIM_IRQ_UP):
+			return (TIM1_UP_IRQn);
+			break;
+		case(SOOL_PERIPH_TIM_IRQ_CC):
+			return (TIM1_CC_IRQn);
+			break;
+		case(SOOL_PERIPH_TIM_IRQ_BRK):
+			return (TIM1_BRK_IRQn);
+			break;
+		case(SOOL_PERIPH_TIM_IRQ_TRG_COM):
+			return (TIM1_TRG_COM_IRQn);
+			break;
+		default:
+			return (TIM1_UP_IRQn);
+			break;
+		}
+
 //	} else if ( TIMx == TIM8  ) {	return (TIM8_UP_IRQn);
 //	} else if ( TIMx == TIM9  ) { 	return (TIM1_BRK_TIM9_IRQn);
 //	} else if ( TIMx == TIM10 ) { 	return (TIM1_UP_TIM10_IRQn);
