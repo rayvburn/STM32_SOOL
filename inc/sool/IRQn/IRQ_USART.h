@@ -12,6 +12,9 @@
 /* USART_IRQ header file template */
 // ====================================================================================
 
+/* add header files */
+//#include <.h>
+
 /* add some Setter function to copy the objects here */
 extern void SOOL_IRQn_USART_SetObj (volatile void *obj_ptr);
 
