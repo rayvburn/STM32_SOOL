@@ -55,10 +55,10 @@ volatile SOOL_TimerBasic SOOL_Periph_TIM_TimerBasic_Init(TIM_TypeDef* TIMx, uint
 	 * after NVIC_Init() call. The interrupt must have been handled by non (yet) existing
 	 * object which produces `infinite loop`.
 	 * SOLUTION: in IRQHandler namespace firstly initialize object's pointer to 0
-	 * and in ISR check whether the object has already been initialized and copied
+	 * and then in ISR check whether the object has already been initialized and copied
 	 * to the IRQn namespace.
 	 * It will produce few interrupts which will not be handled but later on everything
-	 * will run fine.
+	 * will run fine - this applies only to debugging, in real-time work MCU will get stuck.
 	 *
 	 * Example:
 	 * if ( (timer_basic_ptr != 0) && (timer_basic_ptr->_InterruptHandler(timer_basic_ptr)) ) {

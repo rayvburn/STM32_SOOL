@@ -35,7 +35,7 @@ struct _SOOL_TimerBasicStruct {
 	/**
 	 * EnableNVIC can be called after timer's interrupt handler was placed in IRQHandler
 	 * function and when there is a certainty that all objects driven by timer interrupts
-	 * was already put in proper IRQHandlers too
+	 * were already put in proper IRQHandlers too
 	 * @param Pointer to SOOL_TimerBasic instance
 	 */
 	void (*EnableNVIC)(volatile SOOL_TimerBasic*);
