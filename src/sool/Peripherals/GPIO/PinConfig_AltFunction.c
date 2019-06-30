@@ -15,7 +15,7 @@ SOOL_PinConfig_AltFunction SOOL_Periph_GPIO_PinConfig_Initialize_AltFunction(GPI
 	SOOL_PinConfig_AltFunction af_config;
 
 	/* Check parameter correctness */
-	if ( gpio_mode != GPIO_Mode_AF_OD || gpio_mode != GPIO_Mode_AF_PP ) {
+	if ( gpio_mode != GPIO_Mode_AF_OD && gpio_mode != GPIO_Mode_AF_PP ) {
 		// wrong gpio_mode given
 		return (af_config);
 	}
