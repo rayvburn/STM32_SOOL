@@ -85,7 +85,7 @@ volatile SOOL_TimerInputCapture SOOL_Periph_TIM_TimerInputCapture_Init(TIM_TypeD
 	TIM_ITConfig(TIMx, tim_it_cc, ENABLE);
 
 	/* Save class' fields */
-	timer._setup.TIM_Channel_X = channel;
+	timer._setup.TIM_Channel_x = channel;
 	timer._setup.TIM_IT_CCx = tim_it_cc;
 	timer._setup.TIM_FLAG_CCxOF = tim_flag_cc_of;
 
@@ -149,7 +149,7 @@ static uint8_t SOOL_TimerInputCapture_InterruptHandler(volatile SOOL_TimerInputC
 
 	/* Update Timer's state */
 	//tim_ic_ptr->_state.transition_counter_val = SOOL_TimerInputCapture_GetCaptureRegisterValue(tim_ic_ptr);
-	tim_ic_ptr->_state.transition_counter_val = SOOL_Periph_TIM_GetCCR(tim_ic_ptr->base._setup.TIMx, tim_ic_ptr->_setup.TIM_Channel_X);
+	tim_ic_ptr->_state.transition_counter_val = SOOL_Periph_TIM_GetCCR(tim_ic_ptr->base._setup.TIMx, tim_ic_ptr->_setup.TIM_Channel_x);
 	tim_ic_ptr->_state.transition_detected = 1;
 
 	/* Clear the overcapture flag */

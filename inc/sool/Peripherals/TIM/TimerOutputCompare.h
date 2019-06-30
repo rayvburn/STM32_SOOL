@@ -23,12 +23,14 @@ struct _SOOL_TimerOutputCompareStateStruct {
 struct _SOOL_TimerOutputCompareSetupStruct {
 	TIM_OCInitTypeDef oc_config;// initializing structure
 	uint16_t TIM_IT_CCx; 		// channel compare ID
-	uint16_t TIM_Channel_X;		// acquisition of the CCRx register content
+	uint16_t TIM_Channel_x;		// acquisition of the CCRx register content
 };
 
 /**
  * Composition of SOOL_TimerBasic and SOOL_TimerOutputCompare class' contents
- * Unluckily there is no way to access base `class` members directly
+ * Unluckily there is no way to access base `class` members directly.
+ * IMPORTANT: in case of derived classes which are interrupt-related
+ * one must remember to call base's interrupt handlers too
  */
 struct _SOOL_TimerOutputCompareStruct {
 
@@ -56,7 +58,7 @@ struct _SOOL_TimerOutputCompareStruct {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-extern volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_FullInit(TIM_TypeDef* TIMx,
+extern volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_InitFull(TIM_TypeDef* TIMx,
 		uint16_t prescaler, uint16_t period, uint16_t channel,
 		uint16_t oc_mode, uint16_t pulse,
 		uint16_t idle_state, uint16_t polarity, uint16_t output_state,

@@ -51,7 +51,7 @@ static volatile SOOL_TimerOutputCompare SOOL_TimerOC_InitializeClass(TIM_TypeDef
    	   	  @note This parameter is valid only for TIM1 and TIM8.
  * @return
  */
-volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_FullInit(TIM_TypeDef* TIMx,
+volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_InitFull(TIM_TypeDef* TIMx,
 		uint16_t prescaler, uint16_t period, uint16_t channel,
 		uint16_t oc_mode, uint16_t pulse,
 		uint16_t idle_state, uint16_t polarity, uint16_t output_state,
@@ -140,14 +140,14 @@ static void SOOL_TimerOC_Stop(volatile SOOL_TimerOutputCompare *tim_oc_ptr) {
 static void SOOL_TimerOC_SetPulse(volatile SOOL_TimerOutputCompare *tim_oc_ptr, uint16_t pulse) {
 	// for PWM pulse-width adjustments
 	/* Set the Capture Compare Register value */
-	SOOL_Periph_TIM_SetCCR(tim_oc_ptr->base._setup.TIMx, tim_oc_ptr->_setup.TIM_Channel_X, pulse);
+	SOOL_Periph_TIM_SetCCR(tim_oc_ptr->base._setup.TIMx, tim_oc_ptr->_setup.TIM_Channel_x, pulse);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 static void SOOL_TimerOC_ReinitOC(volatile SOOL_TimerOutputCompare *tim_oc_ptr) {
 
-	switch (tim_oc_ptr->_setup.TIM_Channel_X) {
+	switch (tim_oc_ptr->_setup.TIM_Channel_x) {
 
 	case(TIM_Channel_1):
 		TIM_OC1Init(tim_oc_ptr->base._setup.TIMx, &tim_oc_ptr->_setup.oc_config);
@@ -181,7 +181,7 @@ static void SOOL_TimerOC_DisableOC(volatile SOOL_TimerOutputCompare *tim_oc_ptr)
 
 	// some bits are writable only when channel is OFF
 	/* Disable the Channel x: Reset the CCxE Bit */
-	switch (tim_oc_ptr->_setup.TIM_Channel_X) {
+	switch (tim_oc_ptr->_setup.TIM_Channel_x) {
 
 	case(TIM_Channel_1):
 		tim_oc_ptr->base._setup.TIMx->CCER &= (uint16_t)(~((uint16_t)TIM_CCER_CC1E));
@@ -216,8 +216,7 @@ static uint8_t SOOL_TimerOC_InterruptHandler(volatile SOOL_TimerOutputCompare *t
 	 * 		o check whether OC channel is enabled
 	 * 		o check IT flag
 	 */
-
-	if ( !SOOL_Periph_TIM_IsCaptureCompareChannelEnabled(tim_oc_ptr->base._setup.TIMx, tim_oc_ptr->_setup.TIM_Channel_X)
+	if ( !SOOL_Periph_TIM_IsCaptureCompareChannelEnabled(tim_oc_ptr->base._setup.TIMx, tim_oc_ptr->_setup.TIM_Channel_x)
 		 || TIM_GetITStatus(tim_oc_ptr->base._setup.TIMx, tim_oc_ptr->_setup.TIM_IT_CCx) == RESET)
 	{
 		// nothing to do (different IRQn or another flag)
@@ -298,7 +297,7 @@ static volatile SOOL_TimerOutputCompare SOOL_TimerOC_InitializeClass(TIM_TypeDef
 
 	/* Save class' fields */
 	timer._setup.oc_config = tim_oc;
-	timer._setup.TIM_Channel_X = channel;
+	timer._setup.TIM_Channel_x = channel;
 	timer._setup.TIM_IT_CCx = tim_it_cc;
 
 	/* Save base */

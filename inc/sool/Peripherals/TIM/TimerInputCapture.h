@@ -26,12 +26,14 @@ struct _SOOL_TimerInputCaptureStateStruct {
 struct _SOOL_TimerInputCaptureSetupStruct {
 	uint16_t TIM_IT_CCx; 		// channel compare ID
 	uint16_t TIM_FLAG_CCxOF;	// overcapture
-	uint16_t TIM_Channel_X;		// acquisition of the CCRx register content
+	uint16_t TIM_Channel_x;		// acquisition of the CCRx register content
 };
 
 /**
  * Composition of SOOL_TimerBasic and SOOL_TimerInputCapture class' contents
- * Unluckily there is no way to access base `class` members directly
+ * Unluckily there is no way to access base `class` members directly.
+ * IMPORTANT: in case of derived classes which are interrupt-related
+ * one must remember to call base's interrupt handlers too
  */
 struct _SOOL_TimerInputCaptureStruct {
 
