@@ -20,7 +20,7 @@ static uint8_t FSM_IsTerminalConditionFulfilled(SOOL_FSM *fsm, uint8_t predicate
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-SOOL_FSM SOOL_Workflow_FSM_Init(uint8_t init_state_id, uint8_t execute_on_entry, uint32_t min_duration_ms) {
+SOOL_FSM SOOL_Workflow_FSM_Init(uint8_t init_state_id, FunctionalState execute_on_entry, uint32_t min_duration_ms) {
 
 	/* Object to be returned */
 	SOOL_FSM fsm;
@@ -30,7 +30,7 @@ SOOL_FSM SOOL_Workflow_FSM_Init(uint8_t init_state_id, uint8_t execute_on_entry,
 	fsm._state.min_duration = min_duration_ms;
 	fsm._state.current = init_state_id;
 	fsm._state.last = init_state_id;
-	(execute_on_entry > 0) ? (fsm._state.transition_flag = 1) : (fsm._state.transition_flag = 0);
+	(execute_on_entry == ENABLE) ? (fsm._state.transition_flag = 1) : (fsm._state.transition_flag = 0);
 
 	/* Set methods pointers */
 	fsm.GetCurrentState = FSM_GetCurrentState;

@@ -65,7 +65,7 @@ struct _SOOL_FSMStruct {
  * @param min_duration_ms - minimum duration of a state (in milliseconds)
  * @return FSM object
  */
-extern SOOL_FSM SOOL_Workflow_FSM_Init(uint8_t init_state_id, uint8_t execute_on_entry, uint32_t min_duration_ms);
+extern SOOL_FSM SOOL_Workflow_FSM_Init(uint8_t init_state_id, FunctionalState execute_on_entry, uint32_t min_duration_ms);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
