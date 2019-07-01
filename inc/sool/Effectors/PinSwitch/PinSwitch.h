@@ -11,6 +11,7 @@
 // - - - - - - - - - - -
 
 #include <sool/Peripherals/GPIO/PinConfig_NoInt.h>
+#include <sool/Peripherals/GPIO/PinConfig_AltFunction.h>
 
 #include "stm32f10x.h"
 
@@ -29,7 +30,8 @@ struct _SOOL_PinSwitchStruct {
 
 // - - - - - - - - - - -
 
-SOOL_PinSwitch SOOL_Effector_PinSwitch_Init(SOOL_PinConfig_NoInt setup);
+extern SOOL_PinSwitch SOOL_Effector_PinSwitch_Init(SOOL_PinConfig_NoInt setup);
+extern SOOL_PinSwitch SOOL_Effector_PinSwitch_InitAlt(SOOL_PinConfig_AltFunction setup);
 
 // - - - - - - - - - - -
 
