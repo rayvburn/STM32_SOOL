@@ -27,6 +27,7 @@ struct _SOOL_TimerInputCaptureSetupStruct {
 	uint16_t TIM_IT_CCx; 		// channel compare ID
 	uint16_t TIM_FLAG_CCxOF;	// overcapture
 	uint16_t TIM_Channel_x;		// acquisition of the CCRx register content
+	uint8_t NVIC_IRQ_channel;
 };
 
 /**
@@ -50,6 +51,15 @@ struct _SOOL_TimerInputCaptureStruct {
 	void (*ReinitIC)(volatile SOOL_TimerInputCapture*);
 	void (*DisableIC)(volatile SOOL_TimerInputCapture*);	// Disable InputCapture
 
+	/**
+	 * EnableNVIC can be called after timer's interrupt handler was placed in IRQHandler
+	 * function and when there is a certainty that all objects driven by timer interrupts
+	 * were already put in proper IRQHandlers too
+	 * @param Pointer to SOOL_TimerOutputCompare instance
+	 */
+	void (*EnableNVIC)(volatile SOOL_TimerInputCapture*);
+	void (*DisableNVIC)(volatile SOOL_TimerInputCapture*);
+
 	uint16_t (*GetSavedCounterVal)(const volatile SOOL_TimerInputCapture*);
 	uint8_t (*_InterruptHandler)(volatile SOOL_TimerInputCapture*);
 
@@ -57,9 +67,9 @@ struct _SOOL_TimerInputCaptureStruct {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-//extern volatile SOOL_TimerInputCapture SOOL_Periph_TIM_TimerInputCapture_Init(TIM_TypeDef* TIMx, uint16_t prescaler, uint16_t period);
 extern volatile SOOL_TimerInputCapture SOOL_Periph_TIM_TimerInputCapture_Init(TIM_TypeDef* TIMx,
-		uint16_t prescaler, uint16_t period, uint16_t channel, uint16_t ic_polarity);
+		uint16_t prescaler, uint16_t period, FunctionalState enable_int_update,
+		uint16_t channel, uint16_t ic_polarity, FunctionalState enable_int_cc);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 

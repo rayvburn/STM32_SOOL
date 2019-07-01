@@ -10,13 +10,19 @@
 
 static void SOOL_TimerInputCapture_Start(volatile SOOL_TimerInputCapture *tim_ic_ptr);
 static void SOOL_TimerInputCapture_Stop(volatile SOOL_TimerInputCapture *tim_ic_ptr);
+
+static void SOOL_TimerInputCapture_EnableNVIC(volatile SOOL_TimerInputCapture *tim_ic_ptr);
+static void SOOL_TimerInputCapture_DisableNVIC(volatile SOOL_TimerInputCapture *tim_ic_ptr);
+
 static uint16_t SOOL_TimerInputCapture_GetSavedCounterVal(const volatile SOOL_TimerInputCapture *tim_ic_ptr);
 static uint8_t SOOL_TimerInputCapture_InterruptHandler(volatile SOOL_TimerInputCapture *tim_ic_ptr);
 
-// helper
-static uint16_t SOOL_TimerInputCapture_GetCaptureRegisterValue(const volatile SOOL_TimerInputCapture *tim_ic_ptr);
-
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+// TODO:
+///* TIM4_CH2 pin (PB.07) configuration */
+//GPIO_InitStructure.GPIO_Pin = GPIO_Pin_7;
+//GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 
 /**
  * SOOL_TimerInputCapture's initializer, this `class` uses SOOL_TimerBasic `class` as a base
@@ -25,17 +31,20 @@ static uint16_t SOOL_TimerInputCapture_GetCaptureRegisterValue(const volatile SO
  * @param TIMx: TIMx where x can be 1 to 17 to select the TIM peripheral.
  * @param prescaler: (-1) Specifies the prescaler value used to divide the TIM clock.
  * @param period: (-1) Specifies the period value to be loaded into the active Auto-Reload Register at the next update event.
+ * @param enable_int_update: if true TIM_IT_Update is enabled
  * @param channel: Specifies the TIM channel. This parameter can be a value of @ref TIM_Channel
  * @param ic_polarity: Specifies the active edge of the input signal. This parameter can be a value of @ref TIM_Input_Capture_Polarity
+ * @param enable_int_cc: if true TIM_IT_CCx is enabled
  * @return SOOL_TimerInputCapture `class` instance
  * @note prescaler and period parameters must be a number between 0x0000 and 0xFFFF.
  */
 volatile SOOL_TimerInputCapture SOOL_Periph_TIM_TimerInputCapture_Init(TIM_TypeDef* TIMx,
-		uint16_t prescaler, uint16_t period, uint16_t channel, uint16_t ic_polarity) {
+		uint16_t prescaler, uint16_t period, FunctionalState enable_int_update,
+		uint16_t channel, uint16_t ic_polarity, FunctionalState enable_int_cc) {
 
 	/* TimerBasic `constructor` - time base must be configured and basic
 	 * timer activity must be run to allow input capture mode work properly */
-	volatile SOOL_TimerBasic tim_basic = SOOL_Periph_TIM_TimerBasic_Init(TIMx, prescaler, period, SOOL_PERIPH_TIM_IRQ_CC);
+	volatile SOOL_TimerBasic tim_basic = SOOL_Periph_TIM_TimerBasic_Init(TIMx, prescaler, period, enable_int_update);
 
 	/* Object to be returned from the initializer */
 	volatile SOOL_TimerInputCapture timer;
@@ -81,13 +90,32 @@ volatile SOOL_TimerInputCapture SOOL_Periph_TIM_TimerInputCapture_Init(TIM_TypeD
 	tim_ic.TIM_ICSelection = TIM_ICSelection_DirectTI; // 'remapping' possible
 	TIM_ICInit(TIMx, &tim_ic);
 
+	/* Configure NVIC if needed */
+	NVIC_InitTypeDef nvic;
+	nvic.NVIC_IRQChannel = SOOL_Periph_TIM_GetIRQnType(TIMx, SOOL_PERIPH_TIM_IRQ_CC); // for safety moved outside `if`
+
+	if ( enable_int_cc == ENABLE ) {
+
+		nvic.NVIC_IRQChannelPreemptionPriority = 0;
+		nvic.NVIC_IRQChannelSubPriority = 0;
+
+		/* Some useful notes in Base class */
+		nvic.NVIC_IRQChannelCmd = DISABLE;
+		NVIC_Init(&nvic);
+
+		/* IT_Update surely needs to be cleared when `NVIC_IRQChannelCmd == ENABLE` */
+		//TIMx->SR = (uint16_t)~TIM_IT_Update;
+
+	}
+
 	/* Enable interrupts */
-	TIM_ITConfig(TIMx, tim_it_cc, ENABLE);
+	TIM_ITConfig(TIMx, tim_it_cc, enable_int_cc);
 
 	/* Save class' fields */
 	timer._setup.TIM_Channel_x = channel;
 	timer._setup.TIM_IT_CCx = tim_it_cc;
 	timer._setup.TIM_FLAG_CCxOF = tim_flag_cc_of;
+	timer._setup.NVIC_IRQ_channel = nvic.NVIC_IRQChannel;
 
 	/* Save base */
 	timer.base = tim_basic;
@@ -99,6 +127,11 @@ volatile SOOL_TimerInputCapture SOOL_Periph_TIM_TimerInputCapture_Init(TIM_TypeD
 	/* Set function pointers */
 	timer.Start = SOOL_TimerInputCapture_Start;
 	timer.Stop = SOOL_TimerInputCapture_Stop;
+	// TODO
+	//timer.ReinitIC
+	//timer.DisableIC
+	timer.EnableNVIC = SOOL_TimerInputCapture_EnableNVIC;
+	timer.DisableNVIC = SOOL_TimerInputCapture_DisableNVIC;
 	timer.GetSavedCounterVal = SOOL_TimerInputCapture_GetSavedCounterVal;
 	timer._InterruptHandler = SOOL_TimerInputCapture_InterruptHandler;
 
@@ -127,6 +160,18 @@ static void SOOL_TimerInputCapture_Stop(volatile SOOL_TimerInputCapture *tim_ic_
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+static void SOOL_TimerInputCapture_EnableNVIC(volatile SOOL_TimerInputCapture *tim_ic_ptr) {
+	SOOL_Periph_NVIC_Enable(tim_ic_ptr->_setup.NVIC_IRQ_channel);
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static void SOOL_TimerInputCapture_DisableNVIC(volatile SOOL_TimerInputCapture *tim_ic_ptr) {
+	SOOL_Periph_NVIC_Disable(tim_ic_ptr->_setup.NVIC_IRQ_channel);
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 static uint16_t SOOL_TimerInputCapture_GetSavedCounterVal(const volatile SOOL_TimerInputCapture *tim_ic_ptr) {
 	return (tim_ic_ptr->_state.transition_counter_val);
 }
@@ -147,9 +192,11 @@ static uint8_t SOOL_TimerInputCapture_InterruptHandler(volatile SOOL_TimerInputC
 	 * the flag and before reading the data.
 	 */
 
+	// FIXME: check whether IC is enabled
+
 	/* Update Timer's state */
 	//tim_ic_ptr->_state.transition_counter_val = SOOL_TimerInputCapture_GetCaptureRegisterValue(tim_ic_ptr);
-	tim_ic_ptr->_state.transition_counter_val = SOOL_Periph_TIM_GetCCR(tim_ic_ptr->base._setup.TIMx, tim_ic_ptr->_setup.TIM_Channel_x);
+	tim_ic_ptr->_state.transition_counter_val = SOOL_Periph_TIMCompare_GetCCR(tim_ic_ptr->base._setup.TIMx, tim_ic_ptr->_setup.TIM_Channel_x);
 	tim_ic_ptr->_state.transition_detected = 1;
 
 	/* Clear the overcapture flag */
@@ -162,25 +209,3 @@ static uint8_t SOOL_TimerInputCapture_InterruptHandler(volatile SOOL_TimerInputC
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-//static uint16_t SOOL_TimerInputCapture_GetCaptureRegisterValue(const volatile SOOL_TimerInputCapture *tim_ic_ptr) {
-//
-//	switch (tim_ic_ptr->_setup.TIM_Channel_X) {
-//
-//	case(TIM_Channel_1):
-//		return (tim_ic_ptr->tim_basic._TIMx->CCR1);
-//		break;
-//	case(TIM_Channel_2):
-//		return (tim_ic_ptr->tim_basic._TIMx->CCR2);
-//		break;
-//	case(TIM_Channel_3):
-//		return (tim_ic_ptr->tim_basic._TIMx->CCR3);
-//		break;
-//	case(TIM_Channel_4):
-//		return (tim_ic_ptr->tim_basic._TIMx->CCR4);
-//		break;
-//	default:
-//		return (0);
-//	}
-//
-//}
