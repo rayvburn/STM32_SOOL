@@ -46,7 +46,17 @@ struct _SOOL_TimerBasicStruct {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-extern volatile SOOL_TimerBasic SOOL_Periph_TIM_TimerBasic_Init(TIM_TypeDef* TIMx, uint16_t prescaler, uint16_t period, SOOL_Periph_TIM_IRQnType irqn_type);
+/**
+ * A generic timer which supports only update interrupts; initializes time base,
+ * does NOT enable the TIMx peripheral
+ * @param TIMx - for STM32F103C8T6 it may be TIM1, TIM2, TIM3 or TIM4
+ * @param prescaler - clock divider (decremented value is loaded into TimeBaseInit structure)
+ * @param period - period (decremented value is loaded into TimeBaseInit structure)
+ * @param enable_int_update - specifies whether to enable TIM_IT_Update interrupt for TIMx
+ * @return SOOL_TimerBasic instance
+ */
+extern volatile SOOL_TimerBasic SOOL_Periph_TIM_TimerBasic_Init(TIM_TypeDef* TIMx, uint16_t prescaler,
+		uint16_t period, FunctionalState enable_int_update);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
