@@ -51,9 +51,30 @@ struct _SOOL_TimerOnePulseStruct {
 //	struct _SOOL_TimerOnePulseStateStruct _state;
 	struct _SOOL_TimerOnePulseSetupStruct _setup;
 
+	/**
+	 * Does not start counter
+	 * Does not call Prepare() internally
+	 * @param
+	 */
 	void (*EnableOPMode)(volatile SOOL_TimerOnePulse*);
+
+	/**
+	 * Does not restart the counter
+	 * @param
+	 */
 	void (*DisableOPMode)(volatile SOOL_TimerOnePulse*);
 
+	/**
+	 * Changes trig_immediately flag
+	 * @param
+	 * @param
+	 */
+	void (*SetImmediateStart)(volatile SOOL_TimerOnePulse*, FunctionalState);
+
+	/**
+	 * Prepares CNT (counter) value according to TIM_Period (TIMx_ARR), changes TIMx_CCRy (delay) too
+	 * @param
+	 */
 	void (*Prepare)(volatile SOOL_TimerOnePulse*);
 
 	/**
