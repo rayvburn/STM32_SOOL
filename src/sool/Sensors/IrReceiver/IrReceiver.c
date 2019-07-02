@@ -28,23 +28,26 @@ volatile SOOL_IrReceiver SOOL_Sensor_IrReceiver_Init(SOOL_PinConfig_Int setup) {
 
 	// setup
 //	obj._setup = setup; // infinite loop?
-	obj._setup.exti.line = setup.exti.line;
-	obj._setup.exti.setup = setup.exti.setup;
-	obj._setup.gpio.pin = setup.gpio.pin;
-	obj._setup.gpio.port = setup.gpio.port;
-	obj._setup.nvic.irqn = setup.nvic.irqn;
-	obj._setup.nvic.setup = setup.nvic.setup;
-	obj._setup.exti.pin_src = setup.exti.pin_src;
-	obj._setup.exti.port_src = setup.exti.port_src;
+	/*
+	obj.base.exti.line = setup.exti.line;
+	obj.base.exti.setup = setup.exti.setup;
+	obj.base.gpio.pin = setup.gpio.pin;
+	obj.base.gpio.port = setup.gpio.port;
+	obj.base.nvic.irqn = setup.nvic.irqn;
+	obj.base.nvic.setup = setup.nvic.setup;
+	obj.base.exti.pin_src = setup.exti.pin_src;
+	obj.base.exti.port_src = setup.exti.port_src;
+	*/
+	obj.base = setup;
 
 	// state init
 	obj._state.last_edge_time = 0;
 	obj._state.last_state_int = 1; // the sensor is active low
 	obj._state.received_flag = 0;
 
-	// interrupt-switching functions
-	obj.SetExtiState = SOOL_Periph_GPIO_PinConfig_ExtiSwitch;
-	obj.SetNvicState = SOOL_Periph_GPIO_PinConfig_NvicSwitch;
+//	// interrupt-switching functions
+//	obj.SetExtiState = SOOL_Periph_GPIO_PinConfig_ExtiSwitch;
+//	obj.SetNvicState = SOOL_Periph_GPIO_PinConfig_NvicSwitch;
 
 	// other functions
 	obj.GetCurrentState = IrReceiver_GetCurrentState;
@@ -68,7 +71,7 @@ static uint8_t IrReceiver_GetReceptionFlag(volatile SOOL_IrReceiver *ir_ptr) {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 static uint8_t IrReceiver_GetCurrentState(const volatile SOOL_IrReceiver *ir_ptr) {
-	return (GPIO_ReadInputDataBit(ir_ptr->_setup.gpio.port, ir_ptr->_setup.gpio.pin));
+	return (GPIO_ReadInputDataBit(ir_ptr->base._gpio.port, ir_ptr->base._gpio.pin));
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -93,17 +96,17 @@ static uint8_t IrReceiver_IsStateStable(const volatile SOOL_IrReceiver *ir_ptr, 
 
 static uint8_t IrReceiver_InterruptHandler(volatile SOOL_IrReceiver *ir_ptr) {
 
-	if ( EXTI_GetITStatus(ir_ptr->_setup.exti.line) == RESET ) {
-		// interrupt request on different EXTI Line
-		return (0);
-	}
+//	if ( EXTI_GetITStatus(ir_ptr->base._exti.setup.EXTI_Line) == RESET ) {
+//		// interrupt request on different EXTI Line
+//		return (0);
+//	}
 
-	// clear flag
-	EXTI_ClearITPendingBit( ir_ptr->_setup.exti.line );
+//	// clear flag
+//	EXTI_ClearITPendingBit( ir_ptr->base._exti.setup.EXTI_Line );
 
 	// process interrupt handler
 	ir_ptr->_state.last_edge_time = SOOL_Periph_TIM_SysTick_GetMillis();
-	ir_ptr->_state.last_state_int = GPIO_ReadInputDataBit(ir_ptr->_setup.gpio.port, ir_ptr->_setup.gpio.pin);
+	ir_ptr->_state.last_state_int = GPIO_ReadInputDataBit(ir_ptr->base._gpio.port, ir_ptr->base._gpio.pin);
 
 	// set received flag only when input in low state (sensor is active low)
 	if ( ir_ptr->_state.last_state_int == 0 ) {
