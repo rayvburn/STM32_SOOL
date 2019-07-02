@@ -47,7 +47,7 @@ extern void SOOL_Periph_GPIO_SetBits(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin);
   *   This parameter can be any combination of GPIO_Pin_x where x can be (0..15).
   * @retval None
   */
-extern void GPIO_ResetBits(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin);
+extern void SOOL_Periph_GPIO_ResetBits(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin);
 
 
 #endif /* INC_SOOL_PERIPHERALS_GPIO_GPIO_COMMON_H_ */
