@@ -25,7 +25,7 @@ typedef struct _SOOL_TimerOnePulseStruct SOOL_TimerOnePulse;
 struct _SOOL_TimerOnePulseSetupStruct {
 
 	uint16_t delay_time;
-	FunctionalState trig_immediately;
+	uint8_t trig_immediately;
 
 };
 
@@ -67,7 +67,8 @@ struct _SOOL_TimerOnePulseStruct {
 	void (*SetImmediateStart)(volatile SOOL_TimerOnePulse*, FunctionalState);
 
 	/**
-	 * Prepares CNT (counter) value according to TIM_Period (TIMx_ARR), changes TIMx_CCRy (delay) too
+	 * Prepares CNT (counter) value according to TIM_Period (TIMx_ARR), changes TIMx_CCRy (delay) too.
+	 * Useful in non-slave mode.
 	 * @param
 	 */
 	void (*Prepare)(volatile SOOL_TimerOnePulse*);
@@ -75,7 +76,6 @@ struct _SOOL_TimerOnePulseStruct {
 	/**
 	 * Calls few `class` functions and generates pulse in a typical way (`wrapper`).
 	 * Timer's NVIC channel needs to be enabled before.
-
 	 * @param
 	 */
 	void (*GeneratePulse)(volatile SOOL_TimerOnePulse*);

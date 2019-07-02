@@ -26,19 +26,31 @@ static volatile SOOL_TimerOnePulse SOOL_TimerOP_InitiatizeClass(volatile SOOL_Ti
 		uint16_t delay_time, FunctionalState trig_immediately,
 		FunctionalState enable_slave_mode, uint16_t slave_mode, uint16_t input_trigger);
 
-static void SOOL_Periph_TIMCompare_ForcedOCInit(volatile SOOL_TimerOnePulse *timer_op_ptr);
+// DEPRECATED helper, may be useful when very fast output change must be generated (without tDELAY),
+//			  but needs manual state change (toggle) on UPDT interrupt
+//static void SOOL_Periph_TIMCompare_ForcedOCInit(volatile SOOL_TimerOnePulse *timer_op_ptr);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-// works with or without Update (TimerBasic) and CC (TimerOutputCompare) interrupts enabled
-// @note Counter stops after each UEV (Update event, TIM_IT_Update flag setting) - needs to be started again (from base class for example)
-// @note DEPRECATED Calls EnableOPMode and Prepare internally
-// @note See Fig. 92 from RM0008, tPULSE is defined by (TIMx_ARR - TIMx_CCR1)
-//       which is symbolically equal to (TIM_Period - TIM_Pulse)
-// @note Generating the waveform can be done in *output compare mode* or *PWM mode*
-// @note In datasheet they say that there is some limitation related to tDELAY (peripheral's inability to generate pulse
-// 	     on next clock cycle. It does occur indeed (at least with counter incremented each microsecond) so tDELAY
-//		 given in `constructor` is internally incremented (by 1).
+/**
+ * Fully hardware-based single pulse generator.
+ * Works with or without Update (TimerBasic) and CC (TimerOutputCompare) interrupts enabled.
+ * Generating the waveform can be done in *output compare mode* or *PWM mode* (beware of that when initializing SOOL_TimerOutputCompare).
+ *
+ * @param timer_oc_ptr - SOOL_TimerOutputCompare instance which was already initialized (returned from _Init() function)
+ * @param delay_time - additional delay (makes pulse a little longer), value incremented internally (by 1)
+ * @param trig_immediately - when true counter is set to (FullCounterCYCLE - tPULSE - tDELAY - 2) before each pulse;
+ *                           when false one will wait for a full timer cycle from 0 to overflow until pulse generation
+ * @return SOOL_TimerOnePulse instance
+ *
+ * @note In datasheet they say that there is some limitation related to tDELAY (peripheral's inability to generate pulse
+ *     	 on next clock cycle. It does occur indeed (at least with counter incremented each microsecond) so tDELAY
+ *		 given in `constructor` is internally incremented (by 1).
+ * @note Counter stops after each UEV (Update event, TIM_IT_Update flag setting) - needs to be started
+ *       again (via base class' Start() for example or use RestorePrevMode()).
+ * @note See Fig. 92 from RM0008, tPULSE is defined by (TIMx_ARR - TIMx_CCR1)
+ * 		 which is symbolically equal to (TIM_Period - TIM_Pulse)
+ */
 volatile SOOL_TimerOnePulse SOOL_Periph_TIM_TimerOnePulse_Init(volatile SOOL_TimerOutputCompare *timer_oc_ptr,
 		uint16_t delay_time, FunctionalState trig_immediately) {
 
@@ -52,7 +64,17 @@ volatile SOOL_TimerOnePulse SOOL_Periph_TIM_TimerOnePulse_Init(volatile SOOL_Tim
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-// TODO: slave mode was not tested at all
+/**
+ *
+ * Slave mode is not tested at all.
+ * For details see @ref SOOL_Periph_TIM_TimerOnePulse_Init.
+ * @param timer_oc_ptr
+ * @param delay_time
+ * @param trig_immediately
+ * @param slave_mode
+ * @param input_trigger
+ * @return
+ */
 volatile SOOL_TimerOnePulse SOOL_Periph_TIM_TimerOnePulse_InitSlave(volatile SOOL_TimerOutputCompare *timer_oc_ptr,
 		uint16_t delay_time, FunctionalState trig_immediately,
 		uint16_t slave_mode, uint16_t input_trigger) {
@@ -68,19 +90,14 @@ volatile SOOL_TimerOnePulse SOOL_Periph_TIM_TimerOnePulse_InitSlave(volatile SOO
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 static void SOOL_TimerOP_SetImmediateStart(volatile SOOL_TimerOnePulse *timer_op_ptr, FunctionalState state) {
-	timer_op_ptr->_setup.trig_immediately = state;
+	timer_op_ptr->_setup.trig_immediately = (uint8_t)state;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-// useful only in non-slave mode
 static void SOOL_TimerOP_Prepare(volatile SOOL_TimerOnePulse *timer_op_ptr) {
 
-//	// is it needed?
-//	SOOL_Periph_TIMCompare_DisableChannel(timer_op_ptr->base.base._setup.TIMx,
-//										  timer_op_ptr->base._setup.TIM_Channel_x);
-
-	// ********************
+	// Some info from reference manual
 	/*
 	 * A pulse can be correctly generated only if the compare value is different from the counter
 	 * initial value. Before starting (when the timer is waiting for the trigger), the configuration must
@@ -89,12 +106,11 @@ static void SOOL_TimerOP_Prepare(volatile SOOL_TimerOnePulse *timer_op_ptr) {
 	 * 	o In downcounting: CNT > CCRx
 	 * ***
 	 * NOTE: upcounting is default (hard-coded) mode for TimerBasic (base class of TimerOC class)
-	 */
-	/*
+	 *
 	 * The OPM waveform is defined by writing the compare registers (taking into account the
 	 * clock frequency and the counter prescaler).
 	 */
-	// ********************
+
 
 	/* The tDELAY is defined by the value written in the TIMx_CCRy register. */
 	// tDELAY is time from triggering event to start of a pulse
@@ -104,7 +120,7 @@ static void SOOL_TimerOP_Prepare(volatile SOOL_TimerOnePulse *timer_op_ptr) {
 
 	/* Check whether to set CNT (counter) accordingly to allow pulse start at the next ( + 1) clock
 	 * cycle or at the (DELAY + 1) clock pulse from now if delay is non-zero. */
-	if ( timer_op_ptr->_setup.trig_immediately == ENABLE ) {
+	if ( timer_op_ptr->_setup.trig_immediately ) {
 
 		/* The tPULSE is defined by the difference between the auto-reload value and the compare
 		 * value (TIMx_ARR - TIMx_CCR1).
@@ -116,21 +132,18 @@ static void SOOL_TimerOP_Prepare(volatile SOOL_TimerOnePulse *timer_op_ptr) {
 		timer_op_ptr->base.base._setup.TIMx->CNT = (uint16_t)
 				(timer_op_ptr->base.base._setup.TIMx->ARR - timer_op_ptr->base._setup.oc_config.TIM_Pulse -
 				 timer_op_ptr->_setup.delay_time - 1);
-		// FIXME: was  `- 1`, but `- 3` is safer, temp solution
 
-		// FIXME: one or another or both pieces of code are necessary?
+		// 1) ^ applies some delay but pulse is generated (both edges) fully by hardware
+		// 2) below generates edge in an instant but needs manual toggle in ISR (DEPRECATED)
 
-		//SOOL_Periph_TIMCompare_ForcedOCInit(timer_op_ptr); // works but needs manual setting `inactive` during TIM_IT_Update handler
+		// DEPRECATED, works but needs manual setting `inactive` during TIM_IT_Update handler
+		//SOOL_Periph_TIMCompare_ForcedOCInit(timer_op_ptr);
 
 	} else {
 
 		timer_op_ptr->base.base._setup.TIMx->CNT = (uint16_t)0;
 
 	}
-
-//	// is it needed?
-//	SOOL_Periph_TIMCompare_EnableChannel(timer_op_ptr->base.base._setup.TIMx,
-//										 timer_op_ptr->base._setup.TIM_Channel_x);
 
 }
 
@@ -216,14 +229,6 @@ static uint8_t SOOL_TimerOP_InterruptHandler(volatile SOOL_TimerOnePulse *timer_
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-// timer output compare must be initialized before passing here
-// slave mode is not tested
-
-// immediately after delay_time has elapsed! when false a (FullCounterCYCLE - tPULSE - tDELAY)
-// will elapse until pulse generation
-
-// enables one pulse mode
-
 static volatile SOOL_TimerOnePulse SOOL_TimerOP_InitiatizeClass(volatile SOOL_TimerOutputCompare *timer_oc_ptr,
 		uint16_t delay_time, FunctionalState trig_immediately,
 		FunctionalState enable_slave_mode, uint16_t slave_mode, uint16_t input_trigger)
@@ -237,11 +242,10 @@ static volatile SOOL_TimerOnePulse SOOL_TimerOP_InitiatizeClass(volatile SOOL_Ti
 	/* Check correctness of OutputCompare timer (CCRx <= ARR)
 	 * NOTE: VALID FOR UPCOUNTING ONLY! */
 	if ( SOOL_Periph_TIMCompare_GetCCR(timer_oc_ptr->base._setup.TIMx, timer_oc_ptr->_setup.TIM_Channel_x) >
-		 timer_oc_ptr->base._setup.TIMx->ARR ) {
-
+		 timer_oc_ptr->base._setup.TIMx->ARR )
+	{
 		// timer not configured properly, hopefully will throw some error
 		return (timer);
-
 	}
 
 	/* Copy Timer running in Output Compare Mode (base `class`) */
@@ -252,7 +256,7 @@ static volatile SOOL_TimerOnePulse SOOL_TimerOP_InitiatizeClass(volatile SOOL_Ti
 
 	/* Save `class` fields */
 	timer._setup.delay_time = delay_time;
-	timer._setup.trig_immediately = trig_immediately;
+	timer._setup.trig_immediately = (uint8_t)trig_immediately; // little memory save (unsigned int -> uint8_t)
 
 	/* Save member functions */
 	timer.DisableOPMode = SOOL_TimerOP_DisableOPMode;
@@ -262,10 +266,6 @@ static volatile SOOL_TimerOnePulse SOOL_TimerOP_InitiatizeClass(volatile SOOL_Ti
 	timer.GeneratePulse = SOOL_TimerOP_GeneratePulse;
 	timer.RestorePrevMode = SOOL_TimerOP_RestorePrevMode;
 	timer._InterruptHandler = SOOL_TimerOP_InterruptHandler;
-
-//	/* Prepare for pulse generation */
-//	SOOL_TimerOP_EnableOPMode(&timer);
-//	SOOL_TimerOP_Prepare(&timer);
 
 	// TODO: experimental, not tested
 	if ( enable_slave_mode == ENABLE ) {
@@ -284,24 +284,24 @@ static volatile SOOL_TimerOnePulse SOOL_TimerOP_InitiatizeClass(volatile SOOL_Ti
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static void SOOL_Periph_TIMCompare_ForcedOCInit(volatile SOOL_TimerOnePulse *timer_op_ptr) {
-
-	switch (timer_op_ptr->base._setup.TIM_Channel_x) {
-
-	case(TIM_Channel_1):
-		TIM_ForcedOC1Config(timer_op_ptr->base.base._setup.TIMx, TIM_ForcedAction_Active);
-		break;
-	case(TIM_Channel_2):
-		TIM_ForcedOC2Config(timer_op_ptr->base.base._setup.TIMx, TIM_ForcedAction_Active);
-		break;
-	case(TIM_Channel_3):
-		TIM_ForcedOC3Config(timer_op_ptr->base.base._setup.TIMx, TIM_ForcedAction_Active);
-		break;
-	case(TIM_Channel_4):
-		TIM_ForcedOC4Config(timer_op_ptr->base.base._setup.TIMx, TIM_ForcedAction_Active);
-		break;
-	default:
-		break;
-	}
-
-}
+//static void SOOL_Periph_TIMCompare_ForcedOCInit(volatile SOOL_TimerOnePulse *timer_op_ptr) {
+//
+//	switch (timer_op_ptr->base._setup.TIM_Channel_x) {
+//
+//	case(TIM_Channel_1):
+//		TIM_ForcedOC1Config(timer_op_ptr->base.base._setup.TIMx, TIM_ForcedAction_Active);
+//		break;
+//	case(TIM_Channel_2):
+//		TIM_ForcedOC2Config(timer_op_ptr->base.base._setup.TIMx, TIM_ForcedAction_Active);
+//		break;
+//	case(TIM_Channel_3):
+//		TIM_ForcedOC3Config(timer_op_ptr->base.base._setup.TIMx, TIM_ForcedAction_Active);
+//		break;
+//	case(TIM_Channel_4):
+//		TIM_ForcedOC4Config(timer_op_ptr->base.base._setup.TIMx, TIM_ForcedAction_Active);
+//		break;
+//	default:
+//		break;
+//	}
+//
+//}
