@@ -45,18 +45,17 @@ static uint16_t Sonar_CalculateTimeDiff(uint16_t start, uint16_t end);
  *
  * Trigger pin and port must be connected to a channel of timer (for example T3C1, T4C3)
  * Echo pin and port must be connected to a channel of timer
- *
- * @param trig_pin
  * @param trig_port
- * @param echo_pin
+ * @param trig_pin
  * @param echo_port
+ * @param echo_pin
  * @param TIMx
  * @param tim_channel
- * @param range_max
+ * @param range_max - in centimeters
  * @return
  */
-volatile SOOL_Sonar SOOL_Sensor_Sonar_Init(uint16_t trig_pin, GPIO_TypeDef* trig_port,
-		uint16_t trig_tim_channel, uint16_t echo_pin, GPIO_TypeDef* echo_port,
+volatile SOOL_Sonar SOOL_Sensor_Sonar_Init(GPIO_TypeDef* trig_port, uint16_t trig_pin,
+		uint16_t trig_tim_channel, GPIO_TypeDef* echo_port, uint16_t echo_pin,
 		uint16_t echo_tim_channel, TIM_TypeDef* TIMx, uint16_t range_max)
 {
 
@@ -80,16 +79,16 @@ volatile SOOL_Sonar SOOL_Sensor_Sonar_Init(uint16_t trig_pin, GPIO_TypeDef* trig
 /**
  * Partial initializer of Sonar, assumes that few sensors use the same trigger signal;
  * range_max parameter must be equal to other sensors sharing trigger pin (and timer)
- * @param echo_pin
  * @param echo_port
+ * @param echo_pin
  * @param echo_tim_channel
- * @param range_max
+ * @param range_max - in centimeters
  * @param trig_cfg
  * @param timer_base
  * @param timer_pulse
  * @return
  */
-volatile SOOL_Sonar SOOL_Sensor_Sonar_InitEcho(uint16_t echo_pin, GPIO_TypeDef* echo_port,
+volatile SOOL_Sonar SOOL_Sensor_Sonar_InitEcho(GPIO_TypeDef* echo_port, uint16_t echo_pin,
 		uint16_t echo_tim_channel, uint16_t range_max, SOOL_PinConfig_AltFunction trig_cfg,
 		volatile SOOL_TimerBasic timer_base, volatile SOOL_TimerOnePulse timer_pulse)
 {
@@ -107,18 +106,18 @@ volatile SOOL_Sonar SOOL_Sensor_Sonar_InitEcho(uint16_t echo_pin, GPIO_TypeDef* 
 /**
  * Partial initializer of Sonar, assumes that few sensors use the same timer peripheral
  * range_max parameter must be equal to other sensors sharing timer
- * @param trig_pin
  * @param trig_port
+ * @param trig_pin
  * @param trig_tim_channel
- * @param echo_pin
  * @param echo_port
+ * @param echo_pin
  * @param echo_tim_channel
- * @param range_max
+ * @param range_max - in centimeters
  * @param timer_base
  * @return
  */
-volatile SOOL_Sonar SOOL_Sensor_Sonar_InitTrigEcho(uint16_t trig_pin, GPIO_TypeDef* trig_port,
-		uint16_t trig_tim_channel, uint16_t echo_pin, GPIO_TypeDef* echo_port,
+volatile SOOL_Sonar SOOL_Sensor_Sonar_InitTrigEcho(GPIO_TypeDef* trig_port, uint16_t trig_pin,
+		uint16_t trig_tim_channel, GPIO_TypeDef* echo_port, uint16_t echo_pin,
 		uint16_t echo_tim_channel, uint16_t range_max, volatile SOOL_TimerBasic timer_base)
 {
 
@@ -140,6 +139,11 @@ volatile SOOL_Sonar SOOL_Sensor_Sonar_InitTrigEcho(uint16_t trig_pin, GPIO_TypeD
 
 static uint8_t Sonar_StartMeasurement(volatile SOOL_Sonar *sonar_ptr) {
 
+	if ( !sonar_ptr->_state.finished ) {
+		// won't be started because previous has not finished yet
+//		return (0);
+	}
+
 //	if ( !timer_busy_flag ) {
 //		sonar_ptr->base_trigger.SetHigh(&sonar_ptr->base_trigger);
 //		sonar_ptr->_state.distance_cm = 0;
@@ -151,7 +155,24 @@ static uint8_t Sonar_StartMeasurement(volatile SOOL_Sonar *sonar_ptr) {
 //	return (0);
 
 	/* Generate pulse */
+	sonar_ptr->base_tim_in.SetPolarity(&sonar_ptr->base_tim_in, TIM_ICPolarity_Rising);
 	sonar_ptr->base_tim_out.GeneratePulse(&sonar_ptr->base_tim_out);
+
+
+//	/* Disable OnePulse Mode (it seems that counter could not be enabled with OPMode enabled) */
+//	sonar_ptr->base_tim_out.DisableOPMode(&sonar_ptr->base_tim_out); 	// SOOL_TimerOP_DisableOPMode(timer_op_ptr);
+//	/* Stop the counter */
+//	sonar_ptr->base_tim_in.Stop(&sonar_ptr->base_tim_in); 				// timer_op_ptr->base.Stop(&timer_op_ptr->base);
+//	/* Update CCR and CNT registers to force proper pulse delay and its length (respectively) */
+//	sonar_ptr->base_tim_out.Prepare(&sonar_ptr->base_tim_out); 			// SOOL_TimerOP_Prepare(timer_op_ptr);
+//
+//	sonar_ptr->base_tim_in.SetPolarity(&sonar_ptr->base_tim_in, TIM_ICPolarity_Rising);
+//
+//	/* Start the counter, TimerInput used here because it sets its state internally in Start().
+//	 * Its state will not be updated when Start() is called from tim_out instance! */
+//	sonar_ptr->base_tim_in.Start(&sonar_ptr->base_tim_in); 				// timer_op_ptr->base.Start(&timer_op_ptr->base);
+//	/* Enable OnePulse Mode */
+//	sonar_ptr->base_tim_out.EnableOPMode(&sonar_ptr->base_tim_out); 	// SOOL_TimerOP_EnableOPMode(timer_op_ptr);
 
 	/* Update internal state */
 	sonar_ptr->_state.counter_val = 0;
@@ -185,9 +206,16 @@ static uint8_t Sonar_PulseEnd_InterruptHandler(volatile SOOL_Sonar *sonar_ptr) {
 
 	/* Disable OnePulse Mode of the timer */
 	sonar_ptr->base_tim_out.DisableOPMode(&sonar_ptr->base_tim_out);
+//	// temp
+//	/* Reset the OPM Bit */
+//	sonar_ptr->base_tim_out.base.base._setup.TIMx->CR1 &= (uint16_t)~((uint16_t)TIM_CR1_OPM);
+//	/* Reset counter */
+//	sonar_ptr->base_tim_out.base.base._setup.TIMx->CNT = (uint16_t)0x0000;
+
+
 
 	/* Set InputCapture polarity to detect rising edge of the signal on echo pin */
-	sonar_ptr->base_tim_in.SetPolarity(&sonar_ptr->base_tim_in, TIM_OCPolarity_High);
+	sonar_ptr->base_tim_in.SetPolarity(&sonar_ptr->base_tim_in, TIM_ICPolarity_Rising);
 
 	return (1);
 
@@ -212,7 +240,7 @@ static uint8_t Sonar_EchoEdge_InterruptHandler(volatile SOOL_Sonar *sonar_ptr) {
 			sonar_ptr->_state.counter_val = sonar_ptr->base_tim_in.GetSavedCounterVal(&sonar_ptr->base_tim_in);
 
 			// set InputCapture polarity to detect falling edge of the signal on echo pin */
-			sonar_ptr->base_tim_in.SetPolarity(&sonar_ptr->base_tim_in, TIM_OCPolarity_Low);
+			sonar_ptr->base_tim_in.SetPolarity(&sonar_ptr->base_tim_in, TIM_ICPolarity_Falling);
 
 		}
 
@@ -321,7 +349,7 @@ static volatile SOOL_Sonar Sonar_InitializeClassHW(
 		// Set prescaler to count microseconds
 		uint16_t prescaler_us = (uint16_t)(SystemCoreClock / 1000000ul);
 
-		// It takes 29 us for the sound to travel 2 centimeters - use range_max parameter
+		// FIXME: It takes 29 ?? us for the sound to travel 2 centimeters - use range_max parameter
 		// to calculate timeout for timer (abandon started measurement due to long wait
 		// for return signal)
 		uint16_t period_tout_dist = (uint16_t)(range_max * 29);
@@ -365,13 +393,13 @@ static volatile SOOL_Sonar Sonar_InitializeClassHW(
 	sonar.IsStarted = Sonar_IsStarted;
 
 	sonar.StartMeasurement = Sonar_StartMeasurement;
-	sonar._EchoEdge_InterruptHandler = Sonar_EchoEdge_InterruptHandler;
-	sonar._PulseEnd_InterruptHandler = Sonar_PulseEnd_InterruptHandler;
-	sonar._Timeout_InterruptHandler = Sonar_Timeout_InterruptHandler;
+	sonar._EchoEdge_EventHandler = Sonar_EchoEdge_InterruptHandler;
+	sonar._PulseEnd_EventHandler = Sonar_PulseEnd_InterruptHandler;
+	sonar._Timeout_EventHandler = Sonar_Timeout_InterruptHandler;
 
 	/* Initial state settings */
 	sonar._state.distance_cm = 0;
-	sonar._state.finished = 0;
+	sonar._state.finished = 1;
 	sonar._state.started = 0;
 	sonar._state.timeout_occurred = 0;
 	sonar._state.counter_val = 0;

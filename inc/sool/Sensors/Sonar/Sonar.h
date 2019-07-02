@@ -52,40 +52,39 @@ typedef struct _SOOL_SonarStruct SOOL_Sonar;
 
 struct _SOOL_SonarStruct {
 
-	struct _SOOL_SonarState	_state;
-
-	// --------- base classes section ------------
+	// --------- base classes section ------------ // in fact it is rather a composition but let it be
 	SOOL_PinConfig_AltFunction	base_echo;
 	SOOL_PinConfig_AltFunction	base_trigger;
-	SOOL_TimerOnePulse 			base_tim_out;
+	SOOL_TimerOnePulse 			base_tim_out; // OnePulse Mode
 	SOOL_TimerInputCapture		base_tim_in;
 
 	// --------- derived class section -----------
+	struct _SOOL_SonarState	_state;
+
 	uint8_t 	(*StartMeasurement)(volatile SOOL_Sonar*);
 	uint8_t 	(*IsStarted)(const volatile SOOL_Sonar*);
 	uint8_t 	(*IsFinished)(const volatile SOOL_Sonar*);
 	uint8_t 	(*DidTimeout)(const volatile SOOL_Sonar*);
 	uint16_t	(*GetDistanceCm)(const volatile SOOL_Sonar*);
 
-//	uint8_t 	(*_EXTI_InterruptHandler)(volatile SOOL_Sonar*); 		// routine fired in a proper ISR (firstly it must check if interrupt has been triggered on sensor's EXTI line)
-//	uint8_t 	(*_TIM_IC_InterruptHandler)(volatile SOOL_Sonar*);
-//	uint8_t 	(*_TIM_Update_InterruptHandler)(volatile SOOL_Sonar*);
-
-//	void 		(*_CalculateDistance)(volatile SOOL_Sonar*);
-	uint8_t 	(*_PulseEnd_InterruptHandler)(volatile SOOL_Sonar*);
-	uint8_t 	(*_EchoEdge_InterruptHandler)(volatile SOOL_Sonar*);
-	uint8_t 	(*_Timeout_InterruptHandler)(volatile SOOL_Sonar*);
+	uint8_t 	(*_PulseEnd_EventHandler)(volatile SOOL_Sonar*);
+	uint8_t 	(*_EchoEdge_EventHandler)(volatile SOOL_Sonar*);
+	uint8_t 	(*_Timeout_EventHandler)(volatile SOOL_Sonar*);
 
 };
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-//const uint16_t SOOL_Sonar_DISTANCE_UNKNOWN = 9999;
+extern volatile SOOL_Sonar SOOL_Sensor_Sonar_Init(GPIO_TypeDef* trig_port, uint16_t trig_pin,
+		uint16_t trig_tim_channel, GPIO_TypeDef* echo_port, uint16_t echo_pin,
+		uint16_t echo_tim_channel, TIM_TypeDef* TIMx, uint16_t range_max);
 
-// TODO
-// extern
-// extern
-//volatile SOOL_Sonar SOOL_Sensor_Sonar_InitTimer(const SOOL_PinConfig_NoInt trig_pin, const SOOL_PinConfig_Int echo_pin, TIM_TypeDef* timer);
-//volatile SOOL_Sonar SOOL_Sensor_Sonar_Init(const SOOL_PinConfig_NoInt trig_pin, const SOOL_PinConfig_Int echo_pin);
+extern volatile SOOL_Sonar SOOL_Sensor_Sonar_InitEcho(GPIO_TypeDef* echo_port, uint16_t echo_pin,
+		uint16_t echo_tim_channel, uint16_t range_max, SOOL_PinConfig_AltFunction trig_cfg,
+		volatile SOOL_TimerBasic timer_base, volatile SOOL_TimerOnePulse timer_pulse);
+
+extern volatile SOOL_Sonar SOOL_Sensor_Sonar_InitTrigEcho(GPIO_TypeDef* trig_port, uint16_t trig_pin,
+		uint16_t trig_tim_channel, GPIO_TypeDef* echo_port, uint16_t echo_pin,
+		uint16_t echo_tim_channel, uint16_t range_max, volatile SOOL_TimerBasic timer_base);
 
 #endif /* INC_SOOL_SENSORS_SONAR_SONAR_H_ */
