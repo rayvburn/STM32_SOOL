@@ -11,8 +11,10 @@
 static void SOOL_TimerInputCapture_Start(volatile SOOL_TimerInputCapture *tim_ic_ptr);
 static void SOOL_TimerInputCapture_Stop(volatile SOOL_TimerInputCapture *tim_ic_ptr);
 
-static void SOOL_TimerInputCapture_EnableNVIC(volatile SOOL_TimerInputCapture *tim_ic_ptr);
-static void SOOL_TimerInputCapture_DisableNVIC(volatile SOOL_TimerInputCapture *tim_ic_ptr);
+//static void SOOL_TimerInputCapture_EnableNVIC(volatile SOOL_TimerInputCapture *tim_ic_ptr);
+//static void SOOL_TimerInputCapture_DisableNVIC(volatile SOOL_TimerInputCapture *tim_ic_ptr);
+
+static void SOOL_TimerInputCapture_SetPolarity(volatile SOOL_TimerInputCapture  *tim_ic_ptr, uint16_t polarity);
 
 static uint16_t SOOL_TimerInputCapture_GetSavedCounterVal(const volatile SOOL_TimerInputCapture *tim_ic_ptr);
 static uint8_t SOOL_TimerInputCapture_InterruptHandler(volatile SOOL_TimerInputCapture *tim_ic_ptr);
@@ -56,7 +58,7 @@ static uint8_t SOOL_TimerInputCapture_InterruptHandler(volatile SOOL_TimerInputC
  * @param enable_int_cc - whether to generate interrupts on capture event, if true TIM_IT_CCx is enabled
  * @return
  */
-volatile SOOL_TimerInputCapture SOOL_Periph_TIM_TimerInputCapture_Init(volatile SOOL_TimerBasic *tim_basic_ptr,
+volatile SOOL_TimerInputCapture SOOL_Periph_TIM_TimerInputCapture_Init(volatile SOOL_TimerBasic tim_basic,
 		uint16_t channel, uint16_t ic_polarity, FunctionalState enable_int_cc) {
 
 	/* Object to be returned from the initializer */
@@ -101,11 +103,11 @@ volatile SOOL_TimerInputCapture SOOL_Periph_TIM_TimerInputCapture_Init(volatile 
 	tim_ic.TIM_ICPolarity = ic_polarity;
 	tim_ic.TIM_ICPrescaler = 0; // p. 384: "we wish the capture to be performed at each valid transition, so the prescaler is disabled"
 	tim_ic.TIM_ICSelection = TIM_ICSelection_DirectTI; // 'remapping' possible
-	TIM_ICInit(tim_basic_ptr->_setup.TIMx, &tim_ic);
+	TIM_ICInit(tim_basic._setup.TIMx, &tim_ic);
 
 	/* Configure NVIC if needed */
 	NVIC_InitTypeDef nvic;
-	nvic.NVIC_IRQChannel = SOOL_Periph_TIM_GetIRQnType(tim_basic_ptr->_setup.TIMx, SOOL_PERIPH_TIM_IRQ_CC); // for safety moved outside `if`
+	nvic.NVIC_IRQChannel = SOOL_Periph_TIM_GetIRQnType(tim_basic._setup.TIMx, SOOL_PERIPH_TIM_IRQ_CC); // for safety moved outside `if`
 
 	if ( enable_int_cc == ENABLE ) {
 
@@ -122,16 +124,17 @@ volatile SOOL_TimerInputCapture SOOL_Periph_TIM_TimerInputCapture_Init(volatile 
 	}
 
 	/* Enable interrupts */
-	TIM_ITConfig(tim_basic_ptr->_setup.TIMx, tim_it_cc, enable_int_cc);
+	TIM_ITConfig(tim_basic._setup.TIMx, tim_it_cc, enable_int_cc);
 
 	/* Save class' fields */
 	timer._setup.TIM_Channel_x = channel;
 	timer._setup.TIM_IT_CCx = tim_it_cc;
 	timer._setup.TIM_FLAG_CCxOF = tim_flag_cc_of;
 	timer._setup.NVIC_IRQ_channel = nvic.NVIC_IRQChannel;
+	timer._setup.config = tim_ic;
 
 	/* Save base */
-	timer.base = *tim_basic_ptr;
+	timer.base = tim_basic;
 
 	/* Set initial state */
 	timer._state.transition_counter_val = 0;
@@ -143,8 +146,9 @@ volatile SOOL_TimerInputCapture SOOL_Periph_TIM_TimerInputCapture_Init(volatile 
 	// TODO
 	//timer.ReinitIC
 	//timer.DisableIC
-	timer.EnableNVIC = SOOL_TimerInputCapture_EnableNVIC;
-	timer.DisableNVIC = SOOL_TimerInputCapture_DisableNVIC;
+//	timer.EnableNVIC = SOOL_TimerInputCapture_EnableNVIC;
+//	timer.DisableNVIC = SOOL_TimerInputCapture_DisableNVIC;
+	timer.SetPolarity = SOOL_TimerInputCapture_SetPolarity;
 	timer.GetSavedCounterVal = SOOL_TimerInputCapture_GetSavedCounterVal;
 	timer._InterruptHandler = SOOL_TimerInputCapture_InterruptHandler;
 
@@ -173,14 +177,21 @@ static void SOOL_TimerInputCapture_Stop(volatile SOOL_TimerInputCapture *tim_ic_
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static void SOOL_TimerInputCapture_EnableNVIC(volatile SOOL_TimerInputCapture *tim_ic_ptr) {
-	SOOL_Periph_NVIC_Enable(tim_ic_ptr->_setup.NVIC_IRQ_channel);
-}
+//static void SOOL_TimerInputCapture_EnableNVIC(volatile SOOL_TimerInputCapture *tim_ic_ptr) {
+//	SOOL_Periph_NVIC_Enable(tim_ic_ptr->_setup.NVIC_IRQ_channel);
+//}
+//
+//// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+//
+//static void SOOL_TimerInputCapture_DisableNVIC(volatile SOOL_TimerInputCapture *tim_ic_ptr) {
+//	SOOL_Periph_NVIC_Disable(tim_ic_ptr->_setup.NVIC_IRQ_channel);
+//}
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static void SOOL_TimerInputCapture_DisableNVIC(volatile SOOL_TimerInputCapture *tim_ic_ptr) {
-	SOOL_Periph_NVIC_Disable(tim_ic_ptr->_setup.NVIC_IRQ_channel);
+static void SOOL_TimerInputCapture_SetPolarity(volatile SOOL_TimerInputCapture *tim_ic_ptr, uint16_t polarity) {
+	tim_ic_ptr->_setup.config.TIM_ICPolarity = polarity;
+	TIM_ICInit(tim_ic_ptr->base._setup.TIMx, &tim_ic_ptr->_setup.config);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

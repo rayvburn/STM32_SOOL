@@ -22,7 +22,7 @@ static uint8_t SOOL_TimerOP_InterruptHandler(volatile SOOL_TimerOnePulse *timer_
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 // helper
-static volatile SOOL_TimerOnePulse SOOL_TimerOP_InitiatizeClass(volatile SOOL_TimerOutputCompare *timer_oc_ptr,
+static volatile SOOL_TimerOnePulse SOOL_TimerOP_InitiatizeClass(volatile SOOL_TimerOutputCompare timer_oc,
 		uint16_t delay_time, FunctionalState trig_immediately,
 		FunctionalState enable_slave_mode, uint16_t slave_mode, uint16_t input_trigger);
 
@@ -51,11 +51,11 @@ static volatile SOOL_TimerOnePulse SOOL_TimerOP_InitiatizeClass(volatile SOOL_Ti
  * @note See Fig. 92 from RM0008, tPULSE is defined by (TIMx_ARR - TIMx_CCR1)
  * 		 which is symbolically equal to (TIM_Period - TIM_Pulse)
  */
-volatile SOOL_TimerOnePulse SOOL_Periph_TIM_TimerOnePulse_Init(volatile SOOL_TimerOutputCompare *timer_oc_ptr,
+volatile SOOL_TimerOnePulse SOOL_Periph_TIM_TimerOnePulse_Init(volatile SOOL_TimerOutputCompare timer_oc,
 		uint16_t delay_time, FunctionalState trig_immediately) {
 
 	/* Instance of OnePulse `class` */
-	volatile SOOL_TimerOnePulse timer = SOOL_TimerOP_InitiatizeClass(timer_oc_ptr, delay_time,
+	volatile SOOL_TimerOnePulse timer = SOOL_TimerOP_InitiatizeClass(timer_oc, delay_time,
 										trig_immediately, DISABLE, 0, 0);
 
 	return (timer);
@@ -75,12 +75,12 @@ volatile SOOL_TimerOnePulse SOOL_Periph_TIM_TimerOnePulse_Init(volatile SOOL_Tim
  * @param input_trigger
  * @return
  */
-volatile SOOL_TimerOnePulse SOOL_Periph_TIM_TimerOnePulse_InitSlave(volatile SOOL_TimerOutputCompare *timer_oc_ptr,
+volatile SOOL_TimerOnePulse SOOL_Periph_TIM_TimerOnePulse_InitSlave(volatile SOOL_TimerOutputCompare timer_oc,
 		uint16_t delay_time, FunctionalState trig_immediately,
 		uint16_t slave_mode, uint16_t input_trigger) {
 
 	/* Instance of OnePulse `class` */
-	volatile SOOL_TimerOnePulse timer = SOOL_TimerOP_InitiatizeClass(timer_oc_ptr, delay_time,
+	volatile SOOL_TimerOnePulse timer = SOOL_TimerOP_InitiatizeClass(timer_oc, delay_time,
 										trig_immediately, ENABLE, slave_mode, input_trigger);
 
 	return (timer);
@@ -229,7 +229,7 @@ static uint8_t SOOL_TimerOP_InterruptHandler(volatile SOOL_TimerOnePulse *timer_
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static volatile SOOL_TimerOnePulse SOOL_TimerOP_InitiatizeClass(volatile SOOL_TimerOutputCompare *timer_oc_ptr,
+static volatile SOOL_TimerOnePulse SOOL_TimerOP_InitiatizeClass(volatile SOOL_TimerOutputCompare timer_oc,
 		uint16_t delay_time, FunctionalState trig_immediately,
 		FunctionalState enable_slave_mode, uint16_t slave_mode, uint16_t input_trigger)
 
@@ -241,15 +241,15 @@ static volatile SOOL_TimerOnePulse SOOL_TimerOP_InitiatizeClass(volatile SOOL_Ti
 
 	/* Check correctness of OutputCompare timer (CCRx <= ARR)
 	 * NOTE: VALID FOR UPCOUNTING ONLY! */
-	if ( SOOL_Periph_TIMCompare_GetCCR(timer_oc_ptr->base._setup.TIMx, timer_oc_ptr->_setup.TIM_Channel_x) >
-		 timer_oc_ptr->base._setup.TIMx->ARR )
+	if ( SOOL_Periph_TIMCompare_GetCCR(timer_oc.base._setup.TIMx, timer_oc._setup.TIM_Channel_x) >
+		 timer_oc.base._setup.TIMx->ARR )
 	{
 		// timer not configured properly, hopefully will throw some error
 		return (timer);
 	}
 
 	/* Copy Timer running in Output Compare Mode (base `class`) */
-	timer.base = *timer_oc_ptr;
+	timer.base = timer_oc;
 
 	/* Make sure timer is disabled during configuration procedure */
 	timer.base.Stop(&timer.base);

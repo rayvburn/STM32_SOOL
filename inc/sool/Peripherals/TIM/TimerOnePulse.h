@@ -101,9 +101,9 @@ struct _SOOL_TimerOnePulseStruct {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-extern volatile SOOL_TimerOnePulse SOOL_Periph_TIM_TimerOnePulse_Init(volatile SOOL_TimerOutputCompare *timer_oc_ptr,
+extern volatile SOOL_TimerOnePulse SOOL_Periph_TIM_TimerOnePulse_Init(volatile SOOL_TimerOutputCompare timer_oc,
 		uint16_t delay_time, FunctionalState trig_immediately);
-extern volatile SOOL_TimerOnePulse SOOL_Periph_TIM_TimerOnePulse_InitSlave(volatile SOOL_TimerOutputCompare *timer_oc_ptr,
+extern volatile SOOL_TimerOnePulse SOOL_Periph_TIM_TimerOnePulse_InitSlave(volatile SOOL_TimerOutputCompare timer_oc,
 		uint16_t delay_time, FunctionalState trig_immediately, uint16_t slave_mode, uint16_t input_trigger);
 
 #endif /* INC_SOOL_PERIPHERALS_TIM_TIMERONEPULSE_H_ */

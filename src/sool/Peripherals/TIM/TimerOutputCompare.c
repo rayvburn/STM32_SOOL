@@ -26,7 +26,7 @@ static void SOOL_TimerOC_DisableNVIC(volatile SOOL_TimerOutputCompare *tim_oc_pt
 static uint8_t SOOL_TimerOC_InterruptHandler(volatile SOOL_TimerOutputCompare *tim_oc_ptr);
 
 // helper
-static volatile SOOL_TimerOutputCompare SOOL_TimerOC_InitializeClass(volatile SOOL_TimerBasic *tim_basic_ptr,	// time-base-related
+static volatile SOOL_TimerOutputCompare SOOL_TimerOC_InitializeClass(volatile SOOL_TimerBasic tim_basic,	// time-base-related
 		uint16_t channel, uint16_t oc_mode, uint16_t pulse,	FunctionalState enable_int, // OC 'common'
 		uint16_t idle_state, uint16_t polarity, uint16_t output_state,					// OC 'positive'
 		uint16_t idle_state_n, uint16_t polarity_n, uint16_t output_state_n);
@@ -59,12 +59,12 @@ static volatile SOOL_TimerOutputCompare SOOL_TimerOC_InitializeClass(volatile SO
  * 	   	  @note This parameter is valid only for TIM1 and TIM8.
  * @return SOOL_TimerOutputCompare instance
  */
-volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_InitFull(volatile SOOL_TimerBasic *tim_basic_ptr,
+volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_InitFull(volatile SOOL_TimerBasic tim_basic,
 		uint16_t channel, uint16_t oc_mode, uint16_t pulse,	FunctionalState enable_int_cc,// OC 'common'
 		uint16_t idle_state, uint16_t polarity, uint16_t output_state,					// OC 'positive'
 		uint16_t idle_state_n, uint16_t polarity_n, uint16_t output_state_n) {
 
-	volatile SOOL_TimerOutputCompare timer = SOOL_TimerOC_InitializeClass(tim_basic_ptr,
+	volatile SOOL_TimerOutputCompare timer = SOOL_TimerOC_InitializeClass(tim_basic,
 			channel, oc_mode, pulse, enable_int_cc,
 			idle_state, polarity, output_state,
 			idle_state_n, polarity_n, output_state_n);
@@ -84,11 +84,11 @@ volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_InitFull(vol
  * @param output_state
  * @return
  */
-volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_Init(volatile SOOL_TimerBasic *tim_basic_ptr,
+volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_Init(volatile SOOL_TimerBasic tim_basic,
 		uint16_t channel, uint16_t oc_mode, uint16_t pulse, FunctionalState enable_int_cc,
 		uint16_t idle_state, uint16_t polarity, uint16_t output_state) {
 
-	volatile SOOL_TimerOutputCompare timer = SOOL_TimerOC_InitializeClass(tim_basic_ptr,
+	volatile SOOL_TimerOutputCompare timer = SOOL_TimerOC_InitializeClass(tim_basic,
 			channel, oc_mode, pulse, enable_int_cc,
 			idle_state, polarity, output_state,
 			TIM_OCNIdleState_Reset, TIM_OCPolarity_High, TIM_OutputNState_Disable);
@@ -108,11 +108,11 @@ volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_Init(volatil
  * @param output_state_n
  * @return
  */
-volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_InitComplementary(volatile SOOL_TimerBasic *tim_basic_ptr,
+volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_InitComplementary(volatile SOOL_TimerBasic tim_basic,
 		uint16_t channel, uint16_t oc_mode, uint16_t pulse, FunctionalState enable_int_cc,
 		uint16_t idle_state_n, uint16_t polarity_n, uint16_t output_state_n) {
 
-	volatile SOOL_TimerOutputCompare timer = SOOL_TimerOC_InitializeClass(tim_basic_ptr,
+	volatile SOOL_TimerOutputCompare timer = SOOL_TimerOC_InitializeClass(tim_basic,
 			channel, oc_mode, pulse, enable_int_cc,
 			TIM_OCIdleState_Reset, TIM_OCPolarity_High, TIM_OutputState_Disable,
 			idle_state_n, polarity_n, output_state_n);
@@ -227,7 +227,7 @@ static uint8_t SOOL_TimerOC_InterruptHandler(volatile SOOL_TimerOutputCompare *t
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static volatile SOOL_TimerOutputCompare SOOL_TimerOC_InitializeClass(volatile SOOL_TimerBasic *tim_basic_ptr,	// time-base-related
+static volatile SOOL_TimerOutputCompare SOOL_TimerOC_InitializeClass(volatile SOOL_TimerBasic tim_basic,	// time-base-related
 		uint16_t channel, uint16_t oc_mode, uint16_t pulse,	FunctionalState enable_int, // OC 'common'
 		uint16_t idle_state, uint16_t polarity, uint16_t output_state,					// OC 'positive'
 		uint16_t idle_state_n, uint16_t polarity_n, uint16_t output_state_n)			// OC 'negative'
@@ -266,32 +266,32 @@ static volatile SOOL_TimerOutputCompare SOOL_TimerOC_InitializeClass(volatile SO
 	case(TIM_Channel_1):
 		tim_it_cc = TIM_IT_CC1;
 //		tim_ocxfe = TIM_CCMR1_OC1FE;
-		TIM_OC1Init(tim_basic_ptr->_setup.TIMx, &tim_oc);
+		TIM_OC1Init(tim_basic._setup.TIMx, &tim_oc);
 		break;
 
 	case(TIM_Channel_2):
 		tim_it_cc = TIM_IT_CC2;
 //		tim_ocxfe = TIM_CCMR1_OC2FE;
-		TIM_OC2Init(tim_basic_ptr->_setup.TIMx, &tim_oc);
+		TIM_OC2Init(tim_basic._setup.TIMx, &tim_oc);
 		break;
 
 	case(TIM_Channel_3):
 		tim_it_cc = TIM_IT_CC3;
 //		tim_ocxfe = TIM_CCMR2_OC3FE;
-		TIM_OC3Init(tim_basic_ptr->_setup.TIMx, &tim_oc);
+		TIM_OC3Init(tim_basic._setup.TIMx, &tim_oc);
 		break;
 
 	case(TIM_Channel_4):
 		tim_it_cc = TIM_IT_CC4;
 //		tim_ocxfe = TIM_CCMR2_OC4FE;
-		TIM_OC4Init(tim_basic_ptr->_setup.TIMx, &tim_oc);
+		TIM_OC4Init(tim_basic._setup.TIMx, &tim_oc);
 		break;
 
 	}
 
 	/* Configure NVIC if needed */
 	NVIC_InitTypeDef nvic;
-	nvic.NVIC_IRQChannel = SOOL_Periph_TIM_GetIRQnType(tim_basic_ptr->_setup.TIMx, SOOL_PERIPH_TIM_IRQ_CC); // for safety moved outside `if`
+	nvic.NVIC_IRQChannel = SOOL_Periph_TIM_GetIRQnType(tim_basic._setup.TIMx, SOOL_PERIPH_TIM_IRQ_CC); // for safety moved outside `if`
 
 	if ( enable_int == ENABLE ) {
 
@@ -308,7 +308,7 @@ static volatile SOOL_TimerOutputCompare SOOL_TimerOC_InitializeClass(volatile SO
 	}
 
 	/* Enable interrupts */
-	TIM_ITConfig(tim_basic_ptr->_setup.TIMx, tim_it_cc, enable_int);
+	TIM_ITConfig(tim_basic._setup.TIMx, tim_it_cc, enable_int);
 
 	/* Save class' fields */
 	timer._setup.oc_config = tim_oc;
@@ -319,7 +319,7 @@ static volatile SOOL_TimerOutputCompare SOOL_TimerOC_InitializeClass(volatile SO
 //	timer._setup.enable_int = enable_int; // FIXME: this could cause conflicts with InputCompare
 
 	/* Save base */
-	timer.base = *tim_basic_ptr;
+	timer.base = tim_basic;
 
 	/* Set initial state */
 	//timer.
