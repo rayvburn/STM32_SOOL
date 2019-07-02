@@ -23,6 +23,7 @@ struct _SOOL_TimerOutputCompareStateStruct {
 struct _SOOL_TimerOutputCompareSetupStruct {
 	TIM_OCInitTypeDef oc_config;// initializing structure
 //	uint16_t TIM_CCMRx_OCxFE;	// Fast Enable (in fact TIM_CCMRy_OCxFE, where y = 1,2, x = 1,2,3,4)
+//	uint8_t  enable_int;		// whether to enable interrupts
 	uint16_t TIM_IT_CCx; 		// channel compare ID
 	uint16_t TIM_Channel_x;		// acquisition of the CCRx register content
 	uint8_t NVIC_IRQ_channel;
@@ -69,21 +70,17 @@ struct _SOOL_TimerOutputCompareStruct {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-extern volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_InitFull(TIM_TypeDef* TIMx,	// timer
-		uint16_t prescaler, uint16_t period, FunctionalState enable_int_update, 		// time-base-related
+extern volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_InitFull(volatile SOOL_TimerBasic *tim_basic,
 		uint16_t channel, uint16_t oc_mode, uint16_t pulse,	FunctionalState enable_int_cc,// OC 'common'
 		uint16_t idle_state, uint16_t polarity, uint16_t output_state,					// OC 'positive'
 		uint16_t idle_state_n, uint16_t polarity_n, uint16_t output_state_n);
 
-extern volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_Init(TIM_TypeDef* TIMx,
-		uint16_t prescaler, uint16_t period, uint16_t channel, FunctionalState enable_int_update,
-		uint16_t oc_mode, uint16_t pulse, FunctionalState enable_int_cc,
+extern volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_Init(volatile SOOL_TimerBasic *tim_basic,
+		uint16_t channel, uint16_t oc_mode, uint16_t pulse, FunctionalState enable_int_cc,
 		uint16_t idle_state, uint16_t polarity, uint16_t output_state);
 
-extern volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_InitComplementary(TIM_TypeDef* TIMx,
-		uint16_t prescaler, uint16_t period, uint16_t channel, FunctionalState enable_int_update,
-		uint16_t oc_mode, uint16_t pulse, FunctionalState enable_int_cc,
+extern volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_InitComplementary(volatile SOOL_TimerBasic *tim_basic,
+		uint16_t channel, uint16_t oc_mode, uint16_t pulse, FunctionalState enable_int_cc,
 		uint16_t idle_state_n, uint16_t polarity_n, uint16_t output_state_n);
-
 
 #endif /* INC_SOOL_PERIPHERALS_TIM_TIMEROUTPUTCOMPARE_H_ */

@@ -26,8 +26,7 @@ static void SOOL_TimerOC_DisableNVIC(volatile SOOL_TimerOutputCompare *tim_oc_pt
 static uint8_t SOOL_TimerOC_InterruptHandler(volatile SOOL_TimerOutputCompare *tim_oc_ptr);
 
 // helper
-static volatile SOOL_TimerOutputCompare SOOL_TimerOC_InitializeClass(TIM_TypeDef* TIMx,	// timer
-		uint16_t prescaler, uint16_t period, FunctionalState enable_int_update, 		// time-base-related
+static volatile SOOL_TimerOutputCompare SOOL_TimerOC_InitializeClass(volatile SOOL_TimerBasic *tim_basic_ptr,	// time-base-related
 		uint16_t channel, uint16_t oc_mode, uint16_t pulse,	FunctionalState enable_int, // OC 'common'
 		uint16_t idle_state, uint16_t polarity, uint16_t output_state,					// OC 'positive'
 		uint16_t idle_state_n, uint16_t polarity_n, uint16_t output_state_n);
@@ -59,14 +58,12 @@ static volatile SOOL_TimerOutputCompare SOOL_TimerOC_InitializeClass(TIM_TypeDef
  * 	   	  @note This parameter is valid only for TIM1 and TIM8.
  * @return SOOL_TimerOutputCompare instance
  */
-volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_InitFull(TIM_TypeDef* TIMx,	// timer
-		uint16_t prescaler, uint16_t period, FunctionalState enable_int_update, 		// time-base-related
+volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_InitFull(volatile SOOL_TimerBasic *tim_basic_ptr,
 		uint16_t channel, uint16_t oc_mode, uint16_t pulse,	FunctionalState enable_int_cc,// OC 'common'
 		uint16_t idle_state, uint16_t polarity, uint16_t output_state,					// OC 'positive'
 		uint16_t idle_state_n, uint16_t polarity_n, uint16_t output_state_n) {
 
-	volatile SOOL_TimerOutputCompare timer = SOOL_TimerOC_InitializeClass(TIMx,
-			prescaler, period, enable_int_update,
+	volatile SOOL_TimerOutputCompare timer = SOOL_TimerOC_InitializeClass(tim_basic_ptr,
 			channel, oc_mode, pulse, enable_int_cc,
 			idle_state, polarity, output_state,
 			idle_state_n, polarity_n, output_state_n);
@@ -76,29 +73,22 @@ volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_InitFull(TIM
 }
 
 /**
- * FIXME below
- * @param TIMx: TIMx where x can be 1 to 17 to select the TIM peripheral.
- * @param prescaler: (-1) Specifies the prescaler value used to divide the TIM clock. This parameter can be a number between 0x0000 and 0xFFFF
- * @param period: (-1) Specifies the period value to be loaded into the active Auto-Reload Register at the next update event.
-          @note This parameter must be a number between 0x0000 and 0xFFFF.
- * @param channel: Specifies the TIM channel.
-          @note This parameter can be a value of @ref TIM_Channel
- * @param oc_mode: Specifies the TIM mode. This parameter can be a value of @ref TIM_Output_Compare_and_PWM_modes
- * @param pulse: Specifies the pulse value to be loaded into the Capture Compare Register. This parameter can be a number between 0x0000 and 0xFFFF
- * @param idle_state: Specifies the TIM Output Compare pin state during Idle state. This parameter can be a value of @ref TIM_Output_Compare_Idle_State
-		  @note This parameter is valid only for TIM1 and TIM8.
- * @param polarity: Specifies the output polarity. This parameter can be a value of @ref TIM_Output_Compare_Polarity
- * @param output_state: Specifies the TIM Output Compare state. This parameter can be a value of @ref TIM_Output_Compare_state
+ * For details see @ref SOOL_Periph_TIM_TimerOutputCompare_InitFull
+ * @param tim_basic
+ * @param oc_mode
+ * @param pulse
+ * @param enable_int_cc
+ * @param idle_state
+ * @param polarity
+ * @param output_state
  * @return
  */
-volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_Init(TIM_TypeDef* TIMx,
-		uint16_t prescaler, uint16_t period, uint16_t channel, FunctionalState enable_int_update,
-		uint16_t oc_mode, uint16_t pulse, FunctionalState enable_int_cc,
+volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_Init(volatile SOOL_TimerBasic *tim_basic_ptr,
+		uint16_t channel, uint16_t oc_mode, uint16_t pulse, FunctionalState enable_int_cc,
 		uint16_t idle_state, uint16_t polarity, uint16_t output_state) {
 
-	volatile SOOL_TimerOutputCompare timer = SOOL_TimerOC_InitializeClass(TIMx,
-			prescaler, period, channel, enable_int_update,
-			oc_mode, pulse, enable_int_cc,
+	volatile SOOL_TimerOutputCompare timer = SOOL_TimerOC_InitializeClass(tim_basic_ptr,
+			channel, oc_mode, pulse, enable_int_cc,
 			idle_state, polarity, output_state,
 			TIM_OCNIdleState_Reset, TIM_OCPolarity_High, TIM_OutputNState_Disable);
 
@@ -107,31 +97,22 @@ volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_Init(TIM_Typ
 }
 
 /**
- * FIXME below
- * @param TIMx: TIMx where x can be 1 to 17 to select the TIM peripheral.
- * @param prescaler: (-1) Specifies the prescaler value used to divide the TIM clock. This parameter can be a number between 0x0000 and 0xFFFF
- * @param period: (-1) Specifies the period value to be loaded into the active Auto-Reload Register at the next update event.
-          @note This parameter must be a number between 0x0000 and 0xFFFF.
- * @param channel: Specifies the TIM channel.
-          @note This parameter can be a value of @ref TIM_Channel
- * @param oc_mode: Specifies the TIM mode. This parameter can be a value of @ref TIM_Output_Compare_and_PWM_modes
- * @param pulse: Specifies the pulse value to be loaded into the Capture Compare Register. This parameter can be a number between 0x0000 and 0xFFFF
- * @param idle_state_n: Specifies the TIM Output Compare pin state during Idle state. This parameter can be a value of @ref TIM_Output_Compare_N_Idle_State
-		  @note This parameter is valid only for TIM1 and TIM8.
- * @param polarity_n: Specifies the complementary output polarity. This parameter can be a value of @ref TIM_Output_Compare_N_Polarity
-          @note This parameter is valid only for TIM1 and TIM8.
- * @param output_state_n: Specifies the TIM complementary Output Compare state. This parameter can be a value of @ref TIM_Output_Compare_N_state
-   	   	  @note This parameter is valid only for TIM1 and TIM8.
+ * For details see @ref SOOL_Periph_TIM_TimerOutputCompare_InitFull
+ * @param tim_basic
+ * @param oc_mode
+ * @param pulse
+ * @param enable_int_cc
+ * @param idle_state_n
+ * @param polarity_n
+ * @param output_state_n
  * @return
  */
-volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_InitComplementary(TIM_TypeDef* TIMx,
-		uint16_t prescaler, uint16_t period, uint16_t channel, FunctionalState enable_int_update,
-		uint16_t oc_mode, uint16_t pulse, FunctionalState enable_int_cc,
+volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_InitComplementary(volatile SOOL_TimerBasic *tim_basic_ptr,
+		uint16_t channel, uint16_t oc_mode, uint16_t pulse, FunctionalState enable_int_cc,
 		uint16_t idle_state_n, uint16_t polarity_n, uint16_t output_state_n) {
 
-	volatile SOOL_TimerOutputCompare timer = SOOL_TimerOC_InitializeClass(TIMx,
-			prescaler, period, channel, enable_int_update,
-			oc_mode, pulse, enable_int_cc,
+	volatile SOOL_TimerOutputCompare timer = SOOL_TimerOC_InitializeClass(tim_basic_ptr,
+			channel, oc_mode, pulse, enable_int_cc,
 			TIM_OCIdleState_Reset, TIM_OCPolarity_High, TIM_OutputState_Disable,
 			idle_state_n, polarity_n, output_state_n);
 
@@ -185,7 +166,7 @@ static void SOOL_TimerOC_ReinitOC(volatile SOOL_TimerOutputCompare *tim_oc_ptr) 
 	}
 
 	// enable interrupt
-	TIM_ITConfig(tim_oc_ptr->base._setup.TIMx, tim_oc_ptr->_setup.TIM_IT_CCx, ENABLE);
+//	TIM_ITConfig(tim_oc_ptr->base._setup.TIMx, tim_oc_ptr->_setup.TIM_IT_CCx, ENABLE); // can cause conflicts with InputCompare when used simultaneously
 
 }
 
@@ -194,7 +175,7 @@ static void SOOL_TimerOC_ReinitOC(volatile SOOL_TimerOutputCompare *tim_oc_ptr) 
 static void SOOL_TimerOC_DisableOC(volatile SOOL_TimerOutputCompare *tim_oc_ptr) {
 
 	// disable interrupt
-	TIM_ITConfig(tim_oc_ptr->base._setup.TIMx, tim_oc_ptr->_setup.TIM_IT_CCx, DISABLE);
+//	TIM_ITConfig(tim_oc_ptr->base._setup.TIMx, tim_oc_ptr->_setup.TIM_IT_CCx, DISABLE); // can cause conflicts with InputCompare when used simultaneously
 
 	// some bits are writable only when channel is OFF
 	SOOL_Periph_TIMCompare_DisableChannel(tim_oc_ptr->base._setup.TIMx, tim_oc_ptr->_setup.TIM_Channel_x);
@@ -245,16 +226,11 @@ static uint8_t SOOL_TimerOC_InterruptHandler(volatile SOOL_TimerOutputCompare *t
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static volatile SOOL_TimerOutputCompare SOOL_TimerOC_InitializeClass(TIM_TypeDef* TIMx,	// timer
-		uint16_t prescaler, uint16_t period, FunctionalState enable_int_update, 		// time-base-related
+static volatile SOOL_TimerOutputCompare SOOL_TimerOC_InitializeClass(volatile SOOL_TimerBasic *tim_basic_ptr,	// time-base-related
 		uint16_t channel, uint16_t oc_mode, uint16_t pulse,	FunctionalState enable_int, // OC 'common'
 		uint16_t idle_state, uint16_t polarity, uint16_t output_state,					// OC 'positive'
 		uint16_t idle_state_n, uint16_t polarity_n, uint16_t output_state_n)			// OC 'negative'
 {
-
-	/* TimerBasic `constructor` - time base must be configured and basic
-	 * timer activity must be run to allow output compare mode work properly */
-	volatile SOOL_TimerBasic tim_basic = SOOL_Periph_TIM_TimerBasic_Init(TIMx, prescaler, period, enable_int_update);
 
 	/* Object to be returned from the initializer */
 	volatile SOOL_TimerOutputCompare timer;
@@ -289,32 +265,32 @@ static volatile SOOL_TimerOutputCompare SOOL_TimerOC_InitializeClass(TIM_TypeDef
 	case(TIM_Channel_1):
 		tim_it_cc = TIM_IT_CC1;
 //		tim_ocxfe = TIM_CCMR1_OC1FE;
-		TIM_OC1Init(TIMx, &tim_oc);
+		TIM_OC1Init(tim_basic_ptr->_setup.TIMx, &tim_oc);
 		break;
 
 	case(TIM_Channel_2):
 		tim_it_cc = TIM_IT_CC2;
 //		tim_ocxfe = TIM_CCMR1_OC2FE;
-		TIM_OC2Init(TIMx, &tim_oc);
+		TIM_OC2Init(tim_basic_ptr->_setup.TIMx, &tim_oc);
 		break;
 
 	case(TIM_Channel_3):
 		tim_it_cc = TIM_IT_CC3;
 //		tim_ocxfe = TIM_CCMR2_OC3FE;
-		TIM_OC3Init(TIMx, &tim_oc);
+		TIM_OC3Init(tim_basic_ptr->_setup.TIMx, &tim_oc);
 		break;
 
 	case(TIM_Channel_4):
 		tim_it_cc = TIM_IT_CC4;
 //		tim_ocxfe = TIM_CCMR2_OC4FE;
-		TIM_OC4Init(TIMx, &tim_oc);
+		TIM_OC4Init(tim_basic_ptr->_setup.TIMx, &tim_oc);
 		break;
 
 	}
 
 	/* Configure NVIC if needed */
 	NVIC_InitTypeDef nvic;
-	nvic.NVIC_IRQChannel = SOOL_Periph_TIM_GetIRQnType(TIMx, SOOL_PERIPH_TIM_IRQ_CC); // for safety moved outside `if`
+	nvic.NVIC_IRQChannel = SOOL_Periph_TIM_GetIRQnType(tim_basic_ptr->_setup.TIMx, SOOL_PERIPH_TIM_IRQ_CC); // for safety moved outside `if`
 
 	if ( enable_int == ENABLE ) {
 
@@ -331,7 +307,7 @@ static volatile SOOL_TimerOutputCompare SOOL_TimerOC_InitializeClass(TIM_TypeDef
 	}
 
 	/* Enable interrupts */
-	TIM_ITConfig(TIMx, tim_it_cc, enable_int);
+	TIM_ITConfig(tim_basic_ptr->_setup.TIMx, tim_it_cc, enable_int);
 
 	/* Save class' fields */
 	timer._setup.oc_config = tim_oc;
@@ -339,9 +315,10 @@ static volatile SOOL_TimerOutputCompare SOOL_TimerOC_InitializeClass(TIM_TypeDef
 	timer._setup.TIM_IT_CCx = tim_it_cc;
 	timer._setup.NVIC_IRQ_channel = nvic.NVIC_IRQChannel;
 //	timer._setup.TIM_CCMRx_OCxFE = tim_ocxfe;
+//	timer._setup.enable_int = enable_int; // FIXME: this could cause conflicts with InputCompare
 
 	/* Save base */
-	timer.base = tim_basic;
+	timer.base = *tim_basic_ptr;
 
 	/* Set initial state */
 	//timer.
