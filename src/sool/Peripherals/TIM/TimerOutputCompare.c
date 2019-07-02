@@ -33,6 +33,7 @@ static volatile SOOL_TimerOutputCompare SOOL_TimerOC_InitializeClass(volatile SO
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+// FIXME:
 /**
  *
  * @param TIMx: TIMx where x can be 1 to 17 to select the TIM peripheral.
