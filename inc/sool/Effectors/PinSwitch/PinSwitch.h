@@ -23,7 +23,7 @@ typedef struct _SOOL_PinSwitchStruct SOOL_PinSwitch;
 
 // define a structure
 struct _SOOL_PinSwitchStruct {
-	SOOL_PinConfig_NoInt 	_setup;				// pin switcher is not interrupt-driven
+	SOOL_PinConfig_NoInt 	base;				// pin switcher is not interrupt-driven
 	void (*SetHigh)(const SOOL_PinSwitch*);
 	void (*SetLow)(const SOOL_PinSwitch*);
 };

@@ -24,13 +24,16 @@ typedef struct _SOOL_ButtonStruct SOOL_Button;
 
 struct _SOOL_ButtonStruct {
 
-	SOOL_PinConfig_Int 				_setup;
+	// ----------- base class section
+	SOOL_PinConfig_Int 				base;
+
+	// ----------- derived class section
 	struct _SOOL_ButtonStateStruct 	_state;
 
 	uint8_t 	(*GetPushedFlag)(volatile SOOL_Button*); 							// interrupt-driven, clears the flag
 	uint8_t 	(*GetCurrentState)(const volatile SOOL_Button*);
-	void 		(*SetNvicState)(SOOL_PinConfig_Int*, const FunctionalState);
-	void 		(*SetExtiState)(SOOL_PinConfig_Int*, const FunctionalState);
+//	void 		(*SetNvicState)(SOOL_PinConfig_Int*, const FunctionalState);
+//	void 		(*SetExtiState)(SOOL_PinConfig_Int*, const FunctionalState);
 	uint8_t 	(*_InterruptHandler)(volatile SOOL_Button*); 						// routine fired in a proper ISR (firstly it must check if interrupt has been triggered on sensor's EXTI line)
 
 };

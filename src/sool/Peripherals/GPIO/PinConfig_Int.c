@@ -6,16 +6,34 @@
  */
 
 #include <sool/Peripherals/GPIO/PinConfig_Int.h>
+#include "sool/Peripherals/NVIC/NVIC.h"
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+static void PinConfig_EnableEXTI(volatile SOOL_PinConfig_Int *pin_cfg_ptr);
+static void PinConfig_DisableEXTI(volatile SOOL_PinConfig_Int *pin_cfg_ptr);
+
+static void PinConfig_EnableNVIC(volatile SOOL_PinConfig_Int *pin_cfg_ptr);
+static void PinConfig_DisableNVIC(volatile SOOL_PinConfig_Int *pin_cfg_ptr);
+
+static uint8_t PinConfig_InterruptHandler(volatile SOOL_PinConfig_Int *pin_cfg_ptr);
+
+// helper
 static void PinConfig_SetEXTILineEXTIPinSourceIRQn(uint16_t pin, uint32_t *exti_ln, uint8_t *pin_src, uint8_t *irqn);
 static void PinConfig_SetEXTIPortSource(const GPIO_TypeDef* port, uint8_t *port_src);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-SOOL_PinConfig_Int SOOL_Periph_GPIO_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port, const uint16_t gpio_pin,
-					const EXTITrigger_TypeDef exti_trigger) {
+/**
+ * Enables EXTI by default
+ * @param gpio_port
+ * @param gpio_pin
+ * @param gpio_mode
+ * @param exti_trigger
+ * @return
+ */
+SOOL_PinConfig_Int SOOL_Periph_GPIO_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_port,
+			uint16_t gpio_pin, GPIOMode_TypeDef gpio_mode, EXTITrigger_TypeDef exti_trigger) {
 
 	/* object to be filled with given values
 	 * and peripherals on which it depends
@@ -32,25 +50,29 @@ SOOL_PinConfig_Int SOOL_Periph_GPIO_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_
 	 * @defgroup EXTI_Exported_Constants
 	 * @defgroup EXTI_Lines
 	 */
-	config.exti.line = 0x00;
+//	config._exti.line = 0x00;
 
 	uint32_t exti_ln;
 	uint8_t pin_src, port_src, irqn;
 
+	/* Select proper values */
 	PinConfig_SetEXTIPortSource(gpio_port, &port_src);
 	PinConfig_SetEXTILineEXTIPinSourceIRQn(gpio_pin, &exti_ln, &pin_src, &irqn);
 
+	/* Enable port clock */
 	SOOL_Periph_GPIO_PinConfig_EnableAPBClock(gpio_port);
 
-	// alternative function clock
+	/* Enable alternative function clock (EXTI) */
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
 
+	/* Configure GPIO */
 	GPIO_InitTypeDef gpio;
 	GPIO_StructInit(&gpio);
 	gpio.GPIO_Pin = gpio_pin;
-	gpio.GPIO_Mode = GPIO_Mode_IPU;
+	gpio.GPIO_Mode = gpio_mode;
 	GPIO_Init(gpio_port, &gpio);
 
+	/* EXTI */
 	EXTI_InitTypeDef exti;
 	EXTI_StructInit(&exti);
 	exti.EXTI_Line = exti_ln;
@@ -67,19 +89,25 @@ SOOL_PinConfig_Int SOOL_Periph_GPIO_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_
 	nvic.NVIC_IRQChannelCmd = ENABLE;
 	// nvic init at the end of the function
 
-	// gpio-specific struct fields
+	/* Copy data to internal structures */
+	config._gpio.port = gpio_port;
+	config._gpio.pin = gpio_pin;
+//	config._exti.line = exti_ln;
+//	config._exti.port_src = port_src;
+//	config._exti.pin_src = pin_src;
+	config._nvic.irqn = irqn;
 
-	config.gpio.port = gpio_port;
-	config.gpio.pin = gpio_pin;
-	config.exti.line = exti_ln;
-	config.exti.port_src = port_src;
-	config.exti.pin_src = pin_src;
-	config.nvic.irqn = irqn;
+	/* EXTIInitTypedef structure copy - more convenient utilization via EXTI_Init */
+	config._exti.setup = exti;
 
-	// inittypedef struct fields
-	config.exti.setup = exti;
-	config.nvic.setup = nvic;
+	/* Copy member functions */
+	config.DisableEXTI = PinConfig_DisableEXTI;
+	config.DisableNVIC = PinConfig_DisableNVIC;
+	config.EnableEXTI = PinConfig_EnableEXTI;
+	config.EnableNVIC = PinConfig_EnableNVIC;
+	config._InterruptHandler = PinConfig_InterruptHandler;
 
+	/* Configure external interrupts on a given pin */
 	EXTI_Init(&exti);
 	GPIO_EXTILineConfig(port_src, pin_src);
 	NVIC_Init(&nvic);
@@ -90,18 +118,36 @@ SOOL_PinConfig_Int SOOL_Periph_GPIO_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-/// \brief NVIC interrupts switcher ( on (ENABLE) or off (DISABLE) )
-void SOOL_Periph_GPIO_PinConfig_NvicSwitch(SOOL_PinConfig_Int *config, const FunctionalState state) {
-	config->nvic.setup.NVIC_IRQChannelCmd = state;
-	NVIC_Init(&(config->nvic.setup));
+static void PinConfig_EnableEXTI(volatile SOOL_PinConfig_Int *pin_cfg_ptr) {
+	pin_cfg_ptr->_exti.setup.EXTI_LineCmd = ENABLE;
+	EXTI_Init(&(pin_cfg_ptr->_exti.setup));
+}
+static void PinConfig_DisableEXTI(volatile SOOL_PinConfig_Int *pin_cfg_ptr) {
+	pin_cfg_ptr->_exti.setup.EXTI_LineCmd = DISABLE;
+	EXTI_Init(&(pin_cfg_ptr->_exti.setup));
 }
 
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+static void PinConfig_EnableNVIC(volatile SOOL_PinConfig_Int *pin_cfg_ptr) {
+	SOOL_Periph_NVIC_Enable(pin_cfg_ptr->_nvic.irqn);
+}
+static void PinConfig_DisableNVIC(volatile SOOL_PinConfig_Int *pin_cfg_ptr) {
+	SOOL_Periph_NVIC_Disable(pin_cfg_ptr->_nvic.irqn);
+}
 
-/// \brief EXTI interrupts switcher ( on (ENABLE) or off (DISABLE) )
-void SOOL_Periph_GPIO_PinConfig_ExtiSwitch(SOOL_PinConfig_Int *config, const FunctionalState state) {
-	config->exti.setup.EXTI_LineCmd = state;
-	EXTI_Init(&(config->exti.setup));
+static uint8_t PinConfig_InterruptHandler(volatile SOOL_PinConfig_Int *pin_cfg_ptr) {
+
+	/* Check if the line which generated interrupt match the current one */
+	if ( EXTI_GetITStatus(pin_cfg_ptr->_exti.setup.EXTI_Line) == RESET ) {
+		// interrupt request on different EXTI Line
+		return (0);
+	}
+
+	/* Clear interrupt flag */
+	EXTI_ClearITPendingBit(pin_cfg_ptr->_exti.setup.EXTI_Line);
+
+	/* Indicate that ISR has been triggered */
+	return (1);
+
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
