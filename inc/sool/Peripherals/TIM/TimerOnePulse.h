@@ -24,11 +24,6 @@ typedef struct _SOOL_TimerOnePulseStruct SOOL_TimerOnePulse;
 
 struct _SOOL_TimerOnePulseSetupStruct {
 
-//	uint16_t TIM_IT_CCx; 		// channel compare ID
-//	uint16_t TIM_FLAG_CCxOF;	// overcapture
-//	uint16_t TIM_Channel_x;		// acquisition of the CCRx register content
-//	uint8_t NVIC_IRQ_channel;
-
 	uint16_t delay_time;
 	FunctionalState trig_immediately;
 
@@ -76,6 +71,16 @@ struct _SOOL_TimerOnePulseStruct {
 	 * @param
 	 */
 	void (*Prepare)(volatile SOOL_TimerOnePulse*);
+
+	/**
+	 * Calls few `class` functions and generates pulse in a typical way (`wrapper`).
+	 * Timer's NVIC channel needs to be enabled before.
+	 * To restore previous timer configuration DisableOPMode() must be called first
+	 * AND TimerOutputCompare's Start() function must called next (enables counter).
+	 * Calling DisableOPMode() before pulse's end won't produce a proper signal.
+	 * @param
+	 */
+	void (*GeneratePulse)(volatile SOOL_TimerOnePulse*);
 
 	/**
 	 * Update event interrupt handler

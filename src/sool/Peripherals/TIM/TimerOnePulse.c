@@ -15,6 +15,7 @@ static void SOOL_TimerOP_DisableOPMode(volatile SOOL_TimerOnePulse *timer_op_ptr
 
 static void SOOL_TimerOP_SetImmediateStart(volatile SOOL_TimerOnePulse *timer_op_ptr, FunctionalState state);
 static void SOOL_TimerOP_Prepare(volatile SOOL_TimerOnePulse *timer_op_ptr);
+static void SOOL_TimerOP_GeneratePulse(volatile SOOL_TimerOnePulse *timer_op_ptr);
 static uint8_t SOOL_TimerOP_InterruptHandler(volatile SOOL_TimerOnePulse *timer_op_ptr);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -32,7 +33,10 @@ static void SOOL_Periph_TIMCompare_ForcedOCInit(volatile SOOL_TimerOnePulse *tim
 // @note DEPRECATED Calls EnableOPMode and Prepare internally
 // @note See Fig. 92 from RM0008, tPULSE is defined by (TIMx_ARR - TIMx_CCR1)
 //       which is symbolically equal to (TIM_Period - TIM_Pulse)
-// @note Generating the waveform can be done in !output compare mode! or !PWM mode!
+// @note Generating the waveform can be done in *output compare mode* or *PWM mode*
+// @note In datasheet they say that there is some limitation related to tDELAY (peripheral's inability to generate pulse
+// 	     on next clock cycle. It does occur indeed (at least with counter incremented each microsecond) so tDELAY
+//		 given in `constructor` is internally incremented (by 1).
 volatile SOOL_TimerOnePulse SOOL_Periph_TIM_TimerOnePulse_Init(volatile SOOL_TimerOutputCompare *timer_oc_ptr,
 		uint16_t delay_time, FunctionalState trig_immediately) {
 
@@ -46,6 +50,7 @@ volatile SOOL_TimerOnePulse SOOL_Periph_TIM_TimerOnePulse_Init(volatile SOOL_Tim
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+// TODO: slave mode was not tested at all
 volatile SOOL_TimerOnePulse SOOL_Periph_TIM_TimerOnePulse_InitSlave(volatile SOOL_TimerOutputCompare *timer_oc_ptr,
 		uint16_t delay_time, FunctionalState trig_immediately,
 		uint16_t slave_mode, uint16_t input_trigger) {
@@ -92,7 +97,7 @@ static void SOOL_TimerOP_Prepare(volatile SOOL_TimerOnePulse *timer_op_ptr) {
 	/* The tDELAY is defined by the value written in the TIMx_CCRy register. */
 	// tDELAY is time from triggering event to start of a pulse
 	SOOL_Periph_TIMCompare_SetCCR(timer_op_ptr->base.base._setup.TIMx, timer_op_ptr->base._setup.TIM_Channel_x,
-						   timer_op_ptr->_setup.delay_time + 1); // FIXME: + 1 ?
+						   timer_op_ptr->_setup.delay_time + 1); // unable to generate with `0` tDELAY
 
 
 	/* Check whether to set CNT (counter) accordingly to allow pulse start at the next ( + 1) clock
@@ -108,7 +113,7 @@ static void SOOL_TimerOP_Prepare(volatile SOOL_TimerOnePulse *timer_op_ptr) {
 		// adjust TIM_CNT to force pulse start at the next clock cycle
 		timer_op_ptr->base.base._setup.TIMx->CNT = (uint16_t)
 				(timer_op_ptr->base.base._setup.TIMx->ARR - timer_op_ptr->base._setup.oc_config.TIM_Pulse -
-				 timer_op_ptr->_setup.delay_time - 20);
+				 timer_op_ptr->_setup.delay_time - 1);
 		// FIXME: was  `- 1`, but `- 3` is safer, temp solution
 
 		// FIXME: one or another or both pieces of code are necessary?
@@ -124,6 +129,23 @@ static void SOOL_TimerOP_Prepare(volatile SOOL_TimerOnePulse *timer_op_ptr) {
 //	// is it needed?
 //	SOOL_Periph_TIMCompare_EnableChannel(timer_op_ptr->base.base._setup.TIMx,
 //										 timer_op_ptr->base._setup.TIM_Channel_x);
+
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static void SOOL_TimerOP_GeneratePulse(volatile SOOL_TimerOnePulse *timer_op_ptr) {
+
+	/* Disable OnePulse Mode (it seems that counter could not be enabled with OPMode enabled) */
+	SOOL_TimerOP_DisableOPMode(timer_op_ptr);
+	/* Stop the counter */
+	timer_op_ptr->base.Stop(&timer_op_ptr->base);
+	/* Update CCR and CNT registers to force proper pulse delay and its length (respectively) */
+	SOOL_TimerOP_Prepare(timer_op_ptr);
+	/* Start the counter */
+	timer_op_ptr->base.Start(&timer_op_ptr->base);
+	/* Enable OnePulse Mode */
+	SOOL_TimerOP_EnableOPMode(timer_op_ptr);
 
 }
 
@@ -222,6 +244,7 @@ static volatile SOOL_TimerOnePulse SOOL_TimerOP_InitiatizeClass(volatile SOOL_Ti
 	timer.EnableOPMode = SOOL_TimerOP_EnableOPMode;
 	timer.SetImmediateStart = SOOL_TimerOP_SetImmediateStart;
 	timer.Prepare = SOOL_TimerOP_Prepare;
+	timer.GeneratePulse = SOOL_TimerOP_GeneratePulse;
 	timer._InterruptHandler = SOOL_TimerOP_InterruptHandler;
 
 //	/* Prepare for pulse generation */
