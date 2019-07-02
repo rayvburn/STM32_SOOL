@@ -75,12 +75,20 @@ struct _SOOL_TimerOnePulseStruct {
 	/**
 	 * Calls few `class` functions and generates pulse in a typical way (`wrapper`).
 	 * Timer's NVIC channel needs to be enabled before.
-	 * To restore previous timer configuration DisableOPMode() must be called first
-	 * AND TimerOutputCompare's Start() function must called next (enables counter).
-	 * Calling DisableOPMode() before pulse's end won't produce a proper signal.
+
 	 * @param
 	 */
 	void (*GeneratePulse)(volatile SOOL_TimerOnePulse*);
+
+	/**
+	 * Another `wrapper` for a typical utilization.
+	 * To restore previous timer configuration DisableOPMode() must be called first
+	 * AND TimerOutputCompare's Start() function must called next (enables counter).
+	 * Calling DisableOPMode() (or this function) before pulse's end will not produce
+	 * a proper signal.
+	 * @param
+	 */
+	void (*RestorePrevMode)(volatile SOOL_TimerOnePulse*);
 
 	/**
 	 * Update event interrupt handler

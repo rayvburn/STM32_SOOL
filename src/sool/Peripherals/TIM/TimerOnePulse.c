@@ -16,6 +16,7 @@ static void SOOL_TimerOP_DisableOPMode(volatile SOOL_TimerOnePulse *timer_op_ptr
 static void SOOL_TimerOP_SetImmediateStart(volatile SOOL_TimerOnePulse *timer_op_ptr, FunctionalState state);
 static void SOOL_TimerOP_Prepare(volatile SOOL_TimerOnePulse *timer_op_ptr);
 static void SOOL_TimerOP_GeneratePulse(volatile SOOL_TimerOnePulse *timer_op_ptr);
+static void SOOL_TimerOP_RestorePrevMode(volatile SOOL_TimerOnePulse *timer_op_ptr);
 static uint8_t SOOL_TimerOP_InterruptHandler(volatile SOOL_TimerOnePulse *timer_op_ptr);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -29,6 +30,7 @@ static void SOOL_Periph_TIMCompare_ForcedOCInit(volatile SOOL_TimerOnePulse *tim
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+// works with or without Update (TimerBasic) and CC (TimerOutputCompare) interrupts enabled
 // @note Counter stops after each UEV (Update event, TIM_IT_Update flag setting) - needs to be started again (from base class for example)
 // @note DEPRECATED Calls EnableOPMode and Prepare internally
 // @note See Fig. 92 from RM0008, tPULSE is defined by (TIMx_ARR - TIMx_CCR1)
@@ -134,6 +136,7 @@ static void SOOL_TimerOP_Prepare(volatile SOOL_TimerOnePulse *timer_op_ptr) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+// handy wrapper
 static void SOOL_TimerOP_GeneratePulse(volatile SOOL_TimerOnePulse *timer_op_ptr) {
 
 	/* Disable OnePulse Mode (it seems that counter could not be enabled with OPMode enabled) */
@@ -146,6 +149,18 @@ static void SOOL_TimerOP_GeneratePulse(volatile SOOL_TimerOnePulse *timer_op_ptr
 	timer_op_ptr->base.Start(&timer_op_ptr->base);
 	/* Enable OnePulse Mode */
 	SOOL_TimerOP_EnableOPMode(timer_op_ptr);
+
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+// handy wrapper
+static void SOOL_TimerOP_RestorePrevMode(volatile SOOL_TimerOnePulse *timer_op_ptr) {
+
+	/* Disable OnePulse Mode (it seems that counter could not be enabled with OPMode enabled) */
+	SOOL_TimerOP_DisableOPMode(timer_op_ptr);
+	/* Start the counter */
+	timer_op_ptr->base.Start(&timer_op_ptr->base);
 
 }
 
@@ -245,6 +260,7 @@ static volatile SOOL_TimerOnePulse SOOL_TimerOP_InitiatizeClass(volatile SOOL_Ti
 	timer.SetImmediateStart = SOOL_TimerOP_SetImmediateStart;
 	timer.Prepare = SOOL_TimerOP_Prepare;
 	timer.GeneratePulse = SOOL_TimerOP_GeneratePulse;
+	timer.RestorePrevMode = SOOL_TimerOP_RestorePrevMode;
 	timer._InterruptHandler = SOOL_TimerOP_InterruptHandler;
 
 //	/* Prepare for pulse generation */
