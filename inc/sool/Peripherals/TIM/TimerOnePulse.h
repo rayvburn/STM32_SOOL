@@ -54,7 +54,7 @@ struct _SOOL_TimerOnePulseStruct {
 	void (*EnableOPMode)(volatile SOOL_TimerOnePulse*);
 
 	/**
-	 * Does not restart the counter
+	 * Does not restart the counter but sets it to 0
 	 * @param
 	 */
 	void (*DisableOPMode)(volatile SOOL_TimerOnePulse*);
