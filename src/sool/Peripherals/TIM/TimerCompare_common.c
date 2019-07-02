@@ -7,6 +7,8 @@
 
 #include "sool/Peripherals/TIM/TimerCompare_common.h"
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 uint8_t SOOL_Periph_TIMCompare_IsCaptureCompareChannelEnabled(TIM_TypeDef* TIMx, uint16_t channel) {
 
 	switch (channel) {
@@ -28,6 +30,8 @@ uint8_t SOOL_Periph_TIMCompare_IsCaptureCompareChannelEnabled(TIM_TypeDef* TIMx,
 	}
 
 }
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 uint16_t SOOL_Periph_TIMCompare_GetCCR(TIM_TypeDef* TIMx, uint16_t channel) {
 
@@ -51,6 +55,8 @@ uint16_t SOOL_Periph_TIMCompare_GetCCR(TIM_TypeDef* TIMx, uint16_t channel) {
 
 }
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 void SOOL_Periph_TIMCompare_SetCCR(TIM_TypeDef* TIMx, uint16_t channel, uint16_t value) {
 
 	switch (channel) {
@@ -72,6 +78,8 @@ void SOOL_Periph_TIMCompare_SetCCR(TIM_TypeDef* TIMx, uint16_t channel, uint16_t
 	}
 
 }
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 // DEPRECATED
 //void SOOL_Periph_TIMCompare_SetCCMR(TIM_TypeDef* TIMx, uint16_t channel, uint16_t mask) {
@@ -102,6 +110,8 @@ void SOOL_Periph_TIMCompare_SetCCR(TIM_TypeDef* TIMx, uint16_t channel, uint16_t
 //
 //}
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 void SOOL_Periph_TIMCompare_EnableChannel(TIM_TypeDef* TIMx, uint16_t channel) {
 
 	/* Enable the Channel x: Set the CCxE Bit */
@@ -126,6 +136,9 @@ void SOOL_Periph_TIMCompare_EnableChannel(TIM_TypeDef* TIMx, uint16_t channel) {
 	}
 
 }
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 void SOOL_Periph_TIMCompare_DisableChannel(TIM_TypeDef* TIMx, uint16_t channel) {
 
 	/* Disable the Channel x: Reset the CCxE Bit */
@@ -150,3 +163,5 @@ void SOOL_Periph_TIMCompare_DisableChannel(TIM_TypeDef* TIMx, uint16_t channel) 
 	}
 
 }
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

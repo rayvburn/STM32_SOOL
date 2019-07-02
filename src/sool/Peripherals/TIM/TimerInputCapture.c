@@ -37,6 +37,7 @@ static uint8_t SOOL_TimerInputCapture_InterruptHandler(volatile SOOL_TimerInputC
  * @param enable_int_cc: if true TIM_IT_CCx is enabled
  * @return SOOL_TimerInputCapture `class` instance
  * @note prescaler and period parameters must be a number between 0x0000 and 0xFFFF.
+ * @note usually the input capture pin is configured as GPIO_Mode_IN_FLOATING
  */
 volatile SOOL_TimerInputCapture SOOL_Periph_TIM_TimerInputCapture_Init(TIM_TypeDef* TIMx,
 		uint16_t prescaler, uint16_t period, FunctionalState enable_int_update,
@@ -180,9 +181,17 @@ static uint16_t SOOL_TimerInputCapture_GetSavedCounterVal(const volatile SOOL_Ti
 
 static uint8_t SOOL_TimerInputCapture_InterruptHandler(volatile SOOL_TimerInputCapture *tim_ic_ptr) {
 
-	/* Check if update interrupt flag of the timer is set */
+	/* Check if update interrupt flag of the timer is set:
+	 * 		o check IT flag
+	 * 		o check whether OC channel is enabled
+	 */
 	if (TIM_GetITStatus(tim_ic_ptr->base._setup.TIMx, tim_ic_ptr->_setup.TIM_IT_CCx) == RESET) {
 		// nothing to do (different IRQn or another flag)
+		return (0);
+	}
+
+	/* If Flag is set check whether InputCapture timer's channel is enabled */
+	if ( !SOOL_Periph_TIMCompare_IsCaptureCompareChannelEnabled(tim_ic_ptr->base._setup.TIMx, tim_ic_ptr->_setup.TIM_Channel_x) ) {
 		return (0);
 	}
 
@@ -192,10 +201,7 @@ static uint8_t SOOL_TimerInputCapture_InterruptHandler(volatile SOOL_TimerInputC
 	 * the flag and before reading the data.
 	 */
 
-	// FIXME: check whether IC is enabled
-
 	/* Update Timer's state */
-	//tim_ic_ptr->_state.transition_counter_val = SOOL_TimerInputCapture_GetCaptureRegisterValue(tim_ic_ptr);
 	tim_ic_ptr->_state.transition_counter_val = SOOL_Periph_TIMCompare_GetCCR(tim_ic_ptr->base._setup.TIMx, tim_ic_ptr->_setup.TIM_Channel_x);
 	tim_ic_ptr->_state.transition_detected = 1;
 
