@@ -9,7 +9,7 @@
 #define INC_SOOL_SENSORS_SONAR_SONAR_H_
 
 #include <sool/Peripherals/TIM/TimerBasic.h>
-#include <sool/Peripherals/TIM/TimerOutputCompare.h>
+#include <sool/Peripherals/TIM/TimerOnePulse.h>
 #include <sool/Peripherals/TIM/TimerInputCapture.h>
 
 #include <sool/Peripherals/GPIO/PinConfig_Int.h>	// Echo
@@ -25,23 +25,6 @@
 ///
 /// SHARED TIMER INSTANCE - circular buffer
 
-// - - - - - - - - - - - - -
-// cases to consider - - - -
-// - - - - - - - - - - - - -
-// timeout
-// conversion to cm
-// leave TIMER
-
-// - - - - - - - - - - - - -
-// methods - - - - - - - - -
-// - - - - - - - - - - - - -
-// startMeasurement
-// isStarted
-// isFinished
-// getDistanceRaw
-// getDistanceCm
-// EXTI_InterruptHandler
-// TIM_InterruptHandler
 
 
 /// \brief ???????? status `register` which changes as interrupt routing fires up
@@ -50,20 +33,16 @@ struct _SOOL_SonarState {
 	uint8_t 	started;
 	uint8_t		finished;
 	uint8_t 	timeout_occurred;
-	//uint32_t 	distance_raw;
-	uint16_t	distance_cm;
-	//float		distance_cm_float;
+	uint16_t 	counter_val;
+	uint16_t	distance_cm;;
 
 };
 
-
-//struct _SOOL_SonarSetup {
-//
-//	SOOL_PinConfig_Int		echo;
-//	//SOOL_PinConfig_NoInt 	trig;
-//	SOOL_PinSwitch			trigger;
-//
-//};
+//typedef enum {
+//	SOOL_SONAR_RISING_EDGE = 0u,
+//	SOOL_SONAR_FALLING_EDGE,
+//	SOOL_SONAR_TIMEOUT
+//} SOOL_Sonar_IsrStatus;
 
 // - - - - - - - - - - - - - - - - -
 
@@ -73,39 +52,35 @@ typedef struct _SOOL_SonarStruct SOOL_Sonar;
 
 struct _SOOL_SonarStruct {
 
-//	struct _SOOL_SonarSetup _setup;
 	struct _SOOL_SonarState	_state;
 
-	SOOL_PinConfig_Int		base_echo;
-	SOOL_PinSwitch			base_trigger;
-	SOOL_TimerOutputCompare base_tim_out;
-	SOOL_TimerInputCapture	base_tim_in;
+	// --------- base classes section ------------
+	SOOL_PinConfig_AltFunction	base_echo;
+	SOOL_PinConfig_AltFunction	base_trigger;
+	SOOL_TimerOnePulse 			base_tim_out;
+	SOOL_TimerInputCapture		base_tim_in;
 
+	// --------- derived class section -----------
 	uint8_t 	(*StartMeasurement)(volatile SOOL_Sonar*);
-	//void 		(*StartContinuousMeasurements)(volatile SOOL_Sonar*);	// DEPRECATED
 	uint8_t 	(*IsStarted)(const volatile SOOL_Sonar*);
 	uint8_t 	(*IsFinished)(const volatile SOOL_Sonar*);
 	uint8_t 	(*DidTimeout)(const volatile SOOL_Sonar*);
-	// uint32_t	(*GetDistanceRaw)(const volatile SOOL_Sonar*);			// DEPRECATED
 	uint16_t	(*GetDistanceCm)(const volatile SOOL_Sonar*);
-	//float		(*GetDistanceCmFloat)(const volatile SOOL_Sonar*);		// DEPRECATED
 
-//	void 		(*SetNvicState)(SOOL_PinConfig_Int*, const FunctionalState);
-//	void 		(*SetExtiState)(SOOL_PinConfig_Int*, const FunctionalState);
+//	uint8_t 	(*_EXTI_InterruptHandler)(volatile SOOL_Sonar*); 		// routine fired in a proper ISR (firstly it must check if interrupt has been triggered on sensor's EXTI line)
+//	uint8_t 	(*_TIM_IC_InterruptHandler)(volatile SOOL_Sonar*);
+//	uint8_t 	(*_TIM_Update_InterruptHandler)(volatile SOOL_Sonar*);
 
-//	void 		(*ReinitTimer)(void);
-//	void 		(*FreeTimer)(void);
-
-	uint8_t 	(*_EXTI_InterruptHandler)(volatile SOOL_Sonar*); 		// routine fired in a proper ISR (firstly it must check if interrupt has been triggered on sensor's EXTI line)
-//	uint8_t 	(*_TIM_OC_InterruptHandler)(volatile SOOL_Sonar*);		// not needed
-	uint8_t 	(*_TIM_IC_InterruptHandler)(volatile SOOL_Sonar*);
-	uint8_t 	(*_TIM_Update_InterruptHandler)(volatile SOOL_Sonar*);
+//	void 		(*_CalculateDistance)(volatile SOOL_Sonar*);
+	uint8_t 	(*_PulseEnd_InterruptHandler)(volatile SOOL_Sonar*);
+	uint8_t 	(*_EchoEdge_InterruptHandler)(volatile SOOL_Sonar*);
+	uint8_t 	(*_Timeout_InterruptHandler)(volatile SOOL_Sonar*);
 
 };
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-const uint16_t SOOL_Sonar_DISTANCE_UNKNOWN = 9999;
+//const uint16_t SOOL_Sonar_DISTANCE_UNKNOWN = 9999;
 
 // TODO
 // extern
