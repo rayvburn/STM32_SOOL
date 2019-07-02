@@ -75,8 +75,11 @@ struct _SOOL_TimerInputCaptureStruct {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+
 extern volatile SOOL_TimerInputCapture SOOL_Periph_TIM_TimerInputCapture_Init(volatile SOOL_TimerBasic tim_basic,
 		uint16_t channel, uint16_t ic_polarity, FunctionalState enable_int_cc);
+// @note Example of use can be found in:
+// https://gitlab.com/frb-pow/002tubewaterflowmcu/tree/95d4a7088479d5eaf308737cf9bd9ee105dfd60f
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 

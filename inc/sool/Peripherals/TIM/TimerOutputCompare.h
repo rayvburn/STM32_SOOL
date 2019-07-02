@@ -82,5 +82,6 @@ extern volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_Init(
 extern volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_InitComplementary(volatile SOOL_TimerBasic tim_basic,
 		uint16_t channel, uint16_t oc_mode, uint16_t pulse, FunctionalState enable_int_cc,
 		uint16_t idle_state_n, uint16_t polarity_n, uint16_t output_state_n);
-
+// @note Example of use can be found in:
+// https://gitlab.com/frb-pow/002tubewaterflowmcu/tree/95d4a7088479d5eaf308737cf9bd9ee105dfd60f
 #endif /* INC_SOOL_PERIPHERALS_TIM_TIMEROUTPUTCOMPARE_H_ */
