@@ -25,8 +25,7 @@ static uint8_t SOOL_TimerInputCapture_InterruptHandler(volatile SOOL_TimerInputC
 //GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 
 /**
- * SOOL_TimerInputCapture's initializer, this `class` uses SOOL_TimerBasic `class` as a base
- * and overrides SOOL_TimerBasic's start()
+ *
  *
  * @param TIMx: TIMx where x can be 1 to 17 to select the TIM peripheral.
  * @param prescaler: (-1) Specifies the prescaler value used to divide the TIM clock.
@@ -37,15 +36,28 @@ static uint8_t SOOL_TimerInputCapture_InterruptHandler(volatile SOOL_TimerInputC
  * @param enable_int_cc: if true TIM_IT_CCx is enabled
  * @return SOOL_TimerInputCapture `class` instance
  * @note prescaler and period parameters must be a number between 0x0000 and 0xFFFF.
- * @note usually the input capture pin is configured as GPIO_Mode_IN_FLOATING
+ *
  */
-volatile SOOL_TimerInputCapture SOOL_Periph_TIM_TimerInputCapture_Init(TIM_TypeDef* TIMx,
-		uint16_t prescaler, uint16_t period, FunctionalState enable_int_update,
-		uint16_t channel, uint16_t ic_polarity, FunctionalState enable_int_cc) {
 
-	/* TimerBasic `constructor` - time base must be configured and basic
-	 * timer activity must be run to allow input capture mode work properly */
-	volatile SOOL_TimerBasic tim_basic = SOOL_Periph_TIM_TimerBasic_Init(TIMx, prescaler, period, enable_int_update);
+// TODO
+/**
+ * SOOL_TimerInputCapture's initializer, this `class` uses SOOL_TimerBasic `class` as a base
+ * and overrides SOOL_TimerBasic's Start().
+ *
+ * Usually the input capture pin is configured as GPIO_Mode_IN_FLOATING
+ *
+ * @param tim_basic_ptr - initialized (i.e. acquired from _Init()) SOOL_TimerBasic instance
+ * @param channel - Specifies the TIM channel. This parameter can be a value of @ref TIM_Channel
+          Channel of the timer's compare mode is closely related to wiring.
+          Due to hard-coded ICSelection parameter, remapping is not available.
+ * @param ic_polarity - whether to capture on rising or falling edge.
+ * 		  Specifies the active edge of the input signal. This parameter can be a value of @ref TIM_Input_Capture_Polarity
+ * 		  IMPORTANT: TIM_ICPolarity_BothEdge mode DOES NOT WORK (at least in STM32F103C8T6)
+ * @param enable_int_cc - whether to generate interrupts on capture event, if true TIM_IT_CCx is enabled
+ * @return
+ */
+volatile SOOL_TimerInputCapture SOOL_Periph_TIM_TimerInputCapture_Init(volatile SOOL_TimerBasic *tim_basic_ptr,
+		uint16_t channel, uint16_t ic_polarity, FunctionalState enable_int_cc) {
 
 	/* Object to be returned from the initializer */
 	volatile SOOL_TimerInputCapture timer;
@@ -89,11 +101,11 @@ volatile SOOL_TimerInputCapture SOOL_Periph_TIM_TimerInputCapture_Init(TIM_TypeD
 	tim_ic.TIM_ICPolarity = ic_polarity;
 	tim_ic.TIM_ICPrescaler = 0; // p. 384: "we wish the capture to be performed at each valid transition, so the prescaler is disabled"
 	tim_ic.TIM_ICSelection = TIM_ICSelection_DirectTI; // 'remapping' possible
-	TIM_ICInit(TIMx, &tim_ic);
+	TIM_ICInit(tim_basic_ptr->_setup.TIMx, &tim_ic);
 
 	/* Configure NVIC if needed */
 	NVIC_InitTypeDef nvic;
-	nvic.NVIC_IRQChannel = SOOL_Periph_TIM_GetIRQnType(TIMx, SOOL_PERIPH_TIM_IRQ_CC); // for safety moved outside `if`
+	nvic.NVIC_IRQChannel = SOOL_Periph_TIM_GetIRQnType(tim_basic_ptr->_setup.TIMx, SOOL_PERIPH_TIM_IRQ_CC); // for safety moved outside `if`
 
 	if ( enable_int_cc == ENABLE ) {
 
@@ -110,7 +122,7 @@ volatile SOOL_TimerInputCapture SOOL_Periph_TIM_TimerInputCapture_Init(TIM_TypeD
 	}
 
 	/* Enable interrupts */
-	TIM_ITConfig(TIMx, tim_it_cc, enable_int_cc);
+	TIM_ITConfig(tim_basic_ptr->_setup.TIMx, tim_it_cc, enable_int_cc);
 
 	/* Save class' fields */
 	timer._setup.TIM_Channel_x = channel;
@@ -119,7 +131,7 @@ volatile SOOL_TimerInputCapture SOOL_Periph_TIM_TimerInputCapture_Init(TIM_TypeD
 	timer._setup.NVIC_IRQ_channel = nvic.NVIC_IRQChannel;
 
 	/* Save base */
-	timer.base = tim_basic;
+	timer.base = *tim_basic_ptr;
 
 	/* Set initial state */
 	timer._state.transition_counter_val = 0;
@@ -202,6 +214,9 @@ static uint8_t SOOL_TimerInputCapture_InterruptHandler(volatile SOOL_TimerInputC
 	 */
 
 	/* Update Timer's state */
+	/*If channel CCy is configured as *input*:
+	CCRy is the counter value transferred by the last input capture y event (ICy). The
+	TIMx_CCRy register is read-only and cannot be programmed. */
 	tim_ic_ptr->_state.transition_counter_val = SOOL_Periph_TIMCompare_GetCCR(tim_ic_ptr->base._setup.TIMx, tim_ic_ptr->_setup.TIM_Channel_x);
 	tim_ic_ptr->_state.transition_detected = 1;
 

@@ -67,8 +67,7 @@ struct _SOOL_TimerInputCaptureStruct {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-extern volatile SOOL_TimerInputCapture SOOL_Periph_TIM_TimerInputCapture_Init(TIM_TypeDef* TIMx,
-		uint16_t prescaler, uint16_t period, FunctionalState enable_int_update,
+extern volatile SOOL_TimerInputCapture SOOL_Periph_TIM_TimerInputCapture_Init(volatile SOOL_TimerBasic *tim_basic_ptr,
 		uint16_t channel, uint16_t ic_polarity, FunctionalState enable_int_cc);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
