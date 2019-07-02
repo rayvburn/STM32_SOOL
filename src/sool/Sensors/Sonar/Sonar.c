@@ -24,7 +24,9 @@ static void Sonar_ReinitTimer();
 static void Sonar_FreeTimer();
 
 static uint8_t Sonar_EXTI_InterruptHandler(volatile SOOL_Sonar *sonar_ptr);
-static uint8_t Sonar_TIM_InterruptHandler(volatile SOOL_Sonar *sonar_ptr);
+static uint8_t Sonar_TIM_Update_InterruptHandler(volatile SOOL_Sonar *sonar_ptr);
+static uint8_t Sonar_TIM_IC_InterruptHandler(volatile SOOL_Sonar *sonar_ptr);
+//static uint8_t (volatile SOOL_Sonar *sonar_ptr);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -68,7 +70,7 @@ volatile SOOL_Sonar SOOL_Sensor_Sonar_InitFull(uint16_t trig_pin, GPIO_TypeDef* 
 	timer_setup.TIM_Channel_X = tim_channel;
 
 	/* Create input-event driven timer */
-	timer = SOOL_Periph_TIM_TimerInputCapture_Init(TIMx, prescaler_us, period_tout_dist, tim_channel, TIM_ICPolarity_BothEdge);
+//	timer = SOOL_Periph_TIM_TimerInputCapture_Init(TIMx, prescaler_us, period_tout_dist, ENABLE, tim_channel, TIM_ICPolarity_BothEdge, ENABLE);
 
 	TIM_SetCompare1(TIMx, 10);
 
@@ -126,8 +128,9 @@ static uint16_t Sonar_GetDistanceCm(const volatile SOOL_Sonar *sonar_ptr) {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 static void Sonar_ReinitTimer() {
-	timer = SOOL_Periph_TIM_TimerInputCapture_Init(timer.base._setup.TIMx, timer_setup.TIMEOUT_PRESCALER,
-						timer_setup.TIMEOUT_PERIOD, timer_setup.TIM_Channel_X, TIM_ICPolarity_BothEdge);
+	// FIXME - fields related to ENABLE/DISABLE interrupts need to be added
+//	timer = SOOL_Periph_TIM_TimerInputCapture_Init(timer.base._setup.TIMx, timer_setup.TIMEOUT_PRESCALER,
+//						timer_setup.TIMEOUT_PERIOD, timer_setup.TIM_Channel_X, TIM_ICPolarity_BothEdge);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -186,7 +189,9 @@ static uint8_t Sonar_EXTI_InterruptHandler(volatile SOOL_Sonar *sonar_ptr) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t Sonar_TIM_InterruptHandler(volatile SOOL_Sonar *sonar_ptr) {
+static uint8_t Sonar_TIM_Update_InterruptHandler(volatile SOOL_Sonar *sonar_ptr) {
+
+	/* No need to clear timer flags, TIM ISR will do it */
 
 	// timer interrupt indicates that timeout has occurred - find sonar which has `started` flag set
 	if ( sonar_ptr->_state.started ) {
@@ -202,6 +207,13 @@ static uint8_t Sonar_TIM_InterruptHandler(volatile SOOL_Sonar *sonar_ptr) {
 
 }
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static uint8_t Sonar_TIM_IC_InterruptHandler(volatile SOOL_Sonar *sonar_ptr) {
+
+	/* No need to clear timer flags, TIM ISR will do it */
+
+}
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // - - - - helper functions section  - - - - - - - - - - - - - - - - - -
@@ -233,9 +245,8 @@ static volatile SOOL_Sonar Sonar_InitializeClass(uint16_t trig_pin, GPIO_TypeDef
 	sonar.StartMeasurement = Sonar_StartMeasurement;
 
 	sonar._EXTI_InterruptHandler = Sonar_EXTI_InterruptHandler;
-	// TODO
-	sonar._TIM_OC_InterruptHandler;
-	sonar._TIM_IC_InterruptHandler;// = Sonar_TIM_InterruptHandler;
+	sonar._TIM_Update_InterruptHandler = Sonar_TIM_Update_InterruptHandler;
+	sonar._TIM_IC_InterruptHandler = Sonar_TIM_IC_InterruptHandler;
 
 	sonar.ReinitTimer = Sonar_ReinitTimer;
 	sonar.FreeTimer = Sonar_FreeTimer;
