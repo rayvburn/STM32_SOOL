@@ -14,12 +14,6 @@ SOOL_PinConfig_AltFunction SOOL_Periph_GPIO_PinConfig_Initialize_AltFunction(GPI
 	/* `Class` instance */
 	SOOL_PinConfig_AltFunction af_config;
 
-	/* Check parameter correctness */
-	if ( gpio_mode != GPIO_Mode_AF_OD && gpio_mode != GPIO_Mode_AF_PP ) {
-		// wrong gpio_mode given
-		return (af_config);
-	}
-
 	/* Enable AF clock */
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
 
