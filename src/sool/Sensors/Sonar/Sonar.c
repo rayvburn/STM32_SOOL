@@ -45,6 +45,9 @@ static uint16_t Sonar_CalculateTimeDiff(uint16_t start, uint16_t end);
  *
  * Trigger pin and port must be connected to a channel of timer (for example T3C1, T4C3)
  * Echo pin and port must be connected to a channel of timer
+ *
+ * Complementary pins of timer are not available here
+ *
  * @param trig_port
  * @param trig_pin
  * @param echo_port
