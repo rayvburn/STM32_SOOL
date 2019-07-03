@@ -11,8 +11,8 @@
 static void SOOL_TimerInputCapture_Start(volatile SOOL_TimerInputCapture *tim_ic_ptr);
 static void SOOL_TimerInputCapture_Stop(volatile SOOL_TimerInputCapture *tim_ic_ptr);
 
-//static void SOOL_TimerInputCapture_EnableNVIC(volatile SOOL_TimerInputCapture *tim_ic_ptr);
-//static void SOOL_TimerInputCapture_DisableNVIC(volatile SOOL_TimerInputCapture *tim_ic_ptr);
+static void SOOL_TimerInputCapture_EnableNVIC(volatile SOOL_TimerInputCapture *tim_ic_ptr);
+static void SOOL_TimerInputCapture_DisableNVIC(volatile SOOL_TimerInputCapture *tim_ic_ptr);
 
 static void SOOL_TimerInputCapture_SetPolarity(volatile SOOL_TimerInputCapture  *tim_ic_ptr, uint16_t polarity);
 
@@ -138,7 +138,7 @@ volatile SOOL_TimerInputCapture SOOL_Periph_TIM_TimerInputCapture_Init(volatile 
 
 	/* Set initial state */
 	timer._state.transition_counter_val = 0;
-	timer._state.transition_detected = 0;
+//	timer._state.transition_detected = 0;
 
 	/* Set function pointers */
 	timer.Start = SOOL_TimerInputCapture_Start;
@@ -146,8 +146,8 @@ volatile SOOL_TimerInputCapture SOOL_Periph_TIM_TimerInputCapture_Init(volatile 
 	// TODO
 	//timer.ReinitIC
 	//timer.DisableIC
-//	timer.EnableNVIC = SOOL_TimerInputCapture_EnableNVIC;
-//	timer.DisableNVIC = SOOL_TimerInputCapture_DisableNVIC;
+	timer.EnableNVIC = SOOL_TimerInputCapture_EnableNVIC;
+	timer.DisableNVIC = SOOL_TimerInputCapture_DisableNVIC;
 	timer.SetPolarity = SOOL_TimerInputCapture_SetPolarity;
 	timer.GetSavedCounterVal = SOOL_TimerInputCapture_GetSavedCounterVal;
 	timer._InterruptHandler = SOOL_TimerInputCapture_InterruptHandler;
@@ -161,7 +161,7 @@ volatile SOOL_TimerInputCapture SOOL_Periph_TIM_TimerInputCapture_Init(volatile 
 static void SOOL_TimerInputCapture_Start(volatile SOOL_TimerInputCapture *tim_ic_ptr) {
 
 	tim_ic_ptr->_state.transition_counter_val = 0;
-	tim_ic_ptr->_state.transition_detected = 0;
+//	tim_ic_ptr->_state.transition_detected = 0;
 	tim_ic_ptr->base.Start(&tim_ic_ptr->base);
 
 }
@@ -177,15 +177,15 @@ static void SOOL_TimerInputCapture_Stop(volatile SOOL_TimerInputCapture *tim_ic_
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-//static void SOOL_TimerInputCapture_EnableNVIC(volatile SOOL_TimerInputCapture *tim_ic_ptr) {
-//	SOOL_Periph_NVIC_Enable(tim_ic_ptr->_setup.NVIC_IRQ_channel);
-//}
-//
-//// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-//
-//static void SOOL_TimerInputCapture_DisableNVIC(volatile SOOL_TimerInputCapture *tim_ic_ptr) {
-//	SOOL_Periph_NVIC_Disable(tim_ic_ptr->_setup.NVIC_IRQ_channel);
-//}
+static void SOOL_TimerInputCapture_EnableNVIC(volatile SOOL_TimerInputCapture *tim_ic_ptr) {
+	SOOL_Periph_NVIC_Enable(tim_ic_ptr->_setup.NVIC_IRQ_channel);
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static void SOOL_TimerInputCapture_DisableNVIC(volatile SOOL_TimerInputCapture *tim_ic_ptr) {
+	SOOL_Periph_NVIC_Disable(tim_ic_ptr->_setup.NVIC_IRQ_channel);
+}
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -229,13 +229,14 @@ static uint8_t SOOL_TimerInputCapture_InterruptHandler(volatile SOOL_TimerInputC
 	CCRy is the counter value transferred by the last input capture y event (ICy). The
 	TIMx_CCRy register is read-only and cannot be programmed. */
 	tim_ic_ptr->_state.transition_counter_val = SOOL_Periph_TIMCompare_GetCCR(tim_ic_ptr->base._setup.TIMx, tim_ic_ptr->_setup.TIM_Channel_x);
-	tim_ic_ptr->_state.transition_detected = 1;
+//	tim_ic_ptr->_state.transition_detected = 1;
 
 	/* Clear the overcapture flag */
 	tim_ic_ptr->base._setup.TIMx->SR = (uint16_t)~tim_ic_ptr->_setup.TIM_FLAG_CCxOF;
 
 	/* Clear IT pending bit */
 	tim_ic_ptr->base._setup.TIMx->SR = (uint16_t)~tim_ic_ptr->_setup.TIM_IT_CCx; // TIM_ClearITPendingBit(timer->_TIMx, TIM_IT_Update);
+
 	return (1);
 
 }

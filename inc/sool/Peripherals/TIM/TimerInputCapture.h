@@ -19,7 +19,7 @@ typedef struct _SOOL_TimerInputCaptureStruct SOOL_TimerInputCapture;
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 struct _SOOL_TimerInputCaptureStateStruct {
-	uint8_t  transition_detected;
+	uint8_t  transition_detected;		// event handlers executed just after interrupts are used instead
 	uint16_t transition_counter_val;
 };
 
@@ -28,14 +28,20 @@ struct _SOOL_TimerInputCaptureSetupStruct {
 	uint16_t TIM_IT_CCx; 		// channel compare ID
 	uint16_t TIM_FLAG_CCxOF;	// overcapture
 	uint16_t TIM_Channel_x;		// acquisition of the CCRx register content
-	uint8_t NVIC_IRQ_channel;
+	uint8_t  NVIC_IRQ_channel;
 };
 
 /**
  * Composition of SOOL_TimerBasic and SOOL_TimerInputCapture class' contents
  * Unluckily there is no way to access base `class` members directly.
+ *
  * IMPORTANT: in case of derived classes which are interrupt-related
- * one must remember to call base's interrupt handlers too
+ * one must remember to call base's interrupt handlers too (when their interrupts
+ * are enabled like IT_Update etc.)
+ *
+ * IMPORTANT: when using InputCapture mode along with OutputCompare of the same timer
+ * beware that there some interference (?) may occur, sometimes it's better to turn off
+ * OC interrupts (for example see Sonar `class`)
  */
 struct _SOOL_TimerInputCaptureStruct {
 
@@ -52,14 +58,14 @@ struct _SOOL_TimerInputCaptureStruct {
 	void (*ReinitIC)(volatile SOOL_TimerInputCapture*);
 	void (*DisableIC)(volatile SOOL_TimerInputCapture*);	// Disable InputCapture
 
-//	/**
-//	 * EnableNVIC can be called after timer's interrupt handler was placed in IRQHandler
-//	 * function and when there is a certainty that all objects driven by timer interrupts
-//	 * were already put in proper IRQHandlers too
-//	 * @param Pointer to SOOL_TimerOutputCompare instance
-//	 */
-//	void (*EnableNVIC)(volatile SOOL_TimerInputCapture*);
-//	void (*DisableNVIC)(volatile SOOL_TimerInputCapture*);
+	/**
+	 * EnableNVIC can be called after timer's interrupt handler was placed in IRQHandler
+	 * function and when there is a certainty that all objects driven by timer interrupts
+	 * were already put in proper IRQHandlers too
+	 * @param Pointer to SOOL_TimerInputCapture instance
+	 */
+	void (*EnableNVIC)(volatile SOOL_TimerInputCapture*);
+	void (*DisableNVIC)(volatile SOOL_TimerInputCapture*);
 
 	/**
 	 *
