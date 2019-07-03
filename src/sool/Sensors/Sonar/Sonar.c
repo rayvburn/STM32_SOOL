@@ -209,16 +209,12 @@ static uint8_t Sonar_PulseEnd_InterruptHandler(volatile SOOL_Sonar *sonar_ptr) {
 
 	/* Disable OnePulse Mode of the timer */
 	sonar_ptr->base_tim_out.DisableOPMode(&sonar_ptr->base_tim_out);
-//	// temp
-//	/* Reset the OPM Bit */
-//	sonar_ptr->base_tim_out.base.base._setup.TIMx->CR1 &= (uint16_t)~((uint16_t)TIM_CR1_OPM);
-//	/* Reset counter */
-//	sonar_ptr->base_tim_out.base.base._setup.TIMx->CNT = (uint16_t)0x0000;
-
-
 
 	/* Set InputCapture polarity to detect rising edge of the signal on echo pin */
 	sonar_ptr->base_tim_in.SetPolarity(&sonar_ptr->base_tim_in, TIM_ICPolarity_Rising);
+
+	/* Restart counter (in OP Mode Update event stops counter) */
+	sonar_ptr->base_tim_in.Start(&sonar_ptr->base_tim_in);
 
 	return (1);
 
@@ -234,7 +230,8 @@ static uint8_t Sonar_EchoEdge_InterruptHandler(volatile SOOL_Sonar *sonar_ptr) {
 	}
 
 	/* Check state of the echo pin */
-	if ( SOOL_Periph_GPIO_ReadInputDataBit(sonar_ptr->base_echo.base.gpio.port, sonar_ptr->base_echo.base.gpio.pin) == 1 ) {
+	//if ( SOOL_Periph_GPIO_ReadInputDataBit(sonar_ptr->base_echo.base.gpio.port, sonar_ptr->base_echo.base.gpio.pin) == 1 ) {
+	if ( GPIO_ReadInputDataBit(sonar_ptr->base_echo.base.gpio.port, sonar_ptr->base_echo.base.gpio.pin) == 1 ) {
 
 		// ECHO state is high
 		if ( sonar_ptr->_state.started && !sonar_ptr->_state.finished ) {
@@ -368,9 +365,13 @@ static volatile SOOL_Sonar Sonar_InitializeClassHW(
 	/* TimerOutputCompare and TimerOnePulse configuration */
 	if ( init_tim_oc ) {
 
+//		/* TimerOutputCompare initialization */
+//		volatile SOOL_TimerOutputCompare timer_oc = SOOL_Periph_TIM_TimerOutputCompare_Init(timer_base_fcn,
+//									trig_tim_channel, TIM_OCMode_PWM2, 15, ENABLE,
+//									TIM_OCIdleState_Reset, TIM_OCPolarity_High, TIM_OutputState_Enable);
 		/* TimerOutputCompare initialization */
 		volatile SOOL_TimerOutputCompare timer_oc = SOOL_Periph_TIM_TimerOutputCompare_Init(timer_base_fcn,
-									trig_tim_channel, TIM_OCMode_PWM2, 15, ENABLE,
+									trig_tim_channel, TIM_OCMode_PWM2, 15, DISABLE, // !VERY IMPORTANT
 									TIM_OCIdleState_Reset, TIM_OCPolarity_High, TIM_OutputState_Enable);
 
 		/* TimerOnePulse initialization */
