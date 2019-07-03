@@ -51,9 +51,33 @@ struct _SOOL_TimerOutputCompareStruct {
 	// it's better to run a certain function during ISR
 	//uint8_t (*DidMatch)(const volatile SOOL_TimerOutputCompare*); // to check whether interrupt was generated
 
-	void (*SetPulse)(volatile SOOL_TimerOutputCompare*, uint16_t); // for PWM pulse-width adjustments
+	/**
+	 * Useful for PWM pulse-width adjustments
+	 * @param
+	 * @param
+	 */
+	void (*SetPulse)(volatile SOOL_TimerOutputCompare*, uint16_t);
+
+	/**
+	 * In fact calls _Init() (constructor)
+	 * @param
+	 */
 	void (*ReinitOC)(volatile SOOL_TimerOutputCompare*);
+
+	/**
+	 * Similar to DisableChannel but clears previous configuration of OC
+	 * @param
+	 */
 	void (*DisableOC)(volatile SOOL_TimerOutputCompare*);
+
+
+	void (*EnableChannel)(volatile SOOL_TimerOutputCompare*);
+	/**
+	 * Disables channel assigned to TimerOutputCompare during initialization.
+	 * Does nothing with interrupts etc
+	 * @param
+	 */
+	void (*DisableChannel)(volatile SOOL_TimerOutputCompare*);
 
 	/**
 	 * EnableNVIC can be called after timer's interrupt handler was placed in IRQHandler

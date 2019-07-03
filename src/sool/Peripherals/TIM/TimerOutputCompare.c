@@ -20,6 +20,9 @@ static void SOOL_TimerOC_SetPulse(volatile SOOL_TimerOutputCompare *tim_oc_ptr, 
 static void SOOL_TimerOC_ReinitOC(volatile SOOL_TimerOutputCompare *tim_oc_ptr);
 static void SOOL_TimerOC_DisableOC(volatile SOOL_TimerOutputCompare *tim_oc_ptr);
 
+static void SOOL_TimerOC_EnableChannel(volatile SOOL_TimerOutputCompare *tim_oc_ptr);
+static void SOOL_TimerOC_DisableChannel(volatile SOOL_TimerOutputCompare *tim_oc_ptr);
+
 static void SOOL_TimerOC_EnableNVIC(volatile SOOL_TimerOutputCompare *tim_oc_ptr);
 static void SOOL_TimerOC_DisableNVIC(volatile SOOL_TimerOutputCompare *tim_oc_ptr);
 
@@ -192,6 +195,18 @@ static void SOOL_TimerOC_DisableOC(volatile SOOL_TimerOutputCompare *tim_oc_ptr)
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+static void SOOL_TimerOC_EnableChannel(volatile SOOL_TimerOutputCompare *tim_oc_ptr) {
+	SOOL_Periph_TIMCompare_EnableChannel(tim_oc_ptr->base._setup.TIMx, tim_oc_ptr->_setup.TIM_Channel_x);
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static void SOOL_TimerOC_DisableChannel(volatile SOOL_TimerOutputCompare *tim_oc_ptr) {
+	SOOL_Periph_TIMCompare_DisableChannel(tim_oc_ptr->base._setup.TIMx, tim_oc_ptr->_setup.TIM_Channel_x);
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 static void SOOL_TimerOC_EnableNVIC(volatile SOOL_TimerOutputCompare *tim_oc_ptr) {
 	SOOL_Periph_NVIC_Enable(tim_oc_ptr->_setup.NVIC_IRQ_channel);
 }
@@ -331,6 +346,8 @@ static volatile SOOL_TimerOutputCompare SOOL_TimerOC_InitializeClass(volatile SO
 	timer.EnableNVIC = SOOL_TimerOC_EnableNVIC;
 	timer.DisableOC = SOOL_TimerOC_DisableOC;
 	timer.ReinitOC = SOOL_TimerOC_ReinitOC;
+	timer.DisableChannel = SOOL_TimerOC_DisableChannel;
+	timer.EnableChannel = SOOL_TimerOC_EnableChannel;
 	timer.SetPulse = SOOL_TimerOC_SetPulse;
 	timer.Start = SOOL_TimerOC_Start;
 	timer.Stop = SOOL_TimerOC_Stop;
