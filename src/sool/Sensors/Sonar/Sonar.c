@@ -142,40 +142,15 @@ volatile SOOL_Sonar SOOL_Sensor_Sonar_InitTrigEcho(GPIO_TypeDef* trig_port, uint
 
 static uint8_t Sonar_StartMeasurement(volatile SOOL_Sonar *sonar_ptr) {
 
-	if ( !sonar_ptr->_state.finished ) {
+	if ( sonar_ptr->_state.started && !sonar_ptr->_state.finished ) {
 		// won't be started because previous has not finished yet
-//		return (0);
+		return (0);
 	}
-
-//	if ( !timer_busy_flag ) {
-//		sonar_ptr->base_trigger.SetHigh(&sonar_ptr->base_trigger);
-//		sonar_ptr->_state.distance_cm = 0;
-//		sonar_ptr->_state.finished = 0;
-//		sonar_ptr->_state.started = 1;
-//		sonar_ptr->_state.timeout_occurred = 0;
-//		return (1);
-//	}
-//	return (0);
 
 	/* Generate pulse */
 	sonar_ptr->base_tim_in.SetPolarity(&sonar_ptr->base_tim_in, TIM_ICPolarity_Rising);
+	sonar_ptr->base_tim_out.base.EnableChannel(&sonar_ptr->base_tim_out.base);
 	sonar_ptr->base_tim_out.GeneratePulse(&sonar_ptr->base_tim_out);
-
-
-//	/* Disable OnePulse Mode (it seems that counter could not be enabled with OPMode enabled) */
-//	sonar_ptr->base_tim_out.DisableOPMode(&sonar_ptr->base_tim_out); 	// SOOL_TimerOP_DisableOPMode(timer_op_ptr);
-//	/* Stop the counter */
-//	sonar_ptr->base_tim_in.Stop(&sonar_ptr->base_tim_in); 				// timer_op_ptr->base.Stop(&timer_op_ptr->base);
-//	/* Update CCR and CNT registers to force proper pulse delay and its length (respectively) */
-//	sonar_ptr->base_tim_out.Prepare(&sonar_ptr->base_tim_out); 			// SOOL_TimerOP_Prepare(timer_op_ptr);
-//
-//	sonar_ptr->base_tim_in.SetPolarity(&sonar_ptr->base_tim_in, TIM_ICPolarity_Rising);
-//
-//	/* Start the counter, TimerInput used here because it sets its state internally in Start().
-//	 * Its state will not be updated when Start() is called from tim_out instance! */
-//	sonar_ptr->base_tim_in.Start(&sonar_ptr->base_tim_in); 				// timer_op_ptr->base.Start(&timer_op_ptr->base);
-//	/* Enable OnePulse Mode */
-//	sonar_ptr->base_tim_out.EnableOPMode(&sonar_ptr->base_tim_out); 	// SOOL_TimerOP_EnableOPMode(timer_op_ptr);
 
 	/* Update internal state */
 	sonar_ptr->_state.counter_val = 0;
@@ -210,6 +185,10 @@ static uint8_t Sonar_PulseEnd_InterruptHandler(volatile SOOL_Sonar *sonar_ptr) {
 	/* Disable OnePulse Mode of the timer */
 	sonar_ptr->base_tim_out.DisableOPMode(&sonar_ptr->base_tim_out);
 
+	/* Disable OutputCompare channel (it will generate PWM after counter restart
+	 * (see last operation here) */
+	sonar_ptr->base_tim_out.base.DisableChannel(&sonar_ptr->base_tim_out.base);
+
 	/* Set InputCapture polarity to detect rising edge of the signal on echo pin */
 	sonar_ptr->base_tim_in.SetPolarity(&sonar_ptr->base_tim_in, TIM_ICPolarity_Rising);
 
@@ -230,8 +209,8 @@ static uint8_t Sonar_EchoEdge_InterruptHandler(volatile SOOL_Sonar *sonar_ptr) {
 	}
 
 	/* Check state of the echo pin */
-	//if ( SOOL_Periph_GPIO_ReadInputDataBit(sonar_ptr->base_echo.base.gpio.port, sonar_ptr->base_echo.base.gpio.pin) == 1 ) {
-	if ( GPIO_ReadInputDataBit(sonar_ptr->base_echo.base.gpio.port, sonar_ptr->base_echo.base.gpio.pin) == 1 ) {
+	if ( SOOL_Periph_GPIO_ReadInputDataBit(sonar_ptr->base_echo.base.gpio.port, sonar_ptr->base_echo.base.gpio.pin) == 1 ) {
+//	if ( GPIO_ReadInputDataBit(sonar_ptr->base_echo.base.gpio.port, sonar_ptr->base_echo.base.gpio.pin) == 1 ) {
 
 		// ECHO state is high
 		if ( sonar_ptr->_state.started && !sonar_ptr->_state.finished ) {
@@ -275,10 +254,15 @@ static uint8_t Sonar_Timeout_InterruptHandler(volatile SOOL_Sonar *sonar_ptr) {
 	// timer interrupt indicates that timeout has occurred - find sonar which has `started` flag set
 	if ( sonar_ptr->_state.started && !sonar_ptr->_state.finished) {
 
+		// update internal state
 		sonar_ptr->_state.timeout_occurred = 1;
 		sonar_ptr->_state.started = 0;
 		sonar_ptr->_state.finished = 1;
 		sonar_ptr->_state.distance_cm = 0;
+
+		// stop the counter
+		sonar_ptr->base_tim_in.Stop(&sonar_ptr->base_tim_in);
+
 		return (1);
 
 	}
@@ -302,36 +286,11 @@ static volatile SOOL_Sonar Sonar_InitializeClassHW(
 		volatile SOOL_TimerOnePulse timer_op_fcn)
 {
 
+	/* Depending on initialization flags some parts of the initializer may not be executed.
+	 * Usually used when few sensors share one peripheral or share trigger pin. */
+
 	/* Class instance */
 	volatile SOOL_Sonar sonar;
-
-//	/* Initialize timer only when it is not running already.
-//	 * Check current conditions. */
-//	uint8_t init_time_base, init_timer_oc = 1; 	// whether to initialize timer modules
-//
-//	if ( SOOL_Periph_TIMCompare_IsCaptureCompareChannelEnabled(TIMx, echo_tim_channel) ) {
-//		// echo signals cannot be shared
-//		return (sonar);
-//	}
-//	if ( SOOL_Periph_TIMCompare_IsCaptureCompareChannelEnabled(TIMx, trig_tim_channel) ) {
-//		// there may be a shared trigger signal for multiple sensors
-//		init_time_base = 0;
-//		init_timer_oc = 0;
-//	}
-//	if ( init_time_base ) {
-//
-//		// check other channels, make sure time base needs initialization
-//		if ( SOOL_Periph_TIMCompare_IsCaptureCompareChannelEnabled(TIMx, TIM_Channel_1) ||
-//			 SOOL_Periph_TIMCompare_IsCaptureCompareChannelEnabled(TIMx, TIM_Channel_2) ||
-//			 SOOL_Periph_TIMCompare_IsCaptureCompareChannelEnabled(TIMx, TIM_Channel_3) ||
-//			 SOOL_Periph_TIMCompare_IsCaptureCompareChannelEnabled(TIMx, TIM_Channel_4) )
-//		{
-//			init_time_base = 0;
-//		}
-//
-//	}
-//	DEPRECATED because there is a need to pass pointer to TimerBasic between objects
-//
 
 	/* Trigger pin configuration */
 	if ( init_pin_trig ) {
@@ -349,10 +308,10 @@ static volatile SOOL_Sonar Sonar_InitializeClassHW(
 		// Set prescaler to count microseconds
 		uint16_t prescaler_us = (uint16_t)(SystemCoreClock / 1000000ul);
 
-		// FIXME: It takes 29 ?? us for the sound to travel 2 centimeters - use range_max parameter
+		// It takes 29 us for the sound to travel 1 centimeter - use range_max parameter
 		// to calculate timeout for timer (abandon started measurement due to long wait
-		// for return signal)
-		uint16_t period_tout_dist = (uint16_t)(range_max * 29);
+		// for return signal);
+		uint16_t period_tout_dist = (uint16_t)(range_max * 29 * 2);
 
 		/* TimerBasic initialization */
 		volatile SOOL_TimerBasic timer_basic = SOOL_Periph_TIM_TimerBasic_Init(TIMx, prescaler_us,
@@ -365,11 +324,9 @@ static volatile SOOL_Sonar Sonar_InitializeClassHW(
 	/* TimerOutputCompare and TimerOnePulse configuration */
 	if ( init_tim_oc ) {
 
-//		/* TimerOutputCompare initialization */
-//		volatile SOOL_TimerOutputCompare timer_oc = SOOL_Periph_TIM_TimerOutputCompare_Init(timer_base_fcn,
-//									trig_tim_channel, TIM_OCMode_PWM2, 15, ENABLE,
-//									TIM_OCIdleState_Reset, TIM_OCPolarity_High, TIM_OutputState_Enable);
 		/* TimerOutputCompare initialization */
+		/* IMPORTANT: DISABLE OC interrupts or InputCapture's interrupt handler
+		 * event will never be executed. */
 		volatile SOOL_TimerOutputCompare timer_oc = SOOL_Periph_TIM_TimerOutputCompare_Init(timer_base_fcn,
 									trig_tim_channel, TIM_OCMode_PWM2, 15, DISABLE, // !VERY IMPORTANT
 									TIM_OCIdleState_Reset, TIM_OCPolarity_High, TIM_OutputState_Enable);
