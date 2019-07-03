@@ -76,6 +76,7 @@ volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_InitFull(vol
 /**
  * For details see @ref SOOL_Periph_TIM_TimerOutputCompare_InitFull
  * @param tim_basic
+ * @param channel
  * @param oc_mode
  * @param pulse
  * @param enable_int_cc
@@ -100,6 +101,7 @@ volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_Init(volatil
 /**
  * For details see @ref SOOL_Periph_TIM_TimerOutputCompare_InitFull
  * @param tim_basic
+ * @param channel
  * @param oc_mode
  * @param pulse
  * @param enable_int_cc
