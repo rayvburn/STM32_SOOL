@@ -9,11 +9,21 @@
 
 
 uint8_t SOOL_Periph_GPIO_ReadInputDataBit(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin) {
-	  return ( (uint8_t)(GPIOx->IDR & (uint32_t)GPIO_Pin) );
+
+	if ( (GPIOx->IDR & GPIO_Pin) != (uint32_t)0x0000 ) {
+		return (1);
+	}
+	return (0);
+
 }
 
 uint8_t SOOL_Periph_GPIO_ReadOutputDataBit(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin) {
-	return ( (uint8_t)(GPIOx->ODR & (uint32_t)GPIO_Pin) );
+
+	if ( (GPIOx->ODR & GPIO_Pin) != (uint32_t)0x0000 ) {
+		return (1);
+	}
+	return (0);
+
 }
 
 void SOOL_Periph_GPIO_SetBits(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin) {
