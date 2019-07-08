@@ -9,7 +9,10 @@
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-uint8_t SOOL_Periph_TIMCompare_IsCaptureCompareChannelEnabled(TIM_TypeDef* TIMx, uint16_t channel) {
+/* uint8_t changed to uint16_t because CCER register is 16-bit, when checking if 8th bit
+ * is set, the return value will be 256 (if true) which will in fact set return value from
+ * this function to 0 */
+uint16_t SOOL_Periph_TIMCompare_IsCaptureCompareChannelEnabled(TIM_TypeDef* TIMx, uint16_t channel) {
 
 	switch (channel) {
 

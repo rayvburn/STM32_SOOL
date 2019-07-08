@@ -19,7 +19,7 @@
 //	SOOL_PERIPH_TIMCOMPARE_CCMR_SELECTION,
 //} SOOL_Periph_TIMCompare_BitCCMR;
 
-extern uint8_t SOOL_Periph_TIMCompare_IsCaptureCompareChannelEnabled(TIM_TypeDef* TIMx, uint16_t channel);
+extern uint16_t SOOL_Periph_TIMCompare_IsCaptureCompareChannelEnabled(TIM_TypeDef* TIMx, uint16_t channel);
 extern uint16_t SOOL_Periph_TIMCompare_GetCCR(TIM_TypeDef* TIMx, uint16_t channel);
 extern void SOOL_Periph_TIMCompare_SetCCR(TIM_TypeDef* TIMx, uint16_t channel, uint16_t value);
 
