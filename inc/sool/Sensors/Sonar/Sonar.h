@@ -111,11 +111,14 @@ extern volatile SOOL_Sonar SOOL_Sensor_Sonar_Init(GPIO_TypeDef* trig_port, uint1
 extern volatile SOOL_Sonar SOOL_Sensor_Sonar_InitEcho(GPIO_TypeDef* echo_port, uint16_t echo_pin,
 		uint16_t echo_tim_channel, SOOL_PinConfig_AltFunction trig_cfg,
 		volatile SOOL_TimerOnePulse timer_pulse);
-	// uint16_t range_max,
-	// volatile SOOL_TimerBasic timer_base,
 
+// FIXME: not tested, this will likely require first sensor's measurement to finish until possibility
+// of a start of the second one will arise
 extern volatile SOOL_Sonar SOOL_Sensor_Sonar_InitTrigEcho(GPIO_TypeDef* trig_port, uint16_t trig_pin,
 		uint16_t trig_tim_channel, GPIO_TypeDef* echo_port, uint16_t echo_pin,
 		uint16_t echo_tim_channel, uint16_t range_max, volatile SOOL_TimerBasic timer_base);
+
+/* Example of use (2 sonars at once) can be found at:
+ * https://gitlab.com/frb-pow/002tubewaterflowmcu/commit/43f0826ccad01762fe6c088f5b7db29c6886b204 */
 
 #endif /* INC_SOOL_SENSORS_SONAR_SONAR_H_ */

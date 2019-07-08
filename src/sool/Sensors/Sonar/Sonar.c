@@ -98,8 +98,6 @@ volatile SOOL_Sonar SOOL_Sensor_Sonar_Init(GPIO_TypeDef* trig_port, uint16_t tri
 volatile SOOL_Sonar SOOL_Sensor_Sonar_InitEcho(GPIO_TypeDef* echo_port, uint16_t echo_pin,
 		uint16_t echo_tim_channel, SOOL_PinConfig_AltFunction trig_cfg,
 		volatile SOOL_TimerOnePulse timer_pulse)
-	// uint16_t range_max, 					 //  * @param range_max - in centimeters
-	// volatile SOOL_TimerBasic timer_base,  //  * @param timer_base
 {
 
 	volatile SOOL_TimerBasic timer_base = timer_pulse.base.base;
