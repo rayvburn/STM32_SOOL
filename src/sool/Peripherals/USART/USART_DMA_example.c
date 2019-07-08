@@ -87,7 +87,7 @@ int main(void)
 
 	usart_dbg.RestoreBuffersInitialSize(&usart_dbg);
 	usart_dbg.ActivateReading(&usart_dbg);
-	SOOL_Array_Char str_test = SOOL_Memory_Array_Char_Init(15);
+	SOOL_String str_test = SOOL_Memory_String_Init(15);
 	str_test.SetString(&str_test, "tyrueiwoqpowieu");
 
 	usart_dbg.Send(&usart_dbg, str_test._data);
@@ -106,7 +106,7 @@ int main(void)
 		}
 	}
 
-	const volatile SOOL_Array_Char* temp = usart_dbg.GetRxData(&usart_dbg);
+	const volatile SOOL_String* temp = usart_dbg.GetRxData(&usart_dbg);
 
 	int abc = 0;
 	abc++;

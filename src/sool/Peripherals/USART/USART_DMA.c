@@ -23,7 +23,7 @@
 static void 	USART_DMA_ActivateReading(volatile SOOL_USART_DMA *usart);
 static void 	USART_DMA_DeactivateReading(volatile SOOL_USART_DMA *usart);
 static uint8_t 	USART_DMA_IsDataReceived(volatile SOOL_USART_DMA *usart);
-static const volatile SOOL_Array_Char* USART_DMA_GetRxData(volatile SOOL_USART_DMA *usart);
+static const volatile SOOL_String* USART_DMA_GetRxData(volatile SOOL_USART_DMA *usart);
 static void		USART_DMA_ClearRxBuffer(volatile SOOL_USART_DMA *usart);
 
 // TX
@@ -43,7 +43,7 @@ static void		USART_DMA_Destroy(volatile SOOL_USART_DMA *usart);
 // private class function
 static void 	USART_DMA_SetupAndStartDmaReading(volatile SOOL_USART_DMA *usart, const size_t buf_start_pos, const size_t num_bytes_to_read);
 static void 	USART_DMA_RestartReading(volatile SOOL_USART_DMA *usart, const size_t buf_start_pos, const size_t num_bytes_to_read);
-static uint16_t USART_DMA_GetMaxNonEmptyItemIndex(volatile SOOL_Array_Char *arr);
+static uint16_t USART_DMA_GetMaxNonEmptyItemIndex(volatile SOOL_String *arr);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -87,8 +87,8 @@ volatile SOOL_USART_DMA SOOL_Periph_USART_DMA_Init(USART_TypeDef* USARTx, uint32
 
 	/* Initialize the peripheral's RX and TX buffers
 	 * with an arbitrary length */
-	usart_obj._rx.buffer = SOOL_Memory_Array_Char_Init(buf_size);
-	usart_obj._tx.buffer = SOOL_Memory_Array_Char_Init(buf_size);
+	usart_obj._rx.buffer = SOOL_Memory_String_Init(buf_size);
+	usart_obj._tx.buffer = SOOL_Memory_String_Init(buf_size);
 
 	/* Start port clock considering remapping (Reference Manual, p. 183 - AFIO_MAPR) */
 	if ( USARTx == USART1 ) {
@@ -500,7 +500,7 @@ static uint8_t USART_DMA_IsDataReceived(volatile SOOL_USART_DMA *usart) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static const volatile SOOL_Array_Char* USART_DMA_GetRxData(volatile SOOL_USART_DMA *usart) {
+static const volatile SOOL_String* USART_DMA_GetRxData(volatile SOOL_USART_DMA *usart) {
 
 	/* update Array_String info */
 	usart->_rx.buffer._info.total = USART_DMA_GetMaxNonEmptyItemIndex(&usart->_rx.buffer) + 1;
@@ -511,7 +511,7 @@ static const volatile SOOL_Array_Char* USART_DMA_GetRxData(volatile SOOL_USART_D
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint16_t USART_DMA_GetMaxNonEmptyItemIndex(volatile SOOL_Array_Char *arr) {
+static uint16_t USART_DMA_GetMaxNonEmptyItemIndex(volatile SOOL_String *arr) {
 
 	/* Array is filled with 0-s by default, find non-zero value with the biggest index;
 	 * it could not be done on the fly because of use of DMA */

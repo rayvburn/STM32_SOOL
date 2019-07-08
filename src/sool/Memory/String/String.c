@@ -5,38 +5,38 @@
  *      Author: user
  */
 
-#include <sool/Memory/Array/ArrayChar.h>
+#include <sool/Memory/String/String.h>
 #include <stdlib.h>
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 /* Char array */
-static void Array_Char_Add(SOOL_Array_Char *string_ptr, char c);
-static void Array_Char_Append(SOOL_Array_Char *string_ptr, const char *str);
-static void Array_Char_SetString(SOOL_Array_Char *string_ptr, const char *str);
-//static char* Array_Char_GetString(Array_String *string_ptr); 	 // dynamic allocation (memory needs to be freed after finished processing)
-static const char* Array_Char_GetString(SOOL_Array_Char *string_ptr); // return pointer to `data` field
-static void Array_Char_Clear(SOOL_Array_Char *string_ptr);
-static uint8_t Array_Char_Resize(SOOL_Array_Char *string_ptr, size_t new_capacity);
-static void Array_Char_Free(SOOL_Array_Char *string_ptr);
+static void SOOL_String_Add(SOOL_String *string_ptr, char c);
+static void SOOL_String_Append(SOOL_String *string_ptr, const char *str);
+static void SOOL_String_SetString(SOOL_String *string_ptr, const char *str);
+//static char* SOOL_String_GetString(SOOL_String *string_ptr); 	 // dynamic allocation (memory needs to be freed after finished processing)
+static const char* SOOL_String_GetString(SOOL_String *string_ptr); // return pointer to `data` field
+static void SOOL_String_Clear(SOOL_String *string_ptr);
+static uint8_t SOOL_String_Resize(SOOL_String *string_ptr, size_t new_capacity);
+static void SOOL_String_Free(SOOL_String *string_ptr);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-SOOL_Array_Char SOOL_Memory_Array_Char_Init(const size_t capacity) {
+SOOL_String SOOL_Memory_String_Init(const size_t capacity) {
 
-	SOOL_Array_Char string;
+	SOOL_String string;
 	string._info.capacity = capacity;
 	string._info.total = 0;
 	string._info.add_index = 0;
 	string._data = (char *)calloc( (size_t)capacity, sizeof(char) );
 
-	string.Add = Array_Char_Add;
-	string.Append = Array_Char_Append;
-	string.Clear = Array_Char_Clear;
-	string.GetString = Array_Char_GetString;
-	string.SetString = Array_Char_SetString;
-	string.Resize = Array_Char_Resize;
-	string.Free = Array_Char_Free;
+	string.Add = SOOL_String_Add;
+	string.Append = SOOL_String_Append;
+	string.Clear = SOOL_String_Clear;
+	string.GetString = SOOL_String_GetString;
+	string.SetString = SOOL_String_SetString;
+	string.Resize = SOOL_String_Resize;
+	string.Free = SOOL_String_Free;
 
 	return (string);
 
@@ -44,7 +44,7 @@ SOOL_Array_Char SOOL_Memory_Array_Char_Init(const size_t capacity) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 /* Char array */
-static void Array_Char_Add(SOOL_Array_Char *string_ptr, char c) {
+static void SOOL_String_Add(SOOL_String *string_ptr, char c) {
 
 	if ( string_ptr->_info.add_index == string_ptr->_info.capacity ) {
 		string_ptr->_info.add_index = 0;
@@ -58,29 +58,29 @@ static void Array_Char_Add(SOOL_Array_Char *string_ptr, char c) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static void Array_Char_Append(SOOL_Array_Char *string_ptr, const char *str) {
+static void SOOL_String_Append(SOOL_String *string_ptr, const char *str) {
 
 	/* Iterate over whole string (each ends with a 0 */
 	while (*str) {
 
 		/* Check whether the string should be resized due to too small buffer */
 		if ( string_ptr->_info.capacity <= string_ptr->_info.total ) { 		// `<=` instead of `==` and `if` instead of `while` here just in case, SOOL_Array_Char acts as a circular buffer when using public functions only (not modifying its contents
-			Array_Char_Resize(string_ptr, string_ptr->_info.capacity + 1);
+			SOOL_String_Resize(string_ptr, string_ptr->_info.capacity + 1);
 		}
 
 		/* We're safe to add another character to the buffer */
-		Array_Char_Add(string_ptr, *str++); // pointer increment
+		SOOL_String_Add(string_ptr, *str++); // pointer increment
 	}
 
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static void Array_Char_SetString(SOOL_Array_Char *string_ptr, const char *str) {
+static void SOOL_String_SetString(SOOL_String *string_ptr, const char *str) {
 
-	Array_Char_Clear(string_ptr);
+	SOOL_String_Clear(string_ptr);
 	while (*str) {
-		Array_Char_Add(string_ptr, *str++); // pointer increment
+		SOOL_String_Add(string_ptr, *str++); // pointer increment
 	}
 
 }
@@ -88,7 +88,7 @@ static void Array_Char_SetString(SOOL_Array_Char *string_ptr, const char *str) {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 /* Dynamic allocation version */
-//static char* Array_Char_GetString(Array_String *string_ptr) {
+//static char* SOOL_String_GetString(Array_String *string_ptr) {
 //
 //	char *ret = (char *)calloc( (size_t)string_ptr->_info.total, sizeof(char) );
 //	if( !ret ) {
@@ -104,13 +104,13 @@ static void Array_Char_SetString(SOOL_Array_Char *string_ptr, const char *str) {
 //}
 
 /* Return const pointer to `data` field version */
-static const char* Array_Char_GetString(SOOL_Array_Char *string_ptr) {
+static const char* SOOL_String_GetString(SOOL_String *string_ptr) {
 	return (string_ptr->_data);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static void Array_Char_Clear(SOOL_Array_Char *string_ptr) {
+static void SOOL_String_Clear(SOOL_String *string_ptr) {
 
 	/* NOTE: this needs to be done on the full string length
 	 * because when used by DMA there is no way to count number
@@ -126,7 +126,7 @@ static void Array_Char_Clear(SOOL_Array_Char *string_ptr) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t Array_Char_Resize(SOOL_Array_Char *string_ptr, const size_t new_capacity) {
+static uint8_t SOOL_String_Resize(SOOL_String *string_ptr, const size_t new_capacity) {
 
 	/* Backup some info */
 	uint16_t old_capacity = string_ptr->_info.capacity;
@@ -161,6 +161,6 @@ static uint8_t Array_Char_Resize(SOOL_Array_Char *string_ptr, const size_t new_c
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static void Array_Char_Free(SOOL_Array_Char *string_ptr) {
+static void SOOL_String_Free(SOOL_String *string_ptr) {
 	free(string_ptr->_data);
 }
