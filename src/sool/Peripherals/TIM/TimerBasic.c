@@ -12,6 +12,7 @@
 
 static void TimerBasic_Start(volatile SOOL_TimerBasic *timer_ptr);
 static void TimerBasic_Stop(volatile SOOL_TimerBasic *timer_ptr);
+static void TimerBasic_SetCounter(volatile SOOL_TimerBasic *timer_ptr, uint16_t value);
 static void TimerBasic_EnableNVIC(volatile SOOL_TimerBasic *timer_ptr);
 static void TimerBasic_DisableNVIC(volatile SOOL_TimerBasic *timer_ptr);
 static uint8_t TimerBasic_InterruptHandler(volatile SOOL_TimerBasic *timer_ptr);
@@ -87,6 +88,7 @@ volatile SOOL_TimerBasic SOOL_Periph_TIM_TimerBasic_Init(TIM_TypeDef* TIMx, uint
 	/* Set class' methods */
 	timer.Start = TimerBasic_Start;
 	timer.Stop = TimerBasic_Stop;
+	timer.SetCounter = TimerBasic_SetCounter;
 	timer.EnableNVIC = TimerBasic_EnableNVIC;
 	timer.DisableNVIC = TimerBasic_DisableNVIC;
 	timer._InterruptHandler = TimerBasic_InterruptHandler;
@@ -107,6 +109,12 @@ static void TimerBasic_Start(volatile SOOL_TimerBasic *timer_ptr) {
 static void TimerBasic_Stop(volatile SOOL_TimerBasic *timer_ptr) {
 	/* Disable the TIM Counter */
 	timer_ptr->_setup.TIMx->CR1 &= (uint16_t)(~((uint16_t)TIM_CR1_CEN));
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static void TimerBasic_SetCounter(volatile SOOL_TimerBasic *timer_ptr, uint16_t value) {
+	timer_ptr->_setup.TIMx->CNT = (uint16_t)value;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

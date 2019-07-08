@@ -33,6 +33,14 @@ struct _SOOL_TimerBasicStruct {
 	void (*Stop)(volatile SOOL_TimerBasic*);
 
 	/**
+	 * @brief Sets timer's counter to a given value. To allow successful setting
+	 * the timer must be stopped before calling that method.
+	 * @param Timer instance
+	 * @param New counter value.
+	 */
+	void (*SetCounter)(volatile SOOL_TimerBasic*, uint16_t);
+
+	/**
 	 * EnableNVIC can be called after timer's interrupt handler was placed in IRQHandler
 	 * function and when there is a certainty that all objects driven by timer interrupts
 	 * were already put in proper IRQHandlers too
