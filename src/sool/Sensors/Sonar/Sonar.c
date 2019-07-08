@@ -20,7 +20,12 @@ static uint8_t Sonar_IsFinished(const volatile SOOL_Sonar *sonar_ptr);
 static uint8_t Sonar_DidTimeout(const volatile SOOL_Sonar *sonar_ptr);
 static uint16_t Sonar_GetDistanceCm(const volatile SOOL_Sonar *sonar_ptr);
 
+static SOOL_PinConfig_AltFunction Sonar_GetEchoPinConfig(const volatile SOOL_Sonar *sonar_ptr);
+static SOOL_PinConfig_AltFunction Sonar_GetTriggerPinConfig(const volatile SOOL_Sonar *sonar_ptr);
+static SOOL_TimerOnePulse Sonar_GetTimerOP(const volatile SOOL_Sonar *sonar_ptr);
+
 static uint8_t Sonar_PulseEnd_InterruptHandler(volatile SOOL_Sonar *sonar_ptr);
+static uint8_t Sonar_PulseEnd_InterruptHandlerSharedTimer(volatile SOOL_Sonar *sonar_ptr);
 static uint8_t Sonar_EchoEdge_InterruptHandler(volatile SOOL_Sonar *sonar_ptr);
 static uint8_t Sonar_Timeout_InterruptHandler(volatile SOOL_Sonar *sonar_ptr);
 
@@ -37,6 +42,7 @@ static volatile SOOL_Sonar Sonar_InitializeClassHW(
 		volatile SOOL_TimerOnePulse timer_op_fcn);
 static uint16_t Sonar_ConvertPulseTimeToCm(uint16_t timer_counter_us);
 static uint16_t Sonar_CalculateTimeDiff(uint16_t start, uint16_t end);
+static void Sonar_UpdateStateOnStart(volatile SOOL_Sonar *sonar_ptr);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -85,20 +91,22 @@ volatile SOOL_Sonar SOOL_Sensor_Sonar_Init(GPIO_TypeDef* trig_port, uint16_t tri
  * @param echo_port
  * @param echo_pin
  * @param echo_tim_channel
- * @param range_max - in centimeters
  * @param trig_cfg
- * @param timer_base
  * @param timer_pulse
  * @return
  */
 volatile SOOL_Sonar SOOL_Sensor_Sonar_InitEcho(GPIO_TypeDef* echo_port, uint16_t echo_pin,
-		uint16_t echo_tim_channel, uint16_t range_max, SOOL_PinConfig_AltFunction trig_cfg,
-		volatile SOOL_TimerBasic timer_base, volatile SOOL_TimerOnePulse timer_pulse)
+		uint16_t echo_tim_channel, SOOL_PinConfig_AltFunction trig_cfg,
+		volatile SOOL_TimerOnePulse timer_pulse)
+	// uint16_t range_max, 					 //  * @param range_max - in centimeters
+	// volatile SOOL_TimerBasic timer_base,  //  * @param timer_base
 {
+
+	volatile SOOL_TimerBasic timer_base = timer_pulse.base.base;
 
 	/* Create a sonar instance */
 	volatile SOOL_Sonar sonar = Sonar_InitializeClassHW(0, 0, 0, 0, 0, echo_pin, echo_port,
-			echo_tim_channel, 0, 0, range_max, trig_cfg, timer_base, timer_pulse);
+			echo_tim_channel, 0, 0, 0, trig_cfg, timer_base, timer_pulse); // range_max
 
 	return (sonar);
 
@@ -153,11 +161,26 @@ static uint8_t Sonar_StartMeasurement(volatile SOOL_Sonar *sonar_ptr) {
 	sonar_ptr->base_tim_out.GeneratePulse(&sonar_ptr->base_tim_out);
 
 	/* Update internal state */
-	sonar_ptr->_state.counter_val = 0;
-	sonar_ptr->_state.distance_cm = 0;
-	sonar_ptr->_state.finished = 0;
-	sonar_ptr->_state.started = 1;
-	sonar_ptr->_state.timeout_occurred = 0;
+	Sonar_UpdateStateOnStart(sonar_ptr);
+
+	return (1);
+
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static uint8_t Sonar_StartMeasurementSharedTimer(volatile SOOL_Sonar *sonar_ptr) {
+
+	if ( sonar_ptr->_state.started && !sonar_ptr->_state.finished ) {
+		// won't be started because previous has not finished yet
+		return (0);
+	}
+
+	/* Generate pulse */
+	sonar_ptr->base_tim_in.SetPolarity(&sonar_ptr->base_tim_in, TIM_ICPolarity_Rising);
+
+	/* Update internal state */
+	Sonar_UpdateStateOnStart(sonar_ptr);
 
 	return (1);
 
@@ -177,6 +200,15 @@ static uint8_t Sonar_DidTimeout(const volatile SOOL_Sonar *sonar_ptr) {
 static uint16_t Sonar_GetDistanceCm(const volatile SOOL_Sonar *sonar_ptr) {
 	return (sonar_ptr->_state.distance_cm);
 }
+static SOOL_PinConfig_AltFunction Sonar_GetEchoPinConfig(const volatile SOOL_Sonar *sonar_ptr) {
+	return (sonar_ptr->base_echo);
+}
+static SOOL_PinConfig_AltFunction Sonar_GetTriggerPinConfig(const volatile SOOL_Sonar *sonar_ptr) {
+	return (sonar_ptr->base_trigger);
+}
+static SOOL_TimerOnePulse Sonar_GetTimerOP(const volatile SOOL_Sonar *sonar_ptr) {
+	return (sonar_ptr->base_tim_out);
+}
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -192,13 +224,25 @@ static uint8_t Sonar_PulseEnd_InterruptHandler(volatile SOOL_Sonar *sonar_ptr) {
 	/* Set InputCapture polarity to detect rising edge of the signal on echo pin */
 	sonar_ptr->base_tim_in.SetPolarity(&sonar_ptr->base_tim_in, TIM_ICPolarity_Rising);
 
-	/* Restart counter (in OP Mode Update event stops counter) */
+	/* Restart counter (in OP Mode Update the event stops counter) */
 	sonar_ptr->base_tim_in.Start(&sonar_ptr->base_tim_in);
 
 	return (1);
 
 }
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+// a simplified version which should be invoked by a Sonar instance which shares
+// a timer peripheral with another sensor(s)
+static uint8_t Sonar_PulseEnd_InterruptHandlerSharedTimer(volatile SOOL_Sonar *sonar_ptr) {
+
+	/* Set InputCapture polarity to detect rising edge of the signal on echo pin */
+	sonar_ptr->base_tim_in.SetPolarity(&sonar_ptr->base_tim_in, TIM_ICPolarity_Rising);
+
+	return (1);
+
+}
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 static uint8_t Sonar_EchoEdge_InterruptHandler(volatile SOOL_Sonar *sonar_ptr) {
@@ -260,8 +304,9 @@ static uint8_t Sonar_Timeout_InterruptHandler(volatile SOOL_Sonar *sonar_ptr) {
 		sonar_ptr->_state.finished = 1;
 		sonar_ptr->_state.distance_cm = 0;
 
-		// stop the counter
-		sonar_ptr->base_tim_in.Stop(&sonar_ptr->base_tim_in);
+		// THIS WILL PREVENT ANOTHER SENSOR FROM READING PULSE TIME
+//		// stop the counter
+//		sonar_ptr->base_tim_in.Stop(&sonar_ptr->base_tim_in);
 
 		return (1);
 
@@ -325,7 +370,7 @@ static volatile SOOL_Sonar Sonar_InitializeClassHW(
 	if ( init_tim_oc ) {
 
 		/* TimerOutputCompare initialization */
-		/* IMPORTANT: DISABLE OC interrupts or InputCapture's interrupt handler
+		/* IMPORTANT: DISABLE OC interrupts, otherwise InputCapture's interrupt handler
 		 * event will never be executed. */
 		volatile SOOL_TimerOutputCompare timer_oc = SOOL_Periph_TIM_TimerOutputCompare_Init(timer_base_fcn,
 									trig_tim_channel, TIM_OCMode_PWM2, 15, DISABLE, // !VERY IMPORTANT
@@ -353,10 +398,26 @@ static volatile SOOL_Sonar Sonar_InitializeClassHW(
 	sonar.IsFinished = Sonar_IsFinished;
 	sonar.IsStarted = Sonar_IsStarted;
 
-	sonar.StartMeasurement = Sonar_StartMeasurement;
+	sonar.GetEchoPinConfig = Sonar_GetEchoPinConfig;
+	sonar.GetTriggerPinConfig = Sonar_GetTriggerPinConfig;
+	sonar.GetTimerOP = Sonar_GetTimerOP;
+
+	// choose a proper start procedure
+	if ( init_tim_base ) {
+		sonar.StartMeasurement = Sonar_StartMeasurement;
+	} else {
+		sonar.StartMeasurement = Sonar_StartMeasurementSharedTimer;
+	}
+
 	sonar._EchoEdge_EventHandler = Sonar_EchoEdge_InterruptHandler;
-	sonar._PulseEnd_EventHandler = Sonar_PulseEnd_InterruptHandler;
 	sonar._Timeout_EventHandler = Sonar_Timeout_InterruptHandler;
+
+	// choose a proper timer pulse end event handler based on init_tim_base parameter value
+	if ( init_tim_base ) {
+		sonar._PulseEnd_EventHandler = Sonar_PulseEnd_InterruptHandler;
+	} else {
+		sonar._PulseEnd_EventHandler = Sonar_PulseEnd_InterruptHandlerSharedTimer;
+	}
 
 	/* Initial state settings */
 	sonar._state.distance_cm = 0;
@@ -398,3 +459,15 @@ uint16_t Sonar_CalculateTimeDiff(uint16_t start, uint16_t end) {
 
 }
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static void Sonar_UpdateStateOnStart(volatile SOOL_Sonar *sonar_ptr) {
+
+	/* Update internal state */
+	sonar_ptr->_state.counter_val = 0;
+	sonar_ptr->_state.distance_cm = 0;
+	sonar_ptr->_state.finished = 0;
+	sonar_ptr->_state.started = 1;
+	sonar_ptr->_state.timeout_occurred = 0;
+
+}

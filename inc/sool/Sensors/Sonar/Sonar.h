@@ -61,14 +61,43 @@ struct _SOOL_SonarStruct {
 	// --------- derived class section -----------
 	struct _SOOL_SonarState	_state;
 
+	/**
+	 * @brief Starts measurement, requires NVIC to be enabled
+	 * @note EnableNVIC of the TimerBasic (TimerOnePulse->TimerOutputCompare->TimerBasic)
+	 * needs to be called before first measurement but after placing sonar
+	 * instances in the IRQ handlers. Call should look like (for instance called `sonar_l`):
+	 * sonar_l.base_tim_in.base.EnableNVIC(&sonar_l.base_tim_in.base);
+	 * @note This function differ depending on chosen initializer (whether full or echo-only)
+	 * @param
+	 * @return
+	 */
 	uint8_t 	(*StartMeasurement)(volatile SOOL_Sonar*);
 	uint8_t 	(*IsStarted)(const volatile SOOL_Sonar*);
 	uint8_t 	(*IsFinished)(const volatile SOOL_Sonar*);
 	uint8_t 	(*DidTimeout)(const volatile SOOL_Sonar*);
 	uint16_t	(*GetDistanceCm)(const volatile SOOL_Sonar*);
 
+	SOOL_PinConfig_AltFunction (*GetEchoPinConfig)(const volatile SOOL_Sonar*);
+	SOOL_PinConfig_AltFunction (*GetTriggerPinConfig)(const volatile SOOL_Sonar*);
+	SOOL_TimerOnePulse (*GetTimerOP)(const volatile SOOL_Sonar*);
+
+	/**
+	 * @brief _PulseEnd_EventHandler - when handling interrupt for an instance of Sonar which
+	 * shares timer peripheral with another sensor, call _PulseEnd_EventHandler of the `child`
+	 * instance first
+	 * @param
+	 * @return
+	 */
 	uint8_t 	(*_PulseEnd_EventHandler)(volatile SOOL_Sonar*);
 	uint8_t 	(*_EchoEdge_EventHandler)(volatile SOOL_Sonar*);
+
+	/**
+	 * @brief _Timeout_EventHandler - when handling interrupt for an instance of Sonar which
+	 * shares timer peripheral with another sensor, call _Timeout_EventHandler of the `child`
+	 * instance in the same routine as the `parent's` one
+	 * @param
+	 * @return
+	 */
 	uint8_t 	(*_Timeout_EventHandler)(volatile SOOL_Sonar*);
 
 };
@@ -80,8 +109,10 @@ extern volatile SOOL_Sonar SOOL_Sensor_Sonar_Init(GPIO_TypeDef* trig_port, uint1
 		uint16_t echo_tim_channel, TIM_TypeDef* TIMx, uint16_t range_max);
 
 extern volatile SOOL_Sonar SOOL_Sensor_Sonar_InitEcho(GPIO_TypeDef* echo_port, uint16_t echo_pin,
-		uint16_t echo_tim_channel, uint16_t range_max, SOOL_PinConfig_AltFunction trig_cfg,
-		volatile SOOL_TimerBasic timer_base, volatile SOOL_TimerOnePulse timer_pulse);
+		uint16_t echo_tim_channel, SOOL_PinConfig_AltFunction trig_cfg,
+		volatile SOOL_TimerOnePulse timer_pulse);
+	// uint16_t range_max,
+	// volatile SOOL_TimerBasic timer_base,
 
 extern volatile SOOL_Sonar SOOL_Sensor_Sonar_InitTrigEcho(GPIO_TypeDef* trig_port, uint16_t trig_pin,
 		uint16_t trig_tim_channel, GPIO_TypeDef* echo_port, uint16_t echo_pin,
