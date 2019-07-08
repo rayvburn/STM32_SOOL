@@ -40,7 +40,7 @@ struct _SOOL_ButtonStruct {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-volatile SOOL_Button SOOL_Sensor_Button_Init(SOOL_PinConfig_Int setup);
+extern volatile SOOL_Button SOOL_Sensor_Button_Init(SOOL_PinConfig_Int setup);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
