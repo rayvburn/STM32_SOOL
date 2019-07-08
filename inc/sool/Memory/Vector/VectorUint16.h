@@ -33,7 +33,12 @@ struct _SOOL_Vector_Uint16Struct {
 
 // - - - - - - - - - - - - - - - -
 
-// Initializer does not allocate any memory
+/**
+ *
+ * @note Initializer does not allocate any memory
+ * @note Example of use @ https://gitlab.com/frb-pow/002tubewaterflowmcu/blob/63200cd02eac11177d323c57a406d01d8ad62d96/src/main.c#L102
+ * @return
+ */
 extern SOOL_Vector_Uint16 SOOL_Memory_Vector_Uint16_Init();
 
 // - - - - - - - - - - - - - - - -

@@ -64,7 +64,8 @@ struct _SOOL_ADC_DMAStruct {
  * @note Works only with ADC1 and ADC3 (if available), ADC2 is not equipped in DMA interface.
  * @note Works in continuous mode by default, no interrupts are generated, all happens in `background`,
  * value ready to read can be achieved via GetReading member function
- * @note Always the newest values are stored in vector and can be read anytime
+ * @note Always the newest values are stored in vector and can be read anytime.
+ * @note Example of use @ https://gitlab.com/frb-pow/002tubewaterflowmcu/blob/63200cd02eac11177d323c57a406d01d8ad62d96/src/main.c#L67
  * @param ADCx
  * @param RCC_PCLK2_DivX
  * @return

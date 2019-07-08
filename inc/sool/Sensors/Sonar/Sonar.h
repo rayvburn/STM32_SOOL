@@ -119,6 +119,6 @@ extern volatile SOOL_Sonar SOOL_Sensor_Sonar_InitTrigEcho(GPIO_TypeDef* trig_por
 		uint16_t echo_tim_channel, uint16_t range_max, volatile SOOL_TimerBasic timer_base);
 
 /* Example of use (2 sonars at once) can be found at:
- * https://gitlab.com/frb-pow/002tubewaterflowmcu/commit/43f0826ccad01762fe6c088f5b7db29c6886b204 */
+ * https://gitlab.com/frb-pow/002tubewaterflowmcu/blob/63200cd02eac11177d323c57a406d01d8ad62d96/src/main.c#L60 */
 
 #endif /* INC_SOOL_SENSORS_SONAR_SONAR_H_ */
