@@ -21,7 +21,7 @@ struct VectorStruct;
 /// element must be stored in memory;
 /// Due to storing pointers, when an element changes value
 /// it's value in vector also changes - no copy is done!
-typedef struct VectorStruct Vector;
+typedef struct VectorStruct VectorVoid;
 
 struct VectorStruct {
 
@@ -31,18 +31,18 @@ struct VectorStruct {
     int _total;
 
     // functions
-    int 	(*GetTotal)(const Vector *v);
-	void 	(*Add)(Vector*, void*);
-	void 	(*Set)(Vector*, const unsigned int, void*);
-	void* 	(*GetItem)(const Vector*, const unsigned int);
-	void 	(*DeleteItem)(Vector*, const unsigned int);
-	void 	(*FreeMemory)(Vector*);
+    int 	(*GetTotal)(const VectorVoid *v);
+	void 	(*Add)(VectorVoid*, void*);
+	void 	(*Set)(VectorVoid*, const unsigned int, void*);
+	void* 	(*GetItem)(const VectorVoid*, const unsigned int);
+	void 	(*DeleteItem)(VectorVoid*, const unsigned int);
+	void 	(*FreeMemory)(VectorVoid*);
 
 };
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-Vector SOOL_Memory_Vector_Init(const unsigned int initial_capacity);
+VectorVoid SOOL_Memory_VectorVoid_Init(const unsigned int initial_capacity);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
