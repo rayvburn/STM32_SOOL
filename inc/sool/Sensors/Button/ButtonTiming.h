@@ -24,8 +24,8 @@ struct _SOOL_ButtonTimingStateStruct {
 struct _SOOL_ButtonTimingStruct {
 
 	// ----------- base (internal) classes section
-	SOOL_PinConfig_Int 				base_pin;
-	SOOL_TimerBasic 				base_timer;
+	SOOL_PinConfig_Int 					base_pin;
+	SOOL_TimerBasic*					base_timer_ptr;
 
 	// ----------- derived class section
 	struct _SOOL_ButtonTimingStateStruct	_state;
@@ -41,8 +41,18 @@ struct _SOOL_ButtonTimingStruct {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-// requires that SOOL_PinConfig_Int's trigger is set to Rising_Falling
-extern volatile SOOL_ButtonTiming SOOL_Sensor_ButtonTiming_Init(SOOL_PinConfig_Int setup, uint8_t active_state, SOOL_TimerBasic timer);
+/**
+ * @brief Provides a short- and long-press detection for a button. Long press detection is determined
+ * by a TimerBasic configuration (it's Update event generation frequency)
+ * @note Requires SOOL_PinConfig_Int's trigger to be set to Rising_Falling
+ * @note To operate it requires calling base_pin's EnableEXTI and base_timer's EnableNVIC
+ * after initialization and passing objects to interrupt handlers
+ * @param setup
+ * @param active_state - state which button sets on its output when pressed, 1 if signal is high, 0 if low
+ * @param timer_ptr - pointer to an existing instance of TimerBasic
+ * @return
+ */
+extern volatile SOOL_ButtonTiming SOOL_Sensor_ButtonTiming_Init(SOOL_PinConfig_Int setup, uint8_t active_state, SOOL_TimerBasic *timer_ptr);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 

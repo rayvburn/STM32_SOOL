@@ -17,7 +17,7 @@ static uint8_t SOOL_ButtonTiming_TimerInterruptHandler(volatile SOOL_ButtonTimin
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 volatile SOOL_ButtonTiming SOOL_Sensor_ButtonTiming_Init(SOOL_PinConfig_Int setup,
-									  uint8_t active_state, SOOL_TimerBasic timer) {
+									  uint8_t active_state, SOOL_TimerBasic *timer_ptr) {
 
 	/* Create a new instance */
 	volatile SOOL_ButtonTiming button_tim;
@@ -31,7 +31,7 @@ volatile SOOL_ButtonTiming SOOL_Sensor_ButtonTiming_Init(SOOL_PinConfig_Int setu
 	button_tim.base_pin = setup;
 
 	/* Save timer instance */
-	button_tim.base_timer = timer;
+	button_tim.base_timer_ptr = timer_ptr;
 
 	/* Set internal state */
 	button_tim._state.long_push_flag = 0;
@@ -82,9 +82,9 @@ static uint8_t SOOL_ButtonTiming_ExtiInterruptHandler(volatile SOOL_ButtonTiming
 		// button is in active state (just got pressed)
 
 		/* Start counting time */
-		button_tim_ptr->base_timer.Stop(&button_tim_ptr->base_timer);
-		button_tim_ptr->base_timer.SetCounter(&button_tim_ptr->base_timer, 0);
-		button_tim_ptr->base_timer.Start(&button_tim_ptr->base_timer);
+		button_tim_ptr->base_timer_ptr->Stop(button_tim_ptr->base_timer_ptr);
+		button_tim_ptr->base_timer_ptr->SetCounter(button_tim_ptr->base_timer_ptr, 0);
+		button_tim_ptr->base_timer_ptr->Start(button_tim_ptr->base_timer_ptr);
 
 		/* Update internal state */
 		button_tim_ptr->_state.timer_started = 1;
@@ -102,7 +102,7 @@ static uint8_t SOOL_ButtonTiming_ExtiInterruptHandler(volatile SOOL_ButtonTiming
 		if ( button_tim_ptr->_state.timer_started ) {
 
 			// stop the timer
-			button_tim_ptr->base_timer.Stop(&button_tim_ptr->base_timer);
+			button_tim_ptr->base_timer_ptr->Stop(button_tim_ptr->base_timer_ptr);
 			button_tim_ptr->_state.timer_started = 0;
 
 			// set short press flag
@@ -130,7 +130,7 @@ static uint8_t SOOL_ButtonTiming_TimerInterruptHandler(volatile SOOL_ButtonTimin
 		button_tim_ptr->_state.short_push_flag = 0; // just to be sure
 
 		// turn the timer off
-		button_tim_ptr->base_timer.Stop(&button_tim_ptr->base_timer);
+		button_tim_ptr->base_timer_ptr->Stop(button_tim_ptr->base_timer_ptr);
 		button_tim_ptr->_state.timer_started = 0;
 
 		return (1);
