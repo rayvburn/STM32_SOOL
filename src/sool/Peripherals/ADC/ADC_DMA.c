@@ -8,7 +8,6 @@
 #include "sool/Peripherals/ADC/ADC_DMA.h"
 #include "stm32f10x_rcc.h" // #include "stm32f10x.h"
 #include "sool/Peripherals/NVIC/NVIC.h"
-#include "stm32f10x_adc.h"
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -37,7 +36,7 @@ volatile SOOL_ADC_DMA SOOL_Periph_ADC_DMA_Init(ADC_TypeDef* ADCx, uint32_t RCC_P
 	}
 
 	/* Initialize vector of values */
-	adc_dma._v = SOOL_Memory_Array_VectorUint16_Init();
+	adc_dma._v = SOOL_Memory_Vector_Uint16_Init();
 
 	/* Configure ADC clock divider - hard coded parameter, */
 	RCC_ADCCLKConfig(RCC_PCLK2_DivX);
