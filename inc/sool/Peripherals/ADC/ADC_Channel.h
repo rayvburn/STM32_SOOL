@@ -27,6 +27,8 @@ struct _SOOL_ADC_ChannelStruct {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+// Analog input must be configured first using PinConfig_AltFunction - see pinout for
+// Pin - ADC_Channel correspondence
 extern SOOL_ADC_Channel SOOL_Periph_ADC_InitializeChannel(uint8_t ADC_Channel, uint8_t ADC_SampleTime);
 
 #endif /* INC_SOOL_PERIPHERALS_ADC_ADC_CHANNEL_H_ */
