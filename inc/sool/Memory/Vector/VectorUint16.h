@@ -34,7 +34,7 @@ struct _SOOL_Vector_Uint16Struct {
 // - - - - - - - - - - - - - - - -
 
 // Initializer does not allocate any memory
-extern SOOL_Vector_Uint16 SOOL_Memory_Array_VectorUint16_Init();
+extern SOOL_Vector_Uint16 SOOL_Memory_Vector_Uint16_Init();
 
 // - - - - - - - - - - - - - - - -
 

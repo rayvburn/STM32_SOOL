@@ -21,12 +21,15 @@ static uint8_t SOOL_Vector_Resize(SOOL_Vector_Uint16 *v_ptr, unsigned int new_si
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-SOOL_Vector_Uint16 SOOL_Memory_Array_VectorUint16_Init() {
+SOOL_Vector_Uint16 SOOL_Memory_Vector_Uint16_Init() {
 
+	/* New object */
 	SOOL_Vector_Uint16 v;
 
+	/* Initial size, no memory allocation here */
 	v._info.size = 0;
 
+	/* Assign function pointers */
 	v.Add = SOOL_Vector_Add;
 	v.Clear = SOOL_Vector_Clear;
 	v.Free = SOOL_Vector_Free;
@@ -46,6 +49,7 @@ static void SOOL_Vector_Add(SOOL_Vector_Uint16 *v_ptr, uint16_t val) {
 
 		/* Allocate memory */
 		v_ptr->_data = (uint16_t *)calloc( (size_t)1, sizeof(uint16_t) );
+		v_ptr->_info.size = 1;
 
 	} else {
 
