@@ -15,6 +15,7 @@
 /* When RX buffer detected being too small then increment
  * its size by this value (in bytes) */
 #define USART_DMA_RX_BUFFER_INCREMENT 	2
+#define USART_DMA_TX_SINGLE_ELEMENT_QUEUE // the way USART_DMA works without any bugs
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -94,10 +95,15 @@ volatile SOOL_USART_DMA SOOL_Periph_USART_DMA_Init(USART_TypeDef* USARTx, uint32
 	 * with an arbitrary length */
 	usart_obj._rx.buffer = SOOL_Memory_String_Init(buf_size);
 	usart_obj._tx.buffer = SOOL_Memory_String_Init(buf_size);
-	usart_obj._tx.queue = SOOL_Memory_Queue_String_Init(1);   // NOTE: SOOL_String weights about 40 bytes
+
+#ifndef USART_DMA_TX_SINGLE_ELEMENT_QUEUE
+	usart_obj._tx.queue = SOOL_Memory_Queue_String_Init(5);   // NOTE: SOOL_String weights about 40 bytes
+#else
+	usart_obj._tx.queue = SOOL_Memory_Queue_String_Init(1);
 	// NOTE: only single-object-queue makes sense here because when ISR calls Pop while main loop Pushing
 	// there comes an interference in terms of memory and wrong characters are sent or event some segfaults
 	// occur. Queue is feed with a new data only when is already empty.
+#endif
 
 	/* Start port clock considering remapping (Reference Manual, p. 183 - AFIO_MAPR) */
 	if ( USARTx == USART1 ) {
@@ -752,15 +758,22 @@ static uint8_t USART_DMA_SendFull(volatile SOOL_USART_DMA *usart, const char *to
 			// queue content transfer - blocking behavior
 			return (0); 	// no luck
 
-		} else if ( USART_DMA_IsTxLineBusy(usart) && USART_DMA_IsTxQueueEmpty(usart) ) {
+		} else if ( USART_DMA_IsTxLineBusy(usart) &&
 
-			/* Check whether currently transmitting data from buffer and queue is empty */
+#ifndef USART_DMA_TX_SINGLE_ELEMENT_QUEUE
+					!usart->_tx.queue.IsFull(&usart->_tx.queue)
+#else
+					USART_DMA_IsTxQueueEmpty(usart)
+#endif
+		) {
+
+			/* Check whether currently transmitting data from buffer and queue is empty/FULL */
 			// buffer content transfer, queue is empty
 			if ( USART_DMA_AddToQueue(usart, to_send_buf) ) {
 
 				// make sure that after addition of data the line is still busy
 				if ( !USART_DMA_IsTxLineBusy(usart) ) {
-					return (USART_DMA_SendFromQueue(usart));
+					return (USART_DMA_SendFromQueue(usart)); // TODO: for #ifndef USART_DMA_TX_SINGLE_ELEMENT_QUEUE the status will be probably different (must check how many elements there are in the queue, if only 1 then returning status in this manner will be valid)
 				}
 				return (1); // pushed successfully
 			}
