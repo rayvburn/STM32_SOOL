@@ -32,6 +32,7 @@
 // - - - - - - - - - - - - - - - -
 
 struct _SOOL_USART_DMA_State {
+//	uint8_t 	tx_queue_lock;
 	uint8_t 	tx_queue_transfer; // flag indicating whether data transmitted comes from the queue
 };
 
@@ -84,7 +85,7 @@ struct _SOOL_USART_DMA_Struct {
 	uint8_t (*_DmaRxIrqHandler)(volatile SOOL_USART_DMA*); 			// interrupt callback function which needs to be put into global DMA IRQHandler
 
 	// TX section
-	uint8_t (*IsTxQueueFull)(volatile SOOL_USART_DMA*);				// returns info whether TX queue is full
+//	uint8_t (*IsTxQueueEmpty)(volatile SOOL_USART_DMA*);				// returns info whether TX queue is empty
 	uint8_t (*IsTxLineBusy)(volatile SOOL_USART_DMA*); 				// returns info whether TX DMA is currently working
 	uint8_t (*Send)(volatile SOOL_USART_DMA*, const char*); 		// copies given data into buffer and fires up the transfer
 	void	(*ClearTxBuffer)(volatile SOOL_USART_DMA*); 				// clears whole buffer
