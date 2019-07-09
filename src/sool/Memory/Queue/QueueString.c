@@ -18,7 +18,7 @@ static SOOL_String SOOL_QueueString_GetFront(const SOOL_Queue_String *q_ptr);
 //static uint8_t SOOL_QueueString_GetSize(const SOOL_Queue_String *q_ptr);
 
 // helper
-static uint8_t SOOL_QueueString_Resize(SOOL_Queue_String *q_ptr, const size_t new_capacity);
+static uint8_t SOOL_QueueString_Resize(SOOL_Queue_String *q_ptr, int8_t size_change);
 
 // queue acts as a shift register (allows easier reallocation to save memory, queue always creates
 // a solid block of memory)
@@ -83,11 +83,17 @@ static void SOOL_QueueString_Pop(SOOL_Queue_String *q_ptr) {
 //	q_ptr->_data->Free(q_ptr->_data);
 	q_ptr->_data[0].Free(&q_ptr->_data[0]);
 
-	/* Front element gets overwritten */
-	SOOL_QueueString_Shift(q_ptr);
+	/* Try to resize the queue (and update its size) */
+	if ( !SOOL_QueueString_Resize(q_ptr, -1) ) {
+		// something went wrong
+		return;
+	}
 
-	/* Decrement size */
-	q_ptr->_setup.size--;
+//	/* Front element gets overwritten */
+//	SOOL_QueueString_Shift(q_ptr);
+//
+//	/* Decrement size */
+//	q_ptr->_setup.size--;
 
 }
 
@@ -101,7 +107,7 @@ static uint8_t SOOL_QueueString_PushString(SOOL_Queue_String *q_ptr, SOOL_String
 	}
 
 	/* Size is within allowable range */
-	if ( !SOOL_QueueString_Resize(q_ptr, q_ptr->_setup.size + 1) ) {
+	if ( !SOOL_QueueString_Resize(q_ptr, +1) ) {
 		// something went wrong
 		return (0);
 	}
@@ -118,16 +124,15 @@ static uint8_t SOOL_QueueString_PushString(SOOL_Queue_String *q_ptr, SOOL_String
 
 static uint8_t SOOL_QueueString_Push(SOOL_Queue_String *q_ptr, const char *str) {
 
-	SOOL_String obj = SOOL_Memory_String_Init(7);
-	obj.SetString(&obj, str);
+	/* Create new String instance */
+	SOOL_String string = SOOL_Memory_String_Init(1); // (7)
+//	obj.SetString(&obj, str);
+	string.Append(&string, str);
 
 	/* Try to add string to the queue */
-	uint8_t status = SOOL_QueueString_PushString(q_ptr, obj); // TODO pass ptr?
+	uint8_t status = SOOL_QueueString_PushString(q_ptr, string); // TODO pass ptr?
 
-	// DO NOT FREE BECAUSE DATA WILL BE LOST INSIDE THE QUEUE, IT WILL BE FREE'd LATER
-//	/* Free memory */
-//	obj.Free(&obj);
-
+	/* Return status of the operation */
 	if ( status ) {
 		return (1);
 	}
@@ -157,7 +162,13 @@ static SOOL_String SOOL_QueueString_GetFront(const SOOL_Queue_String *q_ptr) {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 // helper
-static uint8_t SOOL_QueueString_Resize(SOOL_Queue_String *q_ptr, const size_t new_capacity) {
+/**
+ *
+ * @param q_ptr
+ * @param size_change - can be +1 or -1 for the queue
+ * @return
+ */
+static uint8_t SOOL_QueueString_Resize(SOOL_Queue_String *q_ptr, int8_t size_change) {
 
 	/* Backup some info */
 	uint16_t old_capacity = q_ptr->_setup.size;
@@ -165,26 +176,53 @@ static uint8_t SOOL_QueueString_Resize(SOOL_Queue_String *q_ptr, const size_t ne
 
 	/* Try to (re)allocate memory */
 	if ( q_ptr->_setup.size != 0 ) {
-		q_ptr->_data = realloc( q_ptr->_data, new_capacity * sizeof(SOOL_String) ); // (SOOL_String*)
+
+		// Seems that at least 1 element is present in the queue.
+		// Check whether element to be added or deleted.
+		if ( size_change == 1 ) {
+
+			q_ptr->_data = realloc( q_ptr->_data, (q_ptr->_setup.size + 1) * sizeof(SOOL_String) );
+
+		} else if ( size_change == -1 ) {
+
+			// Check if there are 1 or more elements in the queue
+			if ( q_ptr->_setup.size == 1) {
+
+				// nothing to be done, first (and the only) element's memory has already been freed
+				q_ptr->_setup.size = 0;
+				return (1);
+
+			} else {
+
+				// Due to Queue structure in memory, let's reallocate it. Use current second element
+				// as a base address as the first element needs to be Popped now and its memory has already
+				// been freed.
+//				q_ptr->_data = realloc( q_ptr->_data + 1, (q_ptr->_setup.size - 1) * sizeof(SOOL_String) );
+				q_ptr->_data = realloc( &q_ptr->_data[1], (q_ptr->_setup.size - 1) * sizeof(SOOL_String) );
+
+			}
+
+		}
+
 	} else {
-		// FIXME: get rid of the internal pointer, allocate for const char*!
-//		q_ptr->_data = calloc( q_ptr->_data, new_capacity * sizeof(SOOL_String) ); // (SOOL_String*)
-		q_ptr->_data = (SOOL_String *)calloc( (size_t)new_capacity, sizeof(SOOL_String) );
+
+		// This can happen only when element needs to be added.
+		// 0 elements in the queue, memory must be allocated from scratch
+		q_ptr->_data = (SOOL_String *)calloc( (size_t)1, sizeof(SOOL_String) );
+
 	}
 
 	/* Check if the reallocation was successful */
 	if ( q_ptr->_data != NULL ) {
 
-		/* Clear the new part of an Array (if Array is bigger than before) */
-		SOOL_String str; // blank object to be put into queue
-		if ( old_capacity < new_capacity ) {
-			for ( size_t i = old_capacity; i < new_capacity; i++) {
-				q_ptr->_data[i] = str;
-			}
-		}
+		/* Update size */
+		q_ptr->_setup.size += size_change;
 
-		/* Update capacity */
-		q_ptr->_setup.size = new_capacity;
+		/* Clear the new part of a Queue (if Queue is bigger than before) */
+		if ( size_change == 1 ) {
+			SOOL_String str; // blank object to be put into queue
+			q_ptr->_data[q_ptr->_setup.size - 1] = str;
+		}
 
 		return (1);
 
@@ -203,12 +241,12 @@ static uint8_t SOOL_QueueString_Resize(SOOL_Queue_String *q_ptr, const size_t ne
 static void SOOL_QueueString_Shift(SOOL_Queue_String *q_ptr) {
 
 	// shift value position
-//	for ( uint8_t i = 0; i < (q_ptr->_setup.size - 1); i++) {
-//		// q_ptr->_data[i] = q_ptr->_data[i+1];
-//		 *(q_ptr->_data + i) = (*(q_ptr->_data + i + 1));
-//	}
+	for ( int16_t i = 0; i < (q_ptr->_setup.size - 1); i++) {
+		// q_ptr->_data[i] = q_ptr->_data[i+1];
+		 *(q_ptr->_data + i) = (*(q_ptr->_data + i + 1));
+	}
 
-	memmove(q_ptr->_data, q_ptr->_data + 1, q_ptr->_setup.size - 2);
+//	memmove(q_ptr->_data, q_ptr->_data + 1, q_ptr->_setup.size - 2);
 
 }
 
