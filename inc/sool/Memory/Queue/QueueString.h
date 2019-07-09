@@ -20,10 +20,10 @@ struct _SOOL_QueueStringSetupStruct {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-struct _SOOL_QueueStringStateStruct {
+//struct _SOOL_QueueStringStateStruct {
 //	uint8_t front_idx;
 //	uint8_t back_idx;
-};
+//};
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -34,12 +34,13 @@ typedef struct _SOOL_QueueStringStruct SOOL_Queue_String;
 /**
  * Structure defines front and back elements positions in advance. Front element is placed at 0 position
  * whereas back element at (size - 1). Each Pop() invocation shifts values so old front element is overwritten
- * by the next one in the queue. What's more Pop() reallocates memory to utilize it efficiently.
+ * by the next one in the queue. What's more Pop() reallocates memory to utilize it efficiently
+ * (uses as much as currently needs).
  */
 struct _SOOL_QueueStringStruct {
 
 	struct _SOOL_QueueStringSetupStruct	_setup;
-	struct _SOOL_QueueStringStateStruct _state;
+//	struct _SOOL_QueueStringStateStruct _state;
 	SOOL_String*						_data;
 
 	uint8_t 	(*IsEmpty)(const SOOL_Queue_String*);

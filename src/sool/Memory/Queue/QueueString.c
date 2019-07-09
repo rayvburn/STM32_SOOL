@@ -79,21 +79,14 @@ static void SOOL_QueueString_Pop(SOOL_Queue_String *q_ptr) {
 		return;
 	}
 
-	/* Free memory allocated by the first element */
-//	q_ptr->_data->Free(q_ptr->_data);
-	q_ptr->_data[0].Free(&q_ptr->_data[0]);
+	/* Front element gets overwritten */
+	SOOL_QueueString_Shift(q_ptr);
 
 	/* Try to resize the queue (and update its size) */
 	if ( !SOOL_QueueString_Resize(q_ptr, -1) ) {
 		// something went wrong
 		return;
 	}
-
-//	/* Front element gets overwritten */
-//	SOOL_QueueString_Shift(q_ptr);
-//
-//	/* Decrement size */
-//	q_ptr->_setup.size--;
 
 }
 
@@ -125,12 +118,11 @@ static uint8_t SOOL_QueueString_PushString(SOOL_Queue_String *q_ptr, SOOL_String
 static uint8_t SOOL_QueueString_Push(SOOL_Queue_String *q_ptr, const char *str) {
 
 	/* Create new String instance */
-	SOOL_String string = SOOL_Memory_String_Init(1); // (7)
-//	obj.SetString(&obj, str);
+	SOOL_String string = SOOL_Memory_String_Init(1);
 	string.Append(&string, str);
 
 	/* Try to add string to the queue */
-	uint8_t status = SOOL_QueueString_PushString(q_ptr, string); // TODO pass ptr?
+	uint8_t status = SOOL_QueueString_PushString(q_ptr, string);
 
 	/* Return status of the operation */
 	if ( status ) {
@@ -188,17 +180,17 @@ static uint8_t SOOL_QueueString_Resize(SOOL_Queue_String *q_ptr, int8_t size_cha
 			// Check if there are 1 or more elements in the queue
 			if ( q_ptr->_setup.size == 1) {
 
-				// nothing to be done, first (and the only) element's memory has already been freed
+				// First (and the only) element's memory must be freed.
+				q_ptr->_data[0].Free(&q_ptr->_data[0]);
 				q_ptr->_setup.size = 0;
 				return (1);
 
 			} else {
 
-				// Due to Queue structure in memory, let's reallocate it. Use current second element
-				// as a base address as the first element needs to be Popped now and its memory has already
-				// been freed.
-//				q_ptr->_data = realloc( q_ptr->_data + 1, (q_ptr->_setup.size - 1) * sizeof(SOOL_String) );
-				q_ptr->_data = realloc( &q_ptr->_data[1], (q_ptr->_setup.size - 1) * sizeof(SOOL_String) );
+				// There are at least 2 elements in the queue.
+				// Due to Queue structure in memory, let's reallocate it. All elements have been shifted
+				// left so queue's front is always the first element of the _data array.
+				q_ptr->_data = realloc( q_ptr->_data, (q_ptr->_setup.size - 1) * sizeof(SOOL_String) );
 
 			}
 
@@ -246,7 +238,7 @@ static void SOOL_QueueString_Shift(SOOL_Queue_String *q_ptr) {
 		 *(q_ptr->_data + i) = (*(q_ptr->_data + i + 1));
 	}
 
-//	memmove(q_ptr->_data, q_ptr->_data + 1, q_ptr->_setup.size - 2);
+//	memmove(q_ptr->_data, q_ptr->_data + 1, q_ptr->_setup.size - 2); // seems to do nothing
 
 }
 
