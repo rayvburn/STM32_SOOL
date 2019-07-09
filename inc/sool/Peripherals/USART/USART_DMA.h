@@ -9,8 +9,6 @@
 #define INCLUDE_PERIPHERALS_USART_USART_DMA_H_
 
 // ST libs
-#include <sool/Memory/String/String.h>
-
 #include "stm32f10x.h"
 #include "stm32f10x_usart.h"
 #include "stm32f10x_dma.h"
@@ -23,11 +21,19 @@
 
 // SOOL
 #include <sool/Peripherals/DMA/DMA_common.h>
+#include <sool/Memory/String/String.h>
+#include <sool/Memory/Queue/QueueString.h>
 
 // - - - - - - - - - - - - - - - -
 
 /* IMPORTANT NOTE: beware of breakpoints during debugging - DMA is very sensitive to some interrupts
  * during its job - getting into a breakpoint blocks and never releases an initialized transfer */
+
+// - - - - - - - - - - - - - - - -
+
+struct _SOOL_USART_DMA_State {
+	uint8_t 	tx_queue_transfer; // flag indicating whether data transmitted comes from the queue
+};
 
 // - - - - - - - - - - - - - - - -
 
@@ -50,6 +56,7 @@ struct _SOOL_USART_Rx {
 
 struct _SOOL_USART_Tx {
 	SOOL_String 		buffer;
+	SOOL_Queue_String	queue;
 } USART_Tx;
 
 // - - - - - - - - - - - - - - - -
@@ -64,6 +71,7 @@ typedef struct _SOOL_USART_DMA_Struct SOOL_USART_DMA;
 struct _SOOL_USART_DMA_Struct {
 
 	struct _SOOL_USART_DMA_Config 	_setup;
+	struct _SOOL_USART_DMA_State	_state;
 	struct _SOOL_USART_Rx			_rx;
 	struct _SOOL_USART_Tx			_tx;
 
@@ -76,6 +84,7 @@ struct _SOOL_USART_DMA_Struct {
 	uint8_t (*_DmaRxIrqHandler)(volatile SOOL_USART_DMA*); 			// interrupt callback function which needs to be put into global DMA IRQHandler
 
 	// TX section
+	uint8_t (*IsTxQueueFull)(volatile SOOL_USART_DMA*);				// returns info whether TX queue is full
 	uint8_t (*IsTxLineBusy)(volatile SOOL_USART_DMA*); 				// returns info whether TX DMA is currently working
 	uint8_t (*Send)(volatile SOOL_USART_DMA*, const char*); 		// copies given data into buffer and fires up the transfer
 	void	(*ClearTxBuffer)(volatile SOOL_USART_DMA*); 				// clears whole buffer

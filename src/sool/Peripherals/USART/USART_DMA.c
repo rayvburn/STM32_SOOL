@@ -27,6 +27,7 @@ static const volatile SOOL_String* USART_DMA_GetRxData(volatile SOOL_USART_DMA *
 static void		USART_DMA_ClearRxBuffer(volatile SOOL_USART_DMA *usart);
 
 // TX
+static uint8_t 	USART_DMA_IsTxQueueFull(volatile SOOL_USART_DMA *usart);
 static uint8_t 	USART_DMA_IsTxLineBusy(volatile SOOL_USART_DMA *usart);
 static uint8_t 	USART_DMA_Send(volatile SOOL_USART_DMA *usart, const char *to_send_buf);
 static void		USART_DMA_ClearTxBuffer(volatile SOOL_USART_DMA *usart);
@@ -89,6 +90,7 @@ volatile SOOL_USART_DMA SOOL_Periph_USART_DMA_Init(USART_TypeDef* USARTx, uint32
 	 * with an arbitrary length */
 	usart_obj._rx.buffer = SOOL_Memory_String_Init(buf_size);
 	usart_obj._tx.buffer = SOOL_Memory_String_Init(buf_size);
+	usart_obj._tx.queue = SOOL_Memory_Queue_String_Init(4);   // NOTE: SOOL_String weights about 40 bytes
 
 	/* Start port clock considering remapping (Reference Manual, p. 183 - AFIO_MAPR) */
 	if ( USARTx == USART1 ) {
@@ -387,6 +389,9 @@ static void SOOL_Periph_USART_DMA_Copy(volatile SOOL_USART_DMA *usart, const USA
 	usart->_setup.dma_tx.DMA_Channelx = tx_settings->channel;
 	usart->_setup.dma_tx.int_flags    = tx_settings->int_flags;
 
+	/* State */
+	usart->_state.tx_queue_transfer = 0;
+
 	// buffer already assigned in this moment
 
 	/* Fill USART class' methods */
@@ -397,6 +402,7 @@ static void SOOL_Periph_USART_DMA_Copy(volatile SOOL_USART_DMA *usart, const USA
 	usart->ClearRxBuffer = USART_DMA_ClearRxBuffer;
 	usart->_DmaRxIrqHandler = USART_DMA_RxInterruptHandler;
 
+	usart->IsTxQueueFull = USART_DMA_IsTxQueueFull;
 	usart->IsTxLineBusy = USART_DMA_IsTxLineBusy;
 	usart->Send = USART_DMA_Send;
 	usart->ClearTxBuffer = USART_DMA_ClearTxBuffer;
@@ -631,6 +637,12 @@ static uint8_t USART_DMA_IdleInterruptHandler(volatile SOOL_USART_DMA *usart) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+static uint8_t USART_DMA_IsTxQueueFull(volatile SOOL_USART_DMA *usart) {
+	return (usart->_tx.queue.IsFull(&usart->_tx.queue));
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 static uint8_t USART_DMA_IsTxLineBusy(volatile SOOL_USART_DMA *usart) {
 
 	/* Reach information whether DMA transfer was started (usart->_tx.started_flag is DEPRECATED);
@@ -671,9 +683,27 @@ static uint8_t USART_DMA_TxInterruptHandler(volatile SOOL_USART_DMA *usart) {
 //		DMA_ClearITPendingBit(usart->_setup.dma_tx.int_flags.COMPLETE_FLAG);
 		DMA_ClearITPendingBit(usart->_setup.dma_tx.int_flags.GLOBAL_FLAG);
 
-		/* Disable DMA Channel */
-		usart->_setup.dma_tx.DMA_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN);// DMA_Cmd(usart->_setup.dma_tx.DMA_Channelx, DISABLE);
+		/* Check whether last data transferred came from the TX queue */
+		if ( usart->_state.tx_queue_transfer ) {
+			usart->_state.tx_queue_transfer = 0;
+			usart->_tx.queue.Pop(&usart->_tx.queue);
+		}
 
+		/* After completion of last transfer, check whether there are some data in the TX queue */
+		if ( !usart->_tx.queue.IsEmpty(&usart->_tx.queue) ) {
+
+			/* Start transmitting the oldest element in the queue */
+			usart->_state.tx_queue_transfer = 1;
+//			USART_DMA_Send(usart, usart->_tx.queue.GetFront(&usart->_tx.queue).GetString(&usart->_tx.queue.GetFront(&usart->_tx.queue)));
+			SOOL_String front_elem = usart->_tx.queue.GetFront(&usart->_tx.queue);
+			USART_DMA_Send(usart, front_elem.GetString(&front_elem));
+
+		} else {
+
+			/* Disable DMA Channel */
+			usart->_setup.dma_tx.DMA_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN);// DMA_Cmd(usart->_setup.dma_tx.DMA_Channelx, DISABLE);
+
+		}
 		return (1);
 
 	} else if ( DMA_GetITStatus(usart->_setup.dma_tx.int_flags.HALF_FLAG) == SET ) {
@@ -700,6 +730,31 @@ static uint8_t USART_DMA_TxInterruptHandler(volatile SOOL_USART_DMA *usart) {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 static uint8_t USART_DMA_Send(volatile SOOL_USART_DMA *usart, const char *to_send_buf) {
+
+	/* Check state of the TX queue content transfer indicator (`tx_queue_transfer`).
+	 * If it is set, don't check other conditions, just start transfer immediately. */
+	if ( !usart->_state.tx_queue_transfer ) {
+
+		/* Check whether currently transmitting */
+		if ( USART_DMA_IsTxLineBusy(usart) ) {
+
+			/* Check whether TX queue is full */
+			if ( !usart->_tx.queue.IsFull(&usart->_tx.queue) ) {
+
+				// Data added to queue, TODO: memcpy?
+				usart->_tx.queue.Push(&usart->_tx.queue, to_send_buf);
+				return (1);
+
+			} else {
+
+				// USART is busy, Queue is full, cannot save the request
+				return (0);
+
+			}
+
+		}
+
+	}
 
 	/* Check message length */
 	uint32_t length = (uint32_t)strlen(to_send_buf);
