@@ -9,14 +9,8 @@
 #define INC_SOOL_MEMORY_QUEUE_QUEUESTRING_H_
 
 #include <stdint.h>
+#include "Queue_common.h"
 #include "sool/Memory/String/String.h"
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-struct _SOOL_QueueStringSetupStruct {
-	uint8_t size;
-	uint8_t max_size;
-};
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -39,7 +33,7 @@ typedef struct _SOOL_QueueStringStruct SOOL_Queue_String;
  */
 struct _SOOL_QueueStringStruct {
 
-	struct _SOOL_QueueStringSetupStruct	_setup;
+	struct _SOOL_QueueSetupStruct		_setup;
 //	struct _SOOL_QueueStringStateStruct _state;
 	SOOL_String*						_data;
 
