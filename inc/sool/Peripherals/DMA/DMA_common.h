@@ -28,6 +28,15 @@ struct _SOOL_DMA_ChannelConfig {
 	struct _SOOL_DMA_InterruptFlags	int_flags;
 } ;
 
+////////////////////////////////////////////// // TODO: clear
+/* Helpers */
+struct _SOOL_DMA_SetupStruct {
+	DMA_Channel_TypeDef* 	  		channel;
+	struct _SOOL_DMA_InterruptFlags int_flags;
+	uint8_t					  		irqn;
+};
+//////////////////////////////////////////////
+
 // - - - - - - - - - - - - - - - -
 
 #endif /* INCLUDE_PERIPHERALS_DMA_COMMON_H_ */
