@@ -107,11 +107,22 @@ static uint8_t SOOL_QueueString_PushString(SOOL_Queue_String *q_ptr, SOOL_String
 
 	/* Update queue (Resize() updates the size) */
 	uint8_t new_elem_pos = (q_ptr->_setup.size - 1);
-	*(q_ptr->_data + new_elem_pos) = str;
+//	*(q_ptr->_data + new_elem_pos) = str;
 
-	// use strcpy // FIXME: use this only for `SOOL_String` data type
-//	q_ptr->_data[new_elem_pos]._data = (char *)calloc( (size_t)(strlen(str._data) + 1), sizeof(char) );
-//	strcpy(q_ptr->_data[new_elem_pos]._data, str._data);
+//	/* Save string length */
+//	size_t capacity = strlen(str._data) + 1;
+//
+//	/* Allocate memory to store the string and copy it to the queue element (SOOL_String) */
+//	q_ptr->_data[new_elem_pos]._data = (char *)calloc( capacity, sizeof(char) );
+//	strcpy(q_ptr->_data[new_elem_pos]._data, str._data); 	/* FIXME: use strcpy only for `SOOL_String` data type */
+//
+//	/* Update SOOL_String internal data */
+//	q_ptr->_data[new_elem_pos]._info.capacity = capacity;
+//	q_ptr->_data[new_elem_pos]._info.total = capacity;
+//	q_ptr->_data[new_elem_pos]._info.add_index = capacity;
+
+	// TODO check NULL termination?
+	q_ptr->_data[new_elem_pos].Append(&q_ptr->_data[new_elem_pos], str._data);
 
 	return (1);
 
@@ -128,8 +139,8 @@ static uint8_t SOOL_QueueString_Push(SOOL_Queue_String *q_ptr, const char *str) 
 	/* Try to add string to the queue */
 	uint8_t status = SOOL_QueueString_PushString(q_ptr, string);
 
-//	/* Free memory as the string was copied */ // Solution not used at the moment
-//	string.Free(&string);
+	/* Free memory as the string was copied */
+	string.Free(&string);
 
 	/* Return status of the operation */
 	if ( status ) {
@@ -189,12 +200,22 @@ static uint8_t SOOL_QueueString_Resize(SOOL_Queue_String *q_ptr, int8_t size_cha
 
 				// First (and the only) element's memory must be freed.
 				q_ptr->_data[0].Free(&q_ptr->_data[0]);
+
+				// NULL the queue's _data pointer manually
+				free(q_ptr->_data);
+				q_ptr->_data = NULL;
+
 				q_ptr->_setup.size = 0;
 				return (1);
 
 			} else {
 
 				// There are at least 2 elements in the queue.
+
+				// Free memory used by the last element in the queue (SOOL_String frees allocated *char)
+				SOOL_String* el_to_be_deleted = &q_ptr->_data[q_ptr->_setup.size - 1];
+				el_to_be_deleted->Free(el_to_be_deleted);
+
 				// Due to Queue structure in memory, let's reallocate it. All elements have been shifted
 				// left so queue's front is always the first element of the _data array.
 				q_ptr->_data = realloc( q_ptr->_data, (q_ptr->_setup.size - 1) * sizeof(SOOL_String) );
@@ -219,7 +240,7 @@ static uint8_t SOOL_QueueString_Resize(SOOL_Queue_String *q_ptr, int8_t size_cha
 
 		/* Clear the new part of a Queue (if Queue is bigger than before) */
 		if ( size_change == 1 ) {
-			SOOL_String str; // blank object to be put into queue
+			SOOL_String str = SOOL_Memory_String_Init(1); // empty object to be put into queue
 			q_ptr->_data[q_ptr->_setup.size - 1] = str;
 		}
 
