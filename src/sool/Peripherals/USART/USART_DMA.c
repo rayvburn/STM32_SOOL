@@ -760,7 +760,7 @@ static uint8_t USART_DMA_SendFull(volatile SOOL_USART_DMA *usart, const char *to
 
 				// make sure that after addition of data the line is still busy
 				if ( !USART_DMA_IsTxLineBusy(usart) ) {
-					USART_DMA_SendFromQueue(usart);
+					return (USART_DMA_SendFromQueue(usart));
 				}
 				return (1); // pushed successfully
 			}
