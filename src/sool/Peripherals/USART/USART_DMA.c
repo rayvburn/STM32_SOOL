@@ -42,11 +42,14 @@ static uint8_t 	USART_DMA_IdleInterruptHandler(volatile SOOL_USART_DMA *usart);
 static uint8_t	USART_DMA_RestoreBuffersInitialSize(volatile SOOL_USART_DMA *usart);
 static void		USART_DMA_Destroy(volatile SOOL_USART_DMA *usart);
 
-// private class function
+// private class functions
 static void 	USART_DMA_SetupAndStartDmaReading(volatile SOOL_USART_DMA *usart, const size_t buf_start_pos, const size_t num_bytes_to_read);
 static void 	USART_DMA_RestartReading(volatile SOOL_USART_DMA *usart, const size_t buf_start_pos, const size_t num_bytes_to_read);
 static uint16_t USART_DMA_GetMaxNonEmptyItemIndex(volatile SOOL_String *arr);
-
+static uint8_t	USART_DMA_AddToQueue(volatile SOOL_USART_DMA *usart, const char *to_send_buf); // returns status
+static uint8_t 	USART_DMA_SendFromQueue(volatile SOOL_USART_DMA *usart); // returns status
+static uint8_t	USART_DMA_IsQueueTransfer(volatile SOOL_USART_DMA *usart);
+static void 	USART_DMA_OnQueueTransferFinish(volatile SOOL_USART_DMA *usart);
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 /* Helpers */
@@ -685,18 +688,15 @@ static uint8_t USART_DMA_TxInterruptHandler(volatile SOOL_USART_DMA *usart) {
 		DMA_ClearITPendingBit(usart->_setup.dma_tx.int_flags.GLOBAL_FLAG);
 
 		/* Check whether last data transferred came from the TX queue */
-		if ( usart->_state.tx_queue_transfer ) {
-			usart->_state.tx_queue_transfer = 0;
-			usart->_tx.queue.Pop(&usart->_tx.queue);
+		if ( USART_DMA_IsQueueTransfer(usart) ) {
+			USART_DMA_OnQueueTransferFinish(usart);
 		}
 
 		/* After completion of last transfer, check whether there are some data in the TX queue */
 		if ( !usart->_tx.queue.IsEmpty(&usart->_tx.queue) ) {
 
 			/* Start transmitting the oldest element in the queue */
-			usart->_state.tx_queue_transfer = 1;
-			SOOL_String front_elem = usart->_tx.queue.GetFront(&usart->_tx.queue);
-			USART_DMA_SendFull(usart, front_elem.GetString(&front_elem), 1);
+			USART_DMA_SendFromQueue(usart);
 
 		} else {
 
@@ -746,59 +746,42 @@ static uint8_t USART_DMA_SendFull(volatile SOOL_USART_DMA *usart, const char *to
 		/* Check whether currently transmitting */
 		if ( USART_DMA_IsTxLineBusy(usart) ) {
 
-			/* TX line is busy so check whether TX queue is full */
-			if ( !usart->_tx.queue.IsFull(&usart->_tx.queue) ) {
-
-				// Add data to queue
-				if ( usart->_tx.queue.Push(&usart->_tx.queue, to_send_buf) ) {
-					return (1); // pushed successfully
-				}
-				return (0);		// no luck while pushing
-
-			} else {
-
-				// USART is busy, Queue is full, cannot save the request
-				return (0);
-
+			/* Try to add new data to the TX queue */
+			if ( USART_DMA_AddToQueue(usart, to_send_buf) ) {
+				return (1); // pushed successfully
 			}
+			return (0);		// USART is busy, Queue is full, cannot save the request
+
 
 		} else if ( !usart->_tx.queue.IsEmpty(&usart->_tx.queue) ) {
 
 			/* TX line is not busy AND Queue is not empty here! */
 			/* Check whether currently transferring queue content */
-			if ( usart->_state.tx_queue_transfer ) {
+			if ( USART_DMA_IsQueueTransfer(usart) ) {
 
-				/////////////////////////////////////////////////////////////////////
-				// queue is NOT empty and its contents are transferred
-				if ( !usart->_tx.queue.IsFull(&usart->_tx.queue) ) {
-					// Add data to queue
-					if ( usart->_tx.queue.Push(&usart->_tx.queue, to_send_buf) ) {
-						return (1); // pushed successfully
-					}
-					return (0);		// no luck while pushing
+				/* Try to add new data to the TX queue */
+				if ( USART_DMA_AddToQueue(usart, to_send_buf) ) {
+					return (1); // pushed successfully
 				}
-				return (0);
-				/////////////////////////////////////////////////////////////////////
+				return (0);		// Queue is full, cannot save the request
 
 			} else {
 
 				// queue is NOT empty and its contents are not being transferred
-				// THIS IS STRANGE AND SHOULD NOT HAPPEN!
-				/////////////////////////////////////////////////////////////////////
-				uint8_t status = 0;
-				if ( !usart->_tx.queue.IsFull(&usart->_tx.queue) ) {
-					// Add data to queue
-					if ( usart->_tx.queue.Push(&usart->_tx.queue, to_send_buf) ) {
-						status = 1; // pushed successfully
-					}
-					status = 0;		// no luck while pushing
-				}
-				// TODO: initialize new transfer manually?
-				return (status);
-				/////////////////////////////////////////////////////////////////////
+				/* Try to add new data to the TX queue */
+				uint8_t status = USART_DMA_AddToQueue(usart, to_send_buf);
+
+				/* Initialize transfer from the queue - it will omit all these nested conditions
+				 * because `queue_request` will be true */
+				USART_DMA_SendFromQueue(usart);
+
+				return (status); // return status
+
 			}
 
 		}
+
+		/* TX line is not busy and queue is empty - go ahead! */
 
 	}
 
@@ -888,6 +871,56 @@ static void	USART_DMA_Destroy(volatile SOOL_USART_DMA *usart) {
 	usart->_rx.buffer.Resize(&usart->_rx.buffer, 0);
 	usart->_tx.buffer.Resize(&usart->_tx.buffer, 0);
 
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+// returns status
+static uint8_t USART_DMA_AddToQueue(volatile SOOL_USART_DMA *usart, const char *to_send_buf) {
+
+	/* Check whether TX queue is full */
+	if ( !usart->_tx.queue.IsFull(&usart->_tx.queue) ) {
+
+		// Add data to queue
+		if ( usart->_tx.queue.Push(&usart->_tx.queue, to_send_buf) ) {
+			return (1); // pushed successfully
+		}
+		return (0);		// no luck while pushing
+
+	}
+
+	// Queue is full, cannot save the request
+	return (0);
+
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+// returns status
+static uint8_t USART_DMA_SendFromQueue(volatile SOOL_USART_DMA *usart) {
+
+	/* Start transmitting the oldest element in the queue */
+	usart->_state.tx_queue_transfer = 1;
+	SOOL_String front_elem = usart->_tx.queue.GetFront(&usart->_tx.queue);
+	// temp
+	usart->_tx.queue.Pop(&usart->_tx.queue);
+	// temp
+	uint8_t status = USART_DMA_SendFull(usart, front_elem.GetString(&front_elem), 1);
+	return (status);
+
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static uint8_t USART_DMA_IsQueueTransfer(volatile SOOL_USART_DMA *usart) {
+	return (usart->_state.tx_queue_transfer);
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static void USART_DMA_OnQueueTransferFinish(volatile SOOL_USART_DMA *usart) {
+	usart->_state.tx_queue_transfer = 0;
+//	usart->_tx.queue.Pop(&usart->_tx.queue);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
