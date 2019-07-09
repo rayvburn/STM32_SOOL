@@ -109,6 +109,10 @@ static uint8_t SOOL_QueueString_PushString(SOOL_Queue_String *q_ptr, SOOL_String
 	uint8_t new_elem_pos = (q_ptr->_setup.size - 1);
 	*(q_ptr->_data + new_elem_pos) = str;
 
+	// use strcpy // FIXME: use this only for `SOOL_String` data type
+//	q_ptr->_data[new_elem_pos]._data = (char *)calloc( (size_t)(strlen(str._data) + 1), sizeof(char) );
+//	strcpy(q_ptr->_data[new_elem_pos]._data, str._data);
+
 	return (1);
 
 }
@@ -123,6 +127,9 @@ static uint8_t SOOL_QueueString_Push(SOOL_Queue_String *q_ptr, const char *str) 
 
 	/* Try to add string to the queue */
 	uint8_t status = SOOL_QueueString_PushString(q_ptr, string);
+
+//	/* Free memory as the string was copied */ // Solution not used at the moment
+//	string.Free(&string);
 
 	/* Return status of the operation */
 	if ( status ) {
