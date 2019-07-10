@@ -29,7 +29,7 @@ static uint8_t SOOL_DMA_GlobalInterruptHandler(volatile SOOL_DMA *dma);
 
 // helper
 void SOOL_DMA_UpdateSetup(volatile SOOL_DMA *dma, DMA_TypeDef *DMAy, DMA_Channel_TypeDef* DMAy_Channelx);
-void SOOL_DMA_EnableInterrupts(DMA_Channel_TypeDef* DMAy_Channelx, uint8_t enable_tc, uint8_t enable_ht, uint8_t enable_error);
+void SOOL_DMA_EnableInterrupts(volatile SOOL_DMA *dma, uint8_t enable_tc, uint8_t enable_ht, uint8_t enable_error);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -78,7 +78,7 @@ volatile SOOL_DMA SOOL_Periph_DMA_Init(DMA_TypeDef *DMAy, DMA_Channel_TypeDef* D
 
 	/* Enable global interrupts for DMA */
 	NVIC_InitTypeDef nvic;
-	nvic.NVIC_IRQChannel = dma->_setup.irqn;
+	nvic.NVIC_IRQChannel = dma._setup.irqn;
 	nvic.NVIC_IRQChannelCmd = DISABLE;
 	nvic.NVIC_IRQChannelPreemptionPriority = 0;
 	nvic.NVIC_IRQChannelSubPriority = 0;
@@ -112,34 +112,34 @@ volatile SOOL_DMA SOOL_Periph_DMA_Init(DMA_TypeDef *DMAy, DMA_Channel_TypeDef* D
 
 static void SOOL_DMA_SetPeriphBaseAddr(volatile SOOL_DMA *dma, uint32_t addr) {
 	/* Update peripheral's Data Register address */
-	dma->_setup.channel->CPAR = (uint32_t)addr;
+	dma->_setup.DMAy_Channelx->CPAR = (uint32_t)addr;
 }
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 static void SOOL_DMA_SetMemoryBaseAddr(volatile SOOL_DMA *dma, uint32_t addr) {
 	/* Update memory base register address */
-	dma->_setup.channel->CMAR = (uint32_t)addr;
+	dma->_setup.DMAy_Channelx->CMAR = (uint32_t)addr;
 }
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 static void SOOL_DMA_SetBufferSize(volatile SOOL_DMA *dma, uint32_t size) {
 	/* Change buffer size (when big amount of data will come in parts) */
-	dma->_setup.channel->CNDTR = (uint32_t)size;
+	dma->_setup.DMAy_Channelx->CNDTR = (uint32_t)size;
 }
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 static void SOOL_DMA_StartTransfer(volatile SOOL_DMA *dma) {
 	/* Start DMA Channel's transfer */
-	dma->_setup.channel->CCR |= DMA_CCR1_EN;
+	dma->_setup.DMAy_Channelx->CCR |= DMA_CCR1_EN;
 }
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 static void SOOL_DMA_StopTransfer(volatile SOOL_DMA *dma) {
 	/* Disable DMA Channel*/
-	dma->_setup.channel->CCR &= (uint16_t)(~DMA_CCR1_EN);
+	dma->_setup.DMAy_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 static uint8_t SOOL_DMA_IsRunning(volatile SOOL_DMA *dma) {
-	return (dma->_setup.channel->CCR & DMA_CCR1_EN);
+	return (dma->_setup.DMAy_Channelx->CCR & DMA_CCR1_EN);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -240,7 +240,7 @@ void SOOL_DMA_UpdateSetup(volatile SOOL_DMA *dma, DMA_TypeDef *DMAy, DMA_Channel
 
 		if (DMAy_Channelx == DMA1_Channel1) {
 
-			dma->_setup.channel = DMA1_Channel1;
+			dma->_setup.DMAy_Channelx = DMA1_Channel1;
 			dma->_setup.irqn = DMA1_Channel1_IRQn;
 			dma->_setup.int_flags.COMPLETE_FLAG = DMA1_FLAG_TC1;
 			dma->_setup.int_flags.ERROR_FLAG = DMA1_FLAG_TE1;
@@ -249,7 +249,7 @@ void SOOL_DMA_UpdateSetup(volatile SOOL_DMA *dma, DMA_TypeDef *DMAy, DMA_Channel
 
 		} else if (DMAy_Channelx == DMA1_Channel2) {
 
-			dma->_setup.channel = DMA1_Channel2;
+			dma->_setup.DMAy_Channelx = DMA1_Channel2;
 			dma->_setup.irqn = DMA1_Channel2_IRQn;
 			dma->_setup.int_flags.COMPLETE_FLAG = DMA1_FLAG_TC2;
 			dma->_setup.int_flags.ERROR_FLAG = DMA1_FLAG_TE2;
@@ -258,7 +258,7 @@ void SOOL_DMA_UpdateSetup(volatile SOOL_DMA *dma, DMA_TypeDef *DMAy, DMA_Channel
 
 		} else if (DMAy_Channelx == DMA1_Channel3) {
 
-			dma->_setup.channel = DMA1_Channel3;
+			dma->_setup.DMAy_Channelx = DMA1_Channel3;
 			dma->_setup.irqn = DMA1_Channel3_IRQn;
 			dma->_setup.int_flags.COMPLETE_FLAG = DMA1_FLAG_TC3;
 			dma->_setup.int_flags.ERROR_FLAG = DMA1_FLAG_TE3;
@@ -267,7 +267,7 @@ void SOOL_DMA_UpdateSetup(volatile SOOL_DMA *dma, DMA_TypeDef *DMAy, DMA_Channel
 
 		} else if (DMAy_Channelx == DMA1_Channel4) {
 
-			dma->_setup.channel = DMA1_Channel4;
+			dma->_setup.DMAy_Channelx = DMA1_Channel4;
 			dma->_setup.irqn = DMA1_Channel4_IRQn;
 			dma->_setup.int_flags.COMPLETE_FLAG = DMA1_FLAG_TC4;
 			dma->_setup.int_flags.ERROR_FLAG = DMA1_FLAG_TE4;
@@ -276,7 +276,7 @@ void SOOL_DMA_UpdateSetup(volatile SOOL_DMA *dma, DMA_TypeDef *DMAy, DMA_Channel
 
 		} else if (DMAy_Channelx == DMA1_Channel5) {
 
-			dma->_setup.channel = DMA1_Channel5;
+			dma->_setup.DMAy_Channelx = DMA1_Channel5;
 			dma->_setup.irqn = DMA1_Channel5_IRQn;
 			dma->_setup.int_flags.COMPLETE_FLAG = DMA1_FLAG_TC5;
 			dma->_setup.int_flags.ERROR_FLAG = DMA1_FLAG_TE5;
@@ -285,7 +285,7 @@ void SOOL_DMA_UpdateSetup(volatile SOOL_DMA *dma, DMA_TypeDef *DMAy, DMA_Channel
 
 		} else if (DMAy_Channelx == DMA1_Channel6) {
 
-			dma->_setup.channel = DMA1_Channel6;
+			dma->_setup.DMAy_Channelx = DMA1_Channel6;
 			dma->_setup.irqn = DMA1_Channel6_IRQn;
 			dma->_setup.int_flags.COMPLETE_FLAG = DMA1_FLAG_TC6;
 			dma->_setup.int_flags.ERROR_FLAG = DMA1_FLAG_TE6;
@@ -294,7 +294,7 @@ void SOOL_DMA_UpdateSetup(volatile SOOL_DMA *dma, DMA_TypeDef *DMAy, DMA_Channel
 
 		} else if (DMAy_Channelx == DMA1_Channel7) {
 
-			dma->_setup.channel = DMA1_Channel7;
+			dma->_setup.DMAy_Channelx = DMA1_Channel7;
 			dma->_setup.irqn = DMA1_Channel7_IRQn;
 			dma->_setup.int_flags.COMPLETE_FLAG = DMA1_FLAG_TC7;
 			dma->_setup.int_flags.ERROR_FLAG = DMA1_FLAG_TE7;
@@ -303,6 +303,10 @@ void SOOL_DMA_UpdateSetup(volatile SOOL_DMA *dma, DMA_TypeDef *DMAy, DMA_Channel
 
 		}
 
+	} else {
+
+		/* Unsupported */
+
 	}
 
 
@@ -310,17 +314,17 @@ void SOOL_DMA_UpdateSetup(volatile SOOL_DMA *dma, DMA_TypeDef *DMAy, DMA_Channel
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-void SOOL_DMA_EnableInterrupts(DMA_Channel_TypeDef* DMAy_Channelx, uint8_t enable_tc, uint8_t enable_ht,
+void SOOL_DMA_EnableInterrupts(volatile SOOL_DMA *dma, uint8_t enable_tc, uint8_t enable_ht,
 		uint8_t enable_error) {
 
 	if ( enable_tc ) {
-		DMA_ITConfig(DMAy_Channelx, DMA_IT_TC, ENABLE);
+		DMA_ITConfig(dma->_setup.DMAy_Channelx, DMA_IT_TC, ENABLE);
 	}
 	if ( enable_ht ) {
-		DMA_ITConfig(DMAy_Channelx, DMA_IT_HT, ENABLE);
+		DMA_ITConfig(dma->_setup.DMAy_Channelx, DMA_IT_HT, ENABLE);
 	}
 	if ( enable_error ) {
-		DMA_ITConfig(DMAy_Channelx, DMA_IT_TE, ENABLE);
+		DMA_ITConfig(dma->_setup.DMAy_Channelx, DMA_IT_TE, ENABLE);
 	}
 
 }

@@ -19,7 +19,7 @@ typedef struct _SOOL_DMA_Struct SOOL_DMA;
 
 struct _SOOL_DMA_Struct {
 
-	struct _SOOL_DMA_SetupStruct	_setup; // TODO: clear
+	struct _SOOL_DMA_SetupStruct	_setup;
 
 	// configuration
 	void (*SetPeriphBaseAddr)(volatile SOOL_DMA*, uint32_t);
@@ -44,6 +44,8 @@ struct _SOOL_DMA_Struct {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 /**
+ * @brief Creates an instance of a class that allows to manage DMA Channel.
+ * @note Call SetPeriphBaseAddr(), SetMemoryBaseAddr() and SetBufferSize() before first transfer.
  * @note EnableNVIC must be called after locating SOOL_DMA object(s) in proper IRQHandlers.
  * @param DMAy
  * @param DMAy_Channelx
@@ -60,11 +62,11 @@ struct _SOOL_DMA_Struct {
  * @param enable_it_error
  * @return
  */
-volatile SOOL_DMA SOOL_Periph_DMA_Init(DMA_TypeDef *DMAy, DMA_Channel_TypeDef* DMAy_Channelx,
-		uint32_t DMA_DIR, uint32_t DMA_PeripheralInc, uint32_t DMA_MemoryInc,
-		uint32_t DMA_PeripheralDataSize, uint32_t DMA_MemoryDataSize, uint32_t DMA_Mode,
-		uint32_t DMA_Priority, uint32_t DMA_M2M,
-		uint8_t enable_it_tc, uint8_t enable_it_ht, uint8_t enable_it_error);
+extern volatile SOOL_DMA SOOL_Periph_DMA_Init(DMA_TypeDef *DMAy, DMA_Channel_TypeDef* DMAy_Channelx,
+						uint32_t DMA_DIR, uint32_t DMA_PeripheralInc, uint32_t DMA_MemoryInc,
+						uint32_t DMA_PeripheralDataSize, uint32_t DMA_MemoryDataSize, uint32_t DMA_Mode,
+						uint32_t DMA_Priority, uint32_t DMA_M2M,
+						uint8_t enable_it_tc, uint8_t enable_it_ht, uint8_t enable_it_error);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 

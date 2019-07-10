@@ -23,19 +23,14 @@ struct _SOOL_DMA_InterruptFlags {
 	uint32_t					GLOBAL_FLAG;	// optional
 };
 
-struct _SOOL_DMA_ChannelConfig {
-	DMA_Channel_TypeDef* 			DMA_Channelx;
-	struct _SOOL_DMA_InterruptFlags	int_flags;
-} ;
+// - - - - - - - - - - - - - - - -
 
-////////////////////////////////////////////// // TODO: clear
 /* Helpers */
 struct _SOOL_DMA_SetupStruct {
-	DMA_Channel_TypeDef* 	  		channel;
+	DMA_Channel_TypeDef* 	  		DMAy_Channelx;
 	struct _SOOL_DMA_InterruptFlags int_flags;
 	uint8_t					  		irqn;
 };
-//////////////////////////////////////////////
 
 // - - - - - - - - - - - - - - - -
 
