@@ -10,7 +10,8 @@
 
 #include "ADC_Channel.h"
 #include "stm32f10x_adc.h"
-#include "stm32f10x_dma.h"
+//#include "stm32f10x_dma.h"
+#include "sool/Peripherals/DMA/DMA.h"
 #include "sool/Memory/Vector/VectorUint16.h"
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -19,7 +20,7 @@ struct _SOOL_ADC_DMASetupStruct {
 	ADC_TypeDef* 			ADCx;
 	uint8_t 				NVIC_IRQChannel;
 	uint8_t 				adc_channel_num;
-	DMA_Channel_TypeDef*	dma_channel;
+//	DMA_Channel_TypeDef*	dma_channel;
 };
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -29,6 +30,12 @@ struct _SOOL_ADC_DMAStruct;
 typedef struct _SOOL_ADC_DMAStruct SOOL_ADC_DMA;
 
 struct _SOOL_ADC_DMAStruct {
+
+	// ---------------------------------------
+
+	SOOL_DMA						base_dma;
+
+	// ---------------------------------------
 
 	struct _SOOL_ADC_DMASetupStruct _setup;
 	SOOL_Vector_Uint16				_v;
@@ -64,6 +71,7 @@ struct _SOOL_ADC_DMAStruct {
  * @note Works only with ADC1 and ADC3 (if available), ADC2 is not equipped in DMA interface.
  * @note Works in continuous mode by default, no interrupts are generated, all happens in `background`,
  * value ready to read can be achieved via GetReading member function
+ * @note EnableNVIC of this class and base class must be called at startup.
  * @note Always the newest values are stored in vector and can be read anytime.
  * @note Example of use @ https://gitlab.com/frb-pow/002tubewaterflowmcu/blob/63200cd02eac11177d323c57a406d01d8ad62d96/src/main.c#L67
  * @param ADCx
