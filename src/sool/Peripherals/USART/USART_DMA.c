@@ -8,6 +8,7 @@
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 #include "sool/Peripherals/USART/USART_DMA.h"
+#include "sool/Peripherals/NVIC/NVIC.h"
 #include <string.h> 								// strcpy()
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -20,6 +21,10 @@
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 /* Methods */
+// NVIC
+static void 	USART_DMA_EnableNVIC(volatile SOOL_USART_DMA *usart);
+static void 	USART_DMA_DisableNVIC(volatile SOOL_USART_DMA *usart);
+
 // RX
 static void 	USART_DMA_ActivateReading(volatile SOOL_USART_DMA *usart);
 static void 	USART_DMA_DeactivateReading(volatile SOOL_USART_DMA *usart);
@@ -53,15 +58,8 @@ static uint8_t	USART_DMA_IsQueueTransfer(volatile SOOL_USART_DMA *usart);
 static void 	USART_DMA_OnQueueTransferFinish(volatile SOOL_USART_DMA *usart);
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-/* Helpers */
-typedef struct {
-	DMA_Channel_TypeDef* 	  		channel;
-	uint8_t					  		irqn;
-	struct _SOOL_DMA_InterruptFlags int_flags;
-} USART_DMA_SettingsHelper;
-
 // private non-class function
-static void SOOL_Periph_USART_DMA_Copy(volatile SOOL_USART_DMA *usart, const USART_DMA_SettingsHelper *rx_settings, const USART_DMA_SettingsHelper *tx_settings);
+//static void SOOL_Periph_USART_DMA_Copy(volatile SOOL_USART_DMA *usart, const struct _SOOL_DMA_SetupStruct *rx_settings, const struct _SOOL_DMA_SetupStruct *tx_settings);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -83,13 +81,19 @@ volatile SOOL_USART_DMA SOOL_Periph_USART_DMA_Init(USART_TypeDef* USARTx, uint32
 	/* NVIC IRQn */
 	uint8_t irqn;
 
-	/* Helper structs to store the DMA configuration in a clearer way */
-	USART_DMA_SettingsHelper dma_rx;
-	USART_DMA_SettingsHelper dma_tx;
+//	/* Helper structs to store the DMA configuration in a clearer way */
+//	struct _SOOL_DMA_SetupStruct dma_rx;
+//	struct _SOOL_DMA_SetupStruct dma_tx;
 
-	/* Create a new USART_DMA object and save initial buffers' size */
+	/* Create variables to configure DMA */
+	DMA_TypeDef* 			rx_DMAy;
+	DMA_Channel_TypeDef* 	rx_DMAy_Channelx;
+
+	DMA_TypeDef* 			tx_DMAy;
+	DMA_Channel_TypeDef* 	tx_DMAy_Channelx;
+
+	/* Create a new USART_DMA object */
 	volatile  SOOL_USART_DMA usart_obj;
-	usart_obj._setup.BUF_INIT_SIZE = buf_size;
 
 	/* Initialize the peripheral's RX and TX buffers
 	 * with an arbitrary length */
@@ -180,20 +184,12 @@ volatile SOOL_USART_DMA SOOL_Periph_USART_DMA_Init(USART_TypeDef* USARTx, uint32
 		irqn = USART1_IRQn;
 
 		// TX
-		dma_tx.channel = DMA1_Channel4;
-		dma_tx.irqn = DMA1_Channel4_IRQn;
-		dma_tx.int_flags.COMPLETE_FLAG = DMA1_FLAG_TC4;
-		dma_tx.int_flags.ERROR_FLAG = DMA1_FLAG_TE4;
-		dma_tx.int_flags.HALF_FLAG = DMA1_FLAG_HT4;
-		dma_tx.int_flags.GLOBAL_FLAG = DMA1_FLAG_GL4;
+		tx_DMAy = DMA1;
+		tx_DMAy_Channelx = DMA1_Channel4;
 
 		// RX
-		dma_rx.channel = DMA1_Channel5;
-		dma_rx.irqn = DMA1_Channel5_IRQn;
-		dma_rx.int_flags.COMPLETE_FLAG = DMA1_FLAG_TC5;
-		dma_rx.int_flags.ERROR_FLAG = DMA1_FLAG_TE5;
-		dma_rx.int_flags.HALF_FLAG = DMA1_FLAG_HT5;
-		dma_rx.int_flags.GLOBAL_FLAG = DMA1_FLAG_GL5;
+		rx_DMAy = DMA1;
+		rx_DMAy_Channelx = DMA1_Channel5;
 
 	} else if ( USARTx == USART2 ) {
 
@@ -214,20 +210,12 @@ volatile SOOL_USART_DMA SOOL_Periph_USART_DMA_Init(USART_TypeDef* USARTx, uint32
 		irqn = USART2_IRQn;
 
 		// TX
-		dma_tx.channel = DMA1_Channel7;
-		dma_tx.irqn = DMA1_Channel7_IRQn;
-		dma_tx.int_flags.COMPLETE_FLAG = DMA1_FLAG_TC7;
-		dma_tx.int_flags.ERROR_FLAG = DMA1_FLAG_TE7;
-		dma_tx.int_flags.HALF_FLAG = DMA1_FLAG_HT7;
-		dma_tx.int_flags.GLOBAL_FLAG = DMA1_FLAG_GL7;
+		tx_DMAy = DMA1;
+		tx_DMAy_Channelx = DMA1_Channel7;
 
 		// RX
-		dma_rx.channel = DMA1_Channel6;
-		dma_rx.irqn = DMA1_Channel6_IRQn;
-		dma_rx.int_flags.COMPLETE_FLAG = DMA1_FLAG_TC6;
-		dma_rx.int_flags.ERROR_FLAG = DMA1_FLAG_TE6;
-		dma_rx.int_flags.HALF_FLAG = DMA1_FLAG_HT6;
-		dma_rx.int_flags.GLOBAL_FLAG = DMA1_FLAG_GL6;
+		rx_DMAy = DMA1;
+		rx_DMAy_Channelx = DMA1_Channel6;
 
 	} else if ( USARTx == USART3 ) {
 
@@ -252,22 +240,33 @@ volatile SOOL_USART_DMA SOOL_Periph_USART_DMA_Init(USART_TypeDef* USARTx, uint32
 		irqn = USART3_IRQn;
 
 		// TX
-		dma_tx.channel = DMA1_Channel2;
-		dma_tx.irqn = DMA1_Channel2_IRQn;
-		dma_tx.int_flags.COMPLETE_FLAG = DMA1_FLAG_TC2;
-		dma_tx.int_flags.ERROR_FLAG = DMA1_FLAG_TE2;
-		dma_tx.int_flags.HALF_FLAG = DMA1_FLAG_HT2;
-		dma_tx.int_flags.GLOBAL_FLAG = DMA1_FLAG_GL2;
+		tx_DMAy = DMA1;
+		tx_DMAy_Channelx = DMA1_Channel2;
 
 		// RX
-		dma_rx.channel = DMA1_Channel3;
-		dma_rx.irqn = DMA1_Channel3_IRQn;
-		dma_rx.int_flags.COMPLETE_FLAG = DMA1_FLAG_TC3;
-		dma_rx.int_flags.ERROR_FLAG = DMA1_FLAG_TE3;
-		dma_rx.int_flags.HALF_FLAG = DMA1_FLAG_HT3;
-		dma_rx.int_flags.GLOBAL_FLAG = DMA1_FLAG_GL3;
+		rx_DMAy = DMA1;
+		rx_DMAy_Channelx = DMA1_Channel3;
 
 	}
+
+	/* Initialize DMA Channel for TX */
+	/* Create DMA instances */
+	SOOL_DMA dma_tx = SOOL_Periph_DMA_Init(tx_DMAy, tx_DMAy_Channelx, DMA_DIR_PeripheralDST,
+							   DMA_PeripheralInc_Disable, DMA_MemoryInc_Enable, DMA_PeripheralDataSize_Byte,
+							   DMA_MemoryDataSize_Byte, DMA_Mode_Normal, DMA_Priority_VeryHigh,
+							   DMA_M2M_Disable, ENABLE, DISABLE, ENABLE);
+	dma_tx.SetPeriphBaseAddr(&dma_tx, (uint32_t)&USARTx->DR);
+	dma_tx.SetMemoryBaseAddr(&dma_tx, (uint32_t)&usart_obj._tx.buffer._data);
+	dma_tx.SetBufferSize(&dma_tx, 1);
+
+	/* Initialize DMA Channel for RX */
+	SOOL_DMA dma_rx = SOOL_Periph_DMA_Init(rx_DMAy, rx_DMAy_Channelx, DMA_DIR_PeripheralSRC,
+							   DMA_PeripheralInc_Disable, DMA_MemoryInc_Enable, DMA_PeripheralDataSize_Byte,
+							   DMA_MemoryDataSize_Byte, DMA_Mode_Normal, DMA_Priority_VeryHigh,
+							   DMA_M2M_Disable, ENABLE, DISABLE, ENABLE);
+	dma_rx.SetPeriphBaseAddr(&dma_rx, (uint32_t)&USARTx->DR);
+	dma_rx.SetMemoryBaseAddr(&dma_rx, (uint32_t)&usart_obj._rx.buffer._data);
+	dma_rx.SetBufferSize(&dma_rx, 1);
 
 	/* Init GPIO pins */
 	GPIO_InitTypeDef gpio;
@@ -296,7 +295,7 @@ volatile SOOL_USART_DMA SOOL_Periph_USART_DMA_Init(USART_TypeDef* USARTx, uint32
 	nvic.NVIC_IRQChannel = irqn;
 	nvic.NVIC_IRQChannelPreemptionPriority = 0;
 	nvic.NVIC_IRQChannelSubPriority = 1;
-	nvic.NVIC_IRQChannelCmd = ENABLE;
+	nvic.NVIC_IRQChannelCmd = DISABLE;
 	NVIC_Init(&nvic);
 
 	/* Enable peripheral */
@@ -305,127 +304,65 @@ volatile SOOL_USART_DMA SOOL_Periph_USART_DMA_Init(USART_TypeDef* USARTx, uint32
 	/* IDLE line protection - enabled by ActivateReading() */
 //	USART_ITConfig(USARTx, USART_IT_IDLE, ENABLE);
 
-	/* DMA configuration structure */
-	DMA_InitTypeDef dma;
-
-	/* DMA RX Channel */
-	DMA_DeInit(dma_rx.channel);                              	// clear DMA configuration
-	DMA_ClearFlag(dma_rx.int_flags.ERROR_FLAG | dma_rx.int_flags.GLOBAL_FLAG |	// clear interrupt flags
-				  dma_rx.int_flags.HALF_FLAG  | dma_rx.int_flags.COMPLETE_FLAG);
-
-	dma.DMA_PeripheralBaseAddr = (uint32_t)&USARTx->DR;  		// peripheral's data register address
-
-	// to be specified before first transfer
-	dma.DMA_MemoryBaseAddr = (uint32_t)&usart_obj._rx.buffer._data; // data block to be send initial address
-	dma.DMA_DIR = DMA_DIR_PeripheralSRC;                    	// transfer direction
-	dma.DMA_BufferSize = 1;                              		// temporary value of a buffer's length (number of items to send)
-	dma.DMA_PeripheralInc = DMA_PeripheralInc_Disable;      	// auto-increment of address (peripheral's side)
-	dma.DMA_MemoryInc = DMA_MemoryInc_Enable;               	// auto-increment of address (buffer's side)
-	dma.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;	// data size (peripheral)
-	dma.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;         	// data_size (buffer)
-	dma.DMA_Mode = DMA_Mode_Normal;                             // mode
-	dma.DMA_Priority = DMA_Priority_VeryHigh;                   // priority
-	dma.DMA_M2M = DMA_M2M_Disable;                              // memory to memory setting
-	DMA_Cmd(dma_rx.channel, DISABLE);							// https://stackoverflow.com/questions/23576241/stm32-dma-transfer-error
-	DMA_Init(dma_rx.channel, &dma);								// save the configuration
-
-	/* DMA TX Channel */
-	DMA_DeInit(dma_tx.channel);                              	// clear DMA configuration
-	DMA_ClearFlag(dma_tx.int_flags.ERROR_FLAG | dma_tx.int_flags.GLOBAL_FLAG | 	// clear interrupt flags
-				  dma_tx.int_flags.HALF_FLAG  | dma_tx.int_flags.COMPLETE_FLAG);
-
-	dma.DMA_PeripheralBaseAddr = (uint32_t)&USARTx->DR;  		// peripheral's data register address
-
-	// to be specified before a first transfer
-	dma.DMA_MemoryBaseAddr = (uint32_t)&usart_obj._tx.buffer._data; // data block to be send as the initial address
-	dma.DMA_DIR = DMA_DIR_PeripheralDST;                    	// transfer direction
-	dma.DMA_BufferSize = 1;                              		// temporary value of a buffer's length (number of items to send)
-	dma.DMA_PeripheralInc = DMA_PeripheralInc_Disable;      	// auto-increment of address (peripheral's side)
-	dma.DMA_MemoryInc = DMA_MemoryInc_Enable;               	// auto-increment of address (buffer's side)
-	dma.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;	// data size (peripheral)
-	dma.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;         	// data_size (buffer)
-	dma.DMA_Mode = DMA_Mode_Normal;                             // mode
-	dma.DMA_Priority = DMA_Priority_VeryHigh;                   // priority
-	dma.DMA_M2M = DMA_M2M_Disable;                              // memory to memory setting
-	DMA_Cmd(dma_tx.channel, DISABLE);							// https://stackoverflow.com/questions/23576241/stm32-dma-transfer-error
-	DMA_Init(dma_tx.channel, &dma);								// save configuration
-
-	/* Enable global interrupts for DMA */
-	nvic.NVIC_IRQChannel = dma_rx.irqn;
-	nvic.NVIC_IRQChannelCmd = ENABLE;
-	nvic.NVIC_IRQChannelPreemptionPriority = 0;
-	nvic.NVIC_IRQChannelSubPriority = 0;
-	NVIC_Init(&nvic);
-
-	nvic.NVIC_IRQChannel = dma_tx.irqn;
-	nvic.NVIC_IRQChannelCmd = ENABLE;
-	nvic.NVIC_IRQChannelPreemptionPriority = 0;
-	nvic.NVIC_IRQChannelSubPriority = 0;
-	NVIC_Init(&nvic);
-
 	/* Configure the USART DMA interface */
 	USART_DMACmd(USARTx, USART_DMAReq_Rx, ENABLE);
 	USART_DMACmd(USARTx, USART_DMAReq_Tx, ENABLE);
-
-	/* Turn on transfer complete (TC) and transfer error (TE) interrupts */
-	DMA_ITConfig(dma_rx.channel, DMA_IT_TC | DMA_IT_TE, ENABLE);
-	DMA_ITConfig(dma_tx.channel, DMA_IT_TC | DMA_IT_TE, ENABLE);
 
 	/* Start transfer */
 //	DMA_Cmd(dma_rx.channel, ENABLE);
 //	DMA_Cmd(dma_tx.channel, ENABLE);
 
-	/* Save USART peripheral ID in the `class` */
+	/* -------- Fill USART object structure's fields -------- */
+	/* Save USART peripheral ID in the `class`, USART NVIC channel and initial buffer size */
 	usart_obj._setup.USARTx = USARTx;
+	usart_obj._setup.IRQn = irqn;
+	usart_obj._setup.BUF_INIT_SIZE = buf_size;
 
-	/* Fill USART object structure's fields */
-	SOOL_Periph_USART_DMA_Copy(&usart_obj, &dma_rx, &dma_tx);
+	/* Save DMA RX and DMA TX structures */
+	usart_obj.base_dma_rx = dma_rx;
+	usart_obj.base_dma_tx = dma_tx;
+
+	// RX buffer already assigned in this moment
+	usart_obj._rx.new_data_flag = 0;
+
+	/* State */
+	usart_obj._state.tx_queue_transfer = 0;
+
+	// TX buffer already assigned in this moment
+
+	/* Fill USART class' methods */
+	usart_obj.EnableNVIC = USART_DMA_EnableNVIC;
+	usart_obj.DisableNVIC = USART_DMA_DisableNVIC;
+
+	usart_obj.ActivateReading = USART_DMA_ActivateReading;
+	usart_obj.DeactivateReading = USART_DMA_DeactivateReading;
+	usart_obj.IsDataReceived = USART_DMA_IsDataReceived;
+	usart_obj.GetRxData = USART_DMA_GetRxData;
+	usart_obj.ClearRxBuffer = USART_DMA_ClearRxBuffer;
+	usart_obj._DmaRxIrqHandler = USART_DMA_RxInterruptHandler;
+
+//	usart_obj.IsTxQueueEmpty = USART_DMA_IsTxQueueEmpty;
+	usart_obj.IsTxLineBusy = USART_DMA_IsTxLineBusy;
+	usart_obj.Send = USART_DMA_Send;
+	usart_obj.ClearTxBuffer = USART_DMA_ClearTxBuffer;
+	usart_obj._DmaTxIrqHandler = USART_DMA_TxInterruptHandler;
+
+	usart_obj._IdleLineIrqHandler = USART_DMA_IdleInterruptHandler;
+	usart_obj.RestoreBuffersInitialSize = USART_DMA_RestoreBuffersInitialSize;
+	usart_obj.Destroy = USART_DMA_Destroy;
+
+//	SOOL_Periph_USART_DMA_Copy(&usart_obj, &dma_rx, &dma_tx);
 
 	return (usart_obj);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static void SOOL_Periph_USART_DMA_Copy(volatile SOOL_USART_DMA *usart, const USART_DMA_SettingsHelper *rx_settings,
-		const USART_DMA_SettingsHelper *tx_settings) {
-
-	/* Fill the Setup structure's fields */
-
-	/* RX */
-	usart->_setup.dma_rx.DMA_Channelx = rx_settings->channel;
-	usart->_setup.dma_rx.int_flags    = rx_settings->int_flags;
-
-	// buffer already assigned in this moment
-	usart->_rx.new_data_flag = 0;
-
-	/* TX */
-	usart->_setup.dma_tx.DMA_Channelx = tx_settings->channel;
-	usart->_setup.dma_tx.int_flags    = tx_settings->int_flags;
-
-	/* State */
-	usart->_state.tx_queue_transfer = 0;
-
-	// buffer already assigned in this moment
-
-	/* Fill USART class' methods */
-	usart->ActivateReading = USART_DMA_ActivateReading;
-	usart->DeactivateReading = USART_DMA_DeactivateReading;
-	usart->IsDataReceived = USART_DMA_IsDataReceived;
-	usart->GetRxData = USART_DMA_GetRxData;
-	usart->ClearRxBuffer = USART_DMA_ClearRxBuffer;
-	usart->_DmaRxIrqHandler = USART_DMA_RxInterruptHandler;
-
-//	usart->IsTxQueueEmpty = USART_DMA_IsTxQueueEmpty;
-	usart->IsTxLineBusy = USART_DMA_IsTxLineBusy;
-	usart->Send = USART_DMA_Send;
-	usart->ClearTxBuffer = USART_DMA_ClearTxBuffer;
-	usart->_DmaTxIrqHandler = USART_DMA_TxInterruptHandler;
-
-	usart->_IdleLineIrqHandler = USART_DMA_IdleInterruptHandler;
-	usart->RestoreBuffersInitialSize = USART_DMA_RestoreBuffersInitialSize;
-	usart->Destroy = USART_DMA_Destroy;
-
-}
+//static void SOOL_Periph_USART_DMA_Copy(volatile SOOL_USART_DMA *usart, const struct _SOOL_DMA_SetupStruct *rx_settings,
+//		const struct _SOOL_DMA_SetupStruct *tx_settings) {
+//
+//	/* Fill the Setup structure's fields */
+//}
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -433,16 +370,20 @@ static void USART_DMA_SetupAndStartDmaReading(volatile SOOL_USART_DMA *usart, co
 		const size_t num_bytes_to_read) {
 
 	/* Disable DMA Channel*/
-	usart->_setup.dma_rx.DMA_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN); // DMA_Cmd(usart->_setup.dma_rx.DMA_Channelx, DISABLE);
+//	usart->_setup.dma_rx.DMAy_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN); // DMA_Cmd(usart->_setup.dma_rx.DMAy_Channelx, DISABLE);
+	usart->base_dma_rx.Stop(&usart->base_dma_rx);
 
 	/* Update peripheral's Data Register address */
-	usart->_setup.dma_rx.DMA_Channelx->CPAR = (uint32_t)&usart->_setup.USARTx->DR;
+//	usart->_setup.dma_rx.DMAy_Channelx->CPAR = (uint32_t)&usart->_setup.USARTx->DR;
+	usart->base_dma_rx.SetPeriphBaseAddr(&usart->base_dma_rx, (uint32_t)&usart->_setup.USARTx->DR);
 
 	/* Update memory base register address */
-	usart->_setup.dma_rx.DMA_Channelx->CMAR = (uint32_t)&usart->_rx.buffer._data[buf_start_pos];
+//	usart->_setup.dma_rx.DMAy_Channelx->CMAR = (uint32_t)&usart->_rx.buffer._data[buf_start_pos];
+	usart->base_dma_rx.SetMemoryBaseAddr(&usart->base_dma_rx, (uint32_t)&usart->_rx.buffer._data[buf_start_pos]);
 
 	/* Change buffer size - bigger data will come in parts */
-	usart->_setup.dma_rx.DMA_Channelx->CNDTR = (uint32_t)num_bytes_to_read;
+//	usart->_setup.dma_rx.DMAy_Channelx->CNDTR = (uint32_t)num_bytes_to_read;
+	usart->base_dma_rx.SetBufferSize(&usart->base_dma_rx, (uint32_t)num_bytes_to_read);
 
 	/* Reset the New Data flag */
 	usart->_rx.new_data_flag = 0;
@@ -451,8 +392,21 @@ static void USART_DMA_SetupAndStartDmaReading(volatile SOOL_USART_DMA *usart, co
 	usart->_setup.USARTx->CR1 |= USART_CR1_IDLEIE;
 
 	/* Start DMA Channel's reading */
-	usart->_setup.dma_rx.DMA_Channelx->CCR |= DMA_CCR1_EN; // DMA_Cmd(usart->_setup.dma_rx.DMA_Channelx, ENABLE);
+//	usart->_setup.dma_rx.DMAy_Channelx->CCR |= DMA_CCR1_EN; // DMA_Cmd(usart->_setup.dma_rx.DMAy_Channelx, ENABLE);
+	usart->base_dma_rx.Start(&usart->base_dma_rx);
 
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static void USART_DMA_EnableNVIC(volatile SOOL_USART_DMA *usart) {
+	SOOL_Periph_NVIC_Enable(usart->_setup.IRQn);
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static void USART_DMA_DisableNVIC(volatile SOOL_USART_DMA *usart) {
+	SOOL_Periph_NVIC_Disable(usart->_setup.IRQn);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -483,7 +437,8 @@ static void USART_DMA_ActivateReading(volatile SOOL_USART_DMA *usart) {
 static void USART_DMA_DeactivateReading(volatile SOOL_USART_DMA *usart) {
 
 	/* Disable DMA Channel*/
-	usart->_setup.dma_rx.DMA_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN); // DMA_Cmd(usart->_setup.dma_rx.DMA_Channelx, DISABLE);
+//	usart->_setup.dma_rx.DMAy_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN); // DMA_Cmd(usart->_setup.dma_rx.DMAy_Channelx, DISABLE);
+	usart->base_dma_rx.Stop(&usart->base_dma_rx);
 
 	/* Disable Idle Line interrupt */
 	usart->_setup.USARTx->CR1 &= (uint16_t)(~USART_CR1_IDLEIE);
@@ -551,69 +506,37 @@ static void	USART_DMA_ClearRxBuffer(volatile SOOL_USART_DMA *usart) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+/**
+ * @brief Function invoked inside interrupt handler only when `Transfer Complete` flag is set
+ * @param usart
+ * @return
+ */
 static uint8_t USART_DMA_RxInterruptHandler(volatile SOOL_USART_DMA *usart) {
 
-	/* NOTE on interrupts: GLOBAL_FLAG clears all related interrupts i.e. TC, TE, HT;
-	 * it may be a little faster to clear GLOBAL_FLAG at once than clearing 2 or more
-	 * of them (with TC flag there is a HT flag active too) */
+	/* Check whether RX line is idle - if yes then disable DMA RX Channel,
+	 * otherwise resize the buffer as it is full */
+//	usart->_setup.dma_rx.DMAy_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN); // DMA_Cmd(usart->_setup.dma_rx.DMAy_Channelx, DISABLE);
+	usart->base_dma_rx.Stop(&usart->base_dma_rx);
 
-	if ( DMA_GetITStatus(usart->_setup.dma_rx.int_flags.ERROR_FLAG) == SET ) {
+	/* Disable USART Idle Line Detection (no need to do that after successful flag clearance) */
+//	usart->_setup.USARTx->CR1 &= (uint16_t)(~USART_CR1_IDLEIE); // equal to USART_ITConfig(usart->_setup.USARTx, USART_IT_IDLE, DISABLE);
 
-		/* Transfer Error Interrupt */
-		DMA_ClearITPendingBit(usart->_setup.dma_rx.int_flags.ERROR_FLAG);
-//		DMA_ClearITPendingBit(usart->_setup.dma_rx.int_flags.GLOBAL_FLAG);
-		// TODO: some error message
+	/* Since TC interrupt was triggered then:
+	 * 	- 	number of data to receive was known in advance (no way to tell if it is that case or the next),
+	 * 	-	there are still some data to receive (buffer must be resized)
+	 */
 
-		return (1);
-
-	} else if ( DMA_GetITStatus(usart->_setup.dma_rx.int_flags.COMPLETE_FLAG) == SET ) {
-
-		/* Transfer Complete Interrupt */
-//		DMA_ClearITPendingBit(usart->_setup.dma_rx.int_flags.COMPLETE_FLAG);
-		DMA_ClearITPendingBit(usart->_setup.dma_rx.int_flags.GLOBAL_FLAG);
-
-		/* Check whether RX line is idle - if yes then disable DMA RX Channel,
-		 * otherwise resize the buffer as it is full */
-		usart->_setup.dma_rx.DMA_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN); // DMA_Cmd(usart->_setup.dma_rx.DMA_Channelx, DISABLE);
-
-		/* Disable USART Idle Line Detection (no need to do that after successful flag clearance) */
-//		usart->_setup.USARTx->CR1 &= (uint16_t)(~USART_CR1_IDLEIE); // equal to USART_ITConfig(usart->_setup.USARTx, USART_IT_IDLE, DISABLE);
-
-		/* Since TC interrupt was triggered then:
-		 * 	- 	number of data to receive was known in advance (no way to tell if it is that case or the next),
-		 * 	-	there are still some data to receive (buffer must be resized)
-		 */
-
-		/* The buffer must be resized in both cases - make it a little bigger */
-		if ( !usart->_rx.buffer.Resize(&usart->_rx.buffer, (size_t)(usart->_rx.buffer._info.capacity + USART_DMA_RX_BUFFER_INCREMENT)) ) {
-			// FIXME: unable to resize - print some error
-		}
-
-		/* Try to continue reading allowing the message to be continuously
-		 * written into buffer (this is an ideal case)
-		 * NOTE: sometimes resizing takes too long and data is lost (or maybe it was just a debugging method issue) */
-		USART_DMA_RestartReading(usart, (size_t)(usart->_rx.buffer._info.capacity - USART_DMA_RX_BUFFER_INCREMENT), USART_DMA_RX_BUFFER_INCREMENT);
-
-		return (1);
-
-	} else if ( DMA_GetITStatus(usart->_setup.dma_rx.int_flags.HALF_FLAG) == SET ) {
-
-		/* Half Transfer Interrupt */
-//		DMA_ClearITPendingBit(usart->_setup.dma_rx.int_flags.HALF_FLAG);
-		DMA_ClearITPendingBit(usart->_setup.dma_rx.int_flags.GLOBAL_FLAG);
-		return (1);
-
-	} else if ( DMA_GetITStatus(usart->_setup.dma_rx.int_flags.GLOBAL_FLAG) == SET ) {
-
-		/* Global DMA Channel Interrupt */
-		DMA_ClearITPendingBit(usart->_setup.dma_rx.int_flags.GLOBAL_FLAG);
-		return (1);
-
-	} else {
-
-		// indicate that no interrupt flag was recognized and cleared
-		return (0);
+	/* The buffer must be resized in both cases - make it a little bigger */
+	if ( !usart->_rx.buffer.Resize(&usart->_rx.buffer, (size_t)(usart->_rx.buffer._info.capacity + USART_DMA_RX_BUFFER_INCREMENT)) ) {
+		// FIXME: unable to resize - print some error
 	}
+
+	/* Try to continue reading allowing the message to be continuously
+	 * written into buffer (this is an ideal case)
+	 * NOTE: sometimes resizing takes too long and data is lost (or maybe it was just a debugging method issue) */
+	USART_DMA_RestartReading(usart, (size_t)(usart->_rx.buffer._info.capacity - USART_DMA_RX_BUFFER_INCREMENT), USART_DMA_RX_BUFFER_INCREMENT);
+
+	return (1);
 
 }
 
@@ -634,7 +557,8 @@ static uint8_t USART_DMA_IdleInterruptHandler(volatile SOOL_USART_DMA *usart) {
 		 * is a leftover from an unsuccessful IT flag clearance */
 //		usart->_setup.USARTx->CR1 &= (uint16_t)(~USART_CR1_IDLEIE);
 
-		if ( usart->_setup.dma_rx.DMA_Channelx->CCR & DMA_CCR1_EN ) {
+//		if ( usart->_setup.dma_rx.DMAy_Channelx->CCR & DMA_CCR1_EN ) {
+		if ( usart->base_dma_rx.IsRunning(&usart->base_dma_rx) ) {
 			/* reading is active and Idle Line detected */
 			/* EN bit check is used to avoid the first interrupt of an Idle Line issue
 			 * (triggers just after enabling the IT_IDLE) */
@@ -660,7 +584,8 @@ static uint8_t USART_DMA_IsTxLineBusy(volatile SOOL_USART_DMA *usart) {
 
 	/* Reach information whether DMA transfer was started (usart->_tx.started_flag is DEPRECATED);
 	 * a DMA EN bit raw check is sufficient - it is known in advance that USARTx uses DMA1 */
-	return (usart->_setup.dma_tx.DMA_Channelx->CCR & DMA_CCR1_EN);
+//	return (usart->_setup.dma_tx.DMAy_Channelx->CCR & DMA_CCR1_EN);
+	return (usart->base_dma_tx.IsRunning(&usart->base_dma_tx));
 
 }
 
@@ -672,67 +597,32 @@ static void	USART_DMA_ClearTxBuffer(volatile SOOL_USART_DMA *usart) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+/**
+ * @brief Function invoked inside interrupt handler only when `Transfer Complete` flag is set
+ * @param usart
+ * @return
+ */
 static uint8_t USART_DMA_TxInterruptHandler(volatile SOOL_USART_DMA *usart) {
 
-	/* NOTE on interrupts: GLOBAL_FLAG clears all related interrupts i.e. TC, TE, HT;
-	 * it may be a little faster to clear GLOBAL_FLAG at once than clearing 2 or more
-	 * of them (with TC flag there is a HT flag active too) */
+	/* Check whether last data transferred came from the TX queue */
+	if ( USART_DMA_IsQueueTransfer(usart) ) {
+		USART_DMA_OnQueueTransferFinish(usart);
+	}
 
-	if ( DMA_GetITStatus(usart->_setup.dma_tx.int_flags.ERROR_FLAG) == SET ) {
+	/* After completion of last transfer, check whether there are some data in the TX queue */
+	if ( !usart->_tx.queue.IsEmpty(&usart->_tx.queue) ) {
 
-		/* Transfer Error Interrupt - happens for example when:
-		 * 	- 	the peripheral register's address is wrong
-		 *	- 	data couldn't be pushed due to the full buffer (RX-TX of MCU transfer)
-		 */
-//		DMA_ClearITPendingBit(usart->_setup.dma_tx.int_flags.ERROR_FLAG);
-		DMA_ClearITPendingBit(usart->_setup.dma_tx.int_flags.GLOBAL_FLAG);
-		// TODO: some error message
-
-		return (1);
-
-	} else if ( DMA_GetITStatus(usart->_setup.dma_tx.int_flags.COMPLETE_FLAG) == SET ) {
-
-		/* Transfer Complete Interrupt */
-//		DMA_ClearITPendingBit(usart->_setup.dma_tx.int_flags.COMPLETE_FLAG);
-		DMA_ClearITPendingBit(usart->_setup.dma_tx.int_flags.GLOBAL_FLAG);
-
-		/* Check whether last data transferred came from the TX queue */
-		if ( USART_DMA_IsQueueTransfer(usart) ) {
-			USART_DMA_OnQueueTransferFinish(usart);
-		}
-
-		/* After completion of last transfer, check whether there are some data in the TX queue */
-		if ( !usart->_tx.queue.IsEmpty(&usart->_tx.queue) ) {
-
-			/* Start transmitting the oldest element in the queue */
-			USART_DMA_SendFromQueue(usart);
-
-		} else {
-
-			/* Disable DMA Channel */
-			usart->_setup.dma_tx.DMA_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN);// DMA_Cmd(usart->_setup.dma_tx.DMA_Channelx, DISABLE);
-
-		}
-		return (1);
-
-	} else if ( DMA_GetITStatus(usart->_setup.dma_tx.int_flags.HALF_FLAG) == SET ) {
-
-		/* Half Transfer Interrupt */
-//		DMA_ClearITPendingBit(usart->_setup.dma_tx.int_flags.HALF_FLAG);
-		DMA_ClearITPendingBit(usart->_setup.dma_tx.int_flags.GLOBAL_FLAG);
-		return (1);
-
-	} else if ( DMA_GetITStatus(usart->_setup.dma_tx.int_flags.GLOBAL_FLAG) == SET ) {
-
-		/* Global DMA Channel Interrupt */
-		DMA_ClearITPendingBit(usart->_setup.dma_tx.int_flags.GLOBAL_FLAG);
-		return (1);
+		/* Start transmitting the oldest element in the queue */
+		USART_DMA_SendFromQueue(usart);
 
 	} else {
 
-		// indicate that no interrupt flag was recognized and cleared
-		return (0);
+		/* Disable DMA Channel */
+//		usart->_setup.dma_tx.DMAy_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN);// DMA_Cmd(usart->_setup.dma_tx.DMAy_Channelx, DISABLE);
+		usart->base_dma_tx.Stop(&usart->base_dma_tx);
+
 	}
+	return (1);
 
 }
 
@@ -773,7 +663,13 @@ static uint8_t USART_DMA_SendFull(volatile SOOL_USART_DMA *usart, const char *to
 
 				// make sure that after addition of data the line is still busy
 				if ( !USART_DMA_IsTxLineBusy(usart) ) {
-					return (USART_DMA_SendFromQueue(usart)); // TODO: for #ifndef USART_DMA_TX_SINGLE_ELEMENT_QUEUE the status will be probably different (must check how many elements there are in the queue, if only 1 then returning status in this manner will be valid)
+
+					/* NOTE: if there are some strange characters sent at the end of a given string
+					 * the problem probably is caused by returning a wrong status */
+					uint8_t status = USART_DMA_SendFromQueue(usart);
+					return (status);
+//					return (USART_DMA_SendFromQueue(usart)); // TODO: for #ifndef USART_DMA_TX_SINGLE_ELEMENT_QUEUE the status will be probably different (must check how many elements there are in the queue, if only 1 then returning status in this manner will be valid)
+
 				}
 				return (1); // pushed successfully
 			}
@@ -817,20 +713,28 @@ static uint8_t USART_DMA_SendFull(volatile SOOL_USART_DMA *usart, const char *to
 	strcpy(usart->_tx.buffer._data, to_send_buf); // beware of `&`, this is not a typical array
 
 	/* Disable DMA Channel*/
-	usart->_setup.dma_tx.DMA_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN);// DMA_Cmd(usart->_setup.dma_tx.DMA_Channelx, DISABLE);
+//	usart->_setup.dma_tx.DMAy_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN);// DMA_Cmd(usart->_setup.dma_tx.DMAy_Channelx, DISABLE);
+	usart->base_dma_tx.Stop(&usart->base_dma_tx);
 
 	/* Update peripheral's Data Register address */
-	usart->_setup.dma_tx.DMA_Channelx->CPAR = (uint32_t)&usart->_setup.USARTx->DR;
+//	usart->_setup.dma_tx.DMAy_Channelx->CPAR = (uint32_t)&usart->_setup.USARTx->DR;
+	usart->base_dma_tx.SetPeriphBaseAddr(&usart->base_dma_tx, (uint32_t)&usart->_setup.USARTx->DR);
 
 	/* Update memory base register address */
-	usart->_setup.dma_tx.DMA_Channelx->CMAR = (uint32_t)usart->_tx.buffer._data; // beware of `&`, this is not a typical array
+//	usart->_setup.dma_tx.DMAy_Channelx->CMAR = (uint32_t)usart->_tx.buffer._data; // beware of `&`, this is not a typical array
+	usart->base_dma_tx.SetMemoryBaseAddr(&usart->base_dma_tx, (uint32_t)usart->_tx.buffer._data);
 
 	/* Change the buffer's size */
 	/* Ref: `can only be written when the channel is disabled` */
-	usart->_setup.dma_tx.DMA_Channelx->CNDTR = length;
+//	usart->_setup.dma_tx.DMAy_Channelx->CNDTR = length;
+	usart->base_dma_tx.SetBufferSize(&usart->base_dma_tx, (uint32_t)length);
 
 	/* Start DMA Channel's transfer */
-	usart->_setup.dma_tx.DMA_Channelx->CCR |= DMA_CCR1_EN;// DMA_Cmd(usart->_setup.dma_tx.DMA_Channelx, ENABLE);
+//	usart->_setup.dma_tx.DMAy_Channelx->CCR |= DMA_CCR1_EN;// DMA_Cmd(usart->_setup.dma_tx.DMAy_Channelx, ENABLE);
+	usart->base_dma_tx.Start(&usart->base_dma_tx);
+
+	// test FIXME
+	USART_DMA_IsTxLineBusy(usart);
 
 	/* Return 1 on successful sent */
 	return (1);
@@ -865,16 +769,20 @@ static uint8_t USART_DMA_RestoreBuffersInitialSize(volatile SOOL_USART_DMA *usar
 static void	USART_DMA_Destroy(volatile SOOL_USART_DMA *usart) {
 
 	/* Disable DMA RX Channel */
-	usart->_setup.dma_rx.DMA_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN);
+//	usart->_setup.dma_rx.DMAy_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN);
+	usart->base_dma_rx.Stop(&usart->base_dma_rx);
 
 	/* Disable DMA TX Channel */
-	usart->_setup.dma_tx.DMA_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN);
+//	usart->_setup.dma_tx.DMAy_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN);
+	usart->base_dma_tx.Stop(&usart->base_dma_tx);
 
 	/* Disable USART_DMA */
 	usart->_setup.USARTx->CR1 &= (uint16_t)(~USART_CR1_UE);
 
-	/* Deinit DMA Channel */
-	DMA_DeInit(usart->_setup.dma_tx.DMA_Channelx);
+	/* Deinit DMA Channels */
+//	DMA_DeInit(usart->_setup.dma_tx.DMAy_Channelx);
+	DMA_DeInit(usart->base_dma_rx._setup.DMAy_Channelx);
+	DMA_DeInit(usart->base_dma_tx._setup.DMAy_Channelx);
 
 	/* Deinit USART */
 	USART_DeInit(usart->_setup.USARTx);

@@ -11,7 +11,7 @@
 // ST libs
 #include "stm32f10x.h"
 #include "stm32f10x_usart.h"
-#include "stm32f10x_dma.h"
+//#include "stm32f10x_dma.h"
 #include "misc.h"
 
 // C libs
@@ -21,6 +21,7 @@
 
 // SOOL
 #include <sool/Peripherals/DMA/DMA_common.h>
+#include <sool/Peripherals/DMA/DMA.h>
 #include <sool/Memory/String/String.h>
 #include <sool/Memory/Queue/QueueString.h>
 
@@ -41,8 +42,7 @@ struct _SOOL_USART_DMA_State {
 /* USART coupled with DMA configuration */
 struct _SOOL_USART_DMA_Config {
 	USART_TypeDef*					USARTx;
-	struct _SOOL_DMA_ChannelConfig 	dma_rx;
-	struct _SOOL_DMA_ChannelConfig 	dma_tx;
+	uint8_t							IRQn;
 	uint32_t						BUF_INIT_SIZE;
 } ;
 
@@ -71,27 +71,46 @@ typedef struct _SOOL_USART_DMA_Struct SOOL_USART_DMA;
 /* USART_DMA `class` */
 struct _SOOL_USART_DMA_Struct {
 
+	// --------------------------------------------------
+	SOOL_DMA 						base_dma_rx;
+	SOOL_DMA 						base_dma_tx;
+
+	// --------------------------------------------------
 	struct _SOOL_USART_DMA_Config 	_setup;
 	struct _SOOL_USART_DMA_State	_state;
 	struct _SOOL_USART_Rx			_rx;
 	struct _SOOL_USART_Tx			_tx;
 
-	// RX section
+	/* NVIC section */
+	void 	(*EnableNVIC)(volatile SOOL_USART_DMA*);
+	void 	(*DisableNVIC)(volatile SOOL_USART_DMA*);
+
+	/* RX section */
 	void	(*ActivateReading)(volatile SOOL_USART_DMA*); 			// restarts reading starting from first buffer element
 	void	(*DeactivateReading)(volatile SOOL_USART_DMA*); 			// disables DMA and USART idle interrupts
 	uint8_t (*IsDataReceived)(volatile SOOL_USART_DMA*); 				// returns info whether data was received - based on USART Idle line detection
 	const volatile SOOL_String* (*GetRxData)(volatile SOOL_USART_DMA*); // returns a pointer to a buffer - IMPORTANT: use this method instead of raw ArrayString operations because some calculations are performed here (it is not possible to count number of bytes read from DMA on the fly)
 	void	(*ClearRxBuffer)(volatile SOOL_USART_DMA*); 				// clears whole buffer (NOTE: does not set incoming data pointer to the buffer's start)
+	/**
+	 * @brief Function invoked inside interrupt handler only when `Transfer Complete` flag is set
+	 * @param
+	 * @return
+	 */
 	uint8_t (*_DmaRxIrqHandler)(volatile SOOL_USART_DMA*); 			// interrupt callback function which needs to be put into global DMA IRQHandler
 
-	// TX section
+	/* TX section */
 //	uint8_t (*IsTxQueueEmpty)(volatile SOOL_USART_DMA*);				// returns info whether TX queue is empty
 	uint8_t (*IsTxLineBusy)(volatile SOOL_USART_DMA*); 				// returns info whether TX DMA is currently working
 	uint8_t (*Send)(volatile SOOL_USART_DMA*, const char*); 		// copies given data into buffer and fires up the transfer
 	void	(*ClearTxBuffer)(volatile SOOL_USART_DMA*); 				// clears whole buffer
+	/**
+	 * @brief Function invoked inside interrupt handler only when `Transfer Complete` flag is set
+	 * @param
+	 * @return
+	 */
 	uint8_t (*_DmaTxIrqHandler)(volatile SOOL_USART_DMA*); 			// interrupt callback function which needs to be put into global DMA IRQHandler
 
-	// General
+	/* General */
 	uint8_t (*_IdleLineIrqHandler)(volatile SOOL_USART_DMA*); 			// interrupt callback function which needs to be put into global USART IRQHandler
 	uint8_t	(*RestoreBuffersInitialSize)(volatile SOOL_USART_DMA*); 	// brings back the initial size of buffers by reallocating memory (only if buffer's length is actually bigger than initial size)
 	void 	(*Destroy)(volatile SOOL_USART_DMA*);						// frees memory taken by buffers, stops USART and DMA (USART_DMA instance needs re-initialization then)
@@ -100,6 +119,7 @@ struct _SOOL_USART_DMA_Struct {
 
 // - - - - - - - - - - - - - - - -
 
+// NVICs of USART, DMA_RX, DMA_TX must be enabled separately
 volatile SOOL_USART_DMA SOOL_Periph_USART_DMA_Init(USART_TypeDef* USARTx, uint32_t baud, size_t buf_size);
 
 // - - - - - - - - - - - - - - - -
