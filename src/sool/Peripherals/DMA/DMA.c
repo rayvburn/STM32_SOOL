@@ -139,7 +139,7 @@ static void SOOL_DMA_StopTransfer(volatile SOOL_DMA *dma) {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 static uint8_t SOOL_DMA_IsRunning(volatile SOOL_DMA *dma) {
-	// CCR1_EN is 16-bit register - after calculating bit value, conversion to uint8_t is needed
+	// CCR is a `16-bit` register - after calculating bit value, conversion to uint8_t is needed
 	if ( (dma->_setup.DMAy_Channelx->CCR & DMA_CCR1_EN) != ((uint16_t)0x00 )) {
 		return (1);
 	}

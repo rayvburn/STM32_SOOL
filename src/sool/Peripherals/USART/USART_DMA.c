@@ -733,9 +733,6 @@ static uint8_t USART_DMA_SendFull(volatile SOOL_USART_DMA *usart, const char *to
 //	usart->_setup.dma_tx.DMAy_Channelx->CCR |= DMA_CCR1_EN;// DMA_Cmd(usart->_setup.dma_tx.DMAy_Channelx, ENABLE);
 	usart->base_dma_tx.Start(&usart->base_dma_tx);
 
-	// test FIXME
-	USART_DMA_IsTxLineBusy(usart);
-
 	/* Return 1 on successful sent */
 	return (1);
 
