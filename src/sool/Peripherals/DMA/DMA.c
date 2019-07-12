@@ -64,14 +64,14 @@ volatile SOOL_DMA SOOL_Periph_DMA_Init(DMA_TypeDef *DMAy, DMA_Channel_TypeDef* D
 	dma_cfg.DMA_MemoryBaseAddr = (uint32_t)0;							// to be set via member function
 	dma_cfg.DMA_BufferSize = 0;											// to be set via member function
 
-	dma_cfg.DMA_DIR = DMA_DIR;
-	dma_cfg.DMA_PeripheralInc = DMA_PeripheralInc;
-	dma_cfg.DMA_MemoryInc = DMA_MemoryInc;
-	dma_cfg.DMA_PeripheralDataSize = DMA_PeripheralDataSize;
-	dma_cfg.DMA_MemoryDataSize = DMA_MemoryDataSize;
+	dma_cfg.DMA_DIR = DMA_DIR;											// transfer direction
+	dma_cfg.DMA_PeripheralInc = DMA_PeripheralInc;						// auto-increment of address (peripheral's side)
+	dma_cfg.DMA_MemoryInc = DMA_MemoryInc;								// auto-increment of address (buffer's side)
+	dma_cfg.DMA_PeripheralDataSize = DMA_PeripheralDataSize;			// data size (peripheral)
+	dma_cfg.DMA_MemoryDataSize = DMA_MemoryDataSize;					// data_size (buffer)
 	dma_cfg.DMA_Mode = DMA_Mode;
 	dma_cfg.DMA_Priority = DMA_Priority;
-	dma_cfg.DMA_M2M = DMA_M2M;
+	dma_cfg.DMA_M2M = DMA_M2M;											// memory to memory setting
 
 	DMA_Init(DMAy_Channelx, &dma_cfg);
 	DMA_Cmd(DMAy_Channelx, DISABLE);
@@ -139,7 +139,11 @@ static void SOOL_DMA_StopTransfer(volatile SOOL_DMA *dma) {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 static uint8_t SOOL_DMA_IsRunning(volatile SOOL_DMA *dma) {
-	return (dma->_setup.DMAy_Channelx->CCR & DMA_CCR1_EN);
+	// CCR1_EN is 16-bit register - after calculating bit value, conversion to uint8_t is needed
+	if ( (dma->_setup.DMAy_Channelx->CCR & DMA_CCR1_EN) != ((uint16_t)0x00 )) {
+		return (1);
+	}
+	return (0);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

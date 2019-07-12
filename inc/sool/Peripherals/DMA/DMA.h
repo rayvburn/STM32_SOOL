@@ -25,8 +25,20 @@ struct _SOOL_DMA_Struct {
 	void (*SetPeriphBaseAddr)(volatile SOOL_DMA*, uint32_t);
 	void (*SetMemoryBaseAddr)(volatile SOOL_DMA*, uint32_t);
 	void (*SetBufferSize)(volatile SOOL_DMA*, uint32_t);
+
+	/**
+	 * @brief Starts transfer conducted by DMA channel (enables it)
+	 * @param
+	 */
 	void (*Start)(volatile SOOL_DMA*);
+
+	/**
+	 * @brief Stops DMA channel job (disables it)
+	 * @param
+	 */
 	void (*Stop)(volatile SOOL_DMA*);
+
+
 
 	uint8_t (*IsRunning)(volatile SOOL_DMA*);
 
@@ -47,6 +59,8 @@ struct _SOOL_DMA_Struct {
  * @brief Creates an instance of a class that allows to manage DMA Channel.
  * @note Call SetPeriphBaseAddr(), SetMemoryBaseAddr() and SetBufferSize() before first transfer.
  * @note EnableNVIC must be called after locating SOOL_DMA object(s) in proper IRQHandlers.
+ * @note It utilizes the fact that for each DMA Channel CCR register has the same flag for checking
+ * whether it is running currently (DMA_CCR1_EN).
  * @param DMAy
  * @param DMAy_Channelx
  * @param DMA_DIR
