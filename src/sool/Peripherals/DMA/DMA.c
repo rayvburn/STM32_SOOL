@@ -14,6 +14,7 @@
 static void SOOL_DMA_SetPeriphBaseAddr(volatile SOOL_DMA *dma, uint32_t addr);
 static void SOOL_DMA_SetMemoryBaseAddr(volatile SOOL_DMA *dma, uint32_t addr);
 static void SOOL_DMA_SetBufferSize(volatile SOOL_DMA *dma, uint32_t size);
+static void SOOL_DMA_SetMemoryInc(volatile SOOL_DMA *dma, FunctionalState new_state);
 static void SOOL_DMA_StartTransfer(volatile SOOL_DMA *dma);
 static void SOOL_DMA_StopTransfer(volatile SOOL_DMA *dma);
 
@@ -91,6 +92,7 @@ volatile SOOL_DMA SOOL_Periph_DMA_Init(DMA_TypeDef *DMAy, DMA_Channel_TypeDef* D
 	dma.SetPeriphBaseAddr = SOOL_DMA_SetPeriphBaseAddr;
 	dma.SetMemoryBaseAddr = SOOL_DMA_SetMemoryBaseAddr;
 	dma.SetBufferSize = SOOL_DMA_SetBufferSize;
+	dma.SetMemoryInc = SOOL_DMA_SetMemoryInc;
 	dma.Start = SOOL_DMA_StartTransfer;
 	dma.Stop = SOOL_DMA_StopTransfer;
 
@@ -123,6 +125,18 @@ static void SOOL_DMA_SetMemoryBaseAddr(volatile SOOL_DMA *dma, uint32_t addr) {
 static void SOOL_DMA_SetBufferSize(volatile SOOL_DMA *dma, uint32_t size) {
 	/* Change buffer size (when big amount of data will come in parts) */
 	dma->_setup.DMAy_Channelx->CNDTR = (uint32_t)size;
+}
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+static void SOOL_DMA_SetMemoryInc(volatile SOOL_DMA *dma, FunctionalState new_state) {
+
+	/* Utilizes the fact that for each DMA channel MINC mask has the same value, for different
+	 * MCUs than STM32F1 series it may not work */
+	if ( new_state == ENABLE ) {
+		dma->_setup.DMAy_Channelx->CCR |= (uint16_t)DMA_CCR1_MINC;
+	} else {
+		dma->_setup.DMAy_Channelx->CCR &= (uint16_t)(~(uint16_t)DMA_CCR1_MINC);
+	}
+
 }
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 static void SOOL_DMA_StartTransfer(volatile SOOL_DMA *dma) {
