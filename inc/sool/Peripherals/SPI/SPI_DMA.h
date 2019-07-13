@@ -77,7 +77,7 @@ struct _SOOL_SPI_DMA_Struct {
 	 * @param
 	 * @return
 	 */
-	SOOL_SPI_Device (*AddDevice)(volatile SOOL_SPI_DMA*, const GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin);
+	SOOL_SPI_Device (*AddDevice)(volatile SOOL_SPI_DMA*, GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin);
 
 	/**
 	 * Returns false when transmission is running or is about to start next data transfer (when
@@ -134,7 +134,16 @@ struct _SOOL_SPI_DMA_Struct {
 	// TODO: SwitchInterrupts(volatile SOOL_SPI_DMA*, FunctionalState)
 	// TODO: TransmitReceive - add Blocking version with DMA
 
-//	uint8_t (*TransmitReceive)
+	/**
+	 *
+	 * @param spi_ptr
+	 * @param dev_ptr
+	 * @param mem_addr_rx
+	 * @param mem_addr_tx
+	 * @param length
+	 * @return
+	 */
+	uint8_t (*SendReceive)(volatile SOOL_SPI_DMA*, SOOL_SPI_Device *, uint32_t, uint32_t, uint32_t);
 
 	/**
 	 * @brief Checks whether a new (full) set of data arrived

@@ -14,7 +14,7 @@
 
 static void SOOL_SPI_DMA_EnableNVIC(volatile SOOL_SPI_DMA *spi_ptr);
 static void SOOL_SPI_DMA_DisableNVIC(volatile SOOL_SPI_DMA *spi_ptr);
-static SOOL_SPI_Device SOOL_SPI_DMA_AddDevice(volatile SOOL_SPI_DMA *spi_ptr, const GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin);
+static SOOL_SPI_Device SOOL_SPI_DMA_AddDevice(volatile SOOL_SPI_DMA *spi_ptr, GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin);
 
 static uint8_t SOOL_SPI_DMA_IsBusy(volatile SOOL_SPI_DMA *spi_ptr);
 static uint8_t SOOL_SPI_DMA_Send(volatile SOOL_SPI_DMA *spi_ptr, SOOL_SPI_Device *dev_ptr, uint32_t mem_addr, uint32_t length);
@@ -67,9 +67,7 @@ volatile SOOL_SPI_DMA SOOL_Periph_SPI_DMA_Init(SPI_TypeDef *SPIx, uint16_t SPI_D
 
 	DMA_TypeDef* dma_periph;
 	DMA_Channel_TypeDef* dma_channel_rx;
-	uint8_t dma_channel_rx_irqn;
 	DMA_Channel_TypeDef* dma_channel_tx;
-	uint8_t dma_channel_tx_irqn;
 
 	/* According to SPIx, set variables to match MCU wiring */
 	if ( SPIx == SPI1 ) {
@@ -101,9 +99,7 @@ volatile SOOL_SPI_DMA SOOL_Periph_SPI_DMA_Init(SPI_TypeDef *SPIx, uint16_t SPI_D
 
 		dma_periph = DMA1;
 		dma_channel_rx = DMA1_Channel2;
-		dma_channel_rx_irqn = DMA1_Channel2_IRQn;
 		dma_channel_tx = DMA1_Channel3;
-		dma_channel_tx_irqn = DMA1_Channel3_IRQn;
 
 	} else if ( SPIx == SPI2 ) {
 
@@ -118,9 +114,7 @@ volatile SOOL_SPI_DMA SOOL_Periph_SPI_DMA_Init(SPI_TypeDef *SPIx, uint16_t SPI_D
 
 		dma_periph = DMA1;
 		dma_channel_rx = DMA1_Channel4;
-		dma_channel_rx_irqn = DMA1_Channel4_IRQn;
 		dma_channel_tx = DMA1_Channel5;
-		dma_channel_tx_irqn = DMA1_Channel5_IRQn;
 
 	}
 
@@ -240,6 +234,7 @@ volatile SOOL_SPI_DMA SOOL_Periph_SPI_DMA_Init(SPI_TypeDef *SPIx, uint16_t SPI_D
 	spi_dma.IsNewData = SOOL_SPI_DMA_IsNewData;
 	spi_dma.Read = SOOL_SPI_DMA_Read;
 	spi_dma.Send = SOOL_SPI_DMA_Send;
+	spi_dma.SendReceive = SOOL_SPI_DMA_TransmitReceive;
 	spi_dma._DmaRxIrqHandler = SOOL_SPI_DMA_DmaRxIrqHandler;
 	spi_dma._DmaTxIrqHandler = SOOL_SPI_DMA_DmaTxIrqHandler;
 
@@ -259,7 +254,7 @@ static void SOOL_SPI_DMA_DisableNVIC(volatile SOOL_SPI_DMA *spi_ptr){
 }
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 static volatile SOOL_SPI_Device SOOL_SPI_DMA_AddDevice(volatile SOOL_SPI_DMA *spi_ptr,
-													   const GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin) {
+													   GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin) {
 
 	/* Create a new instance */
 	volatile SOOL_SPI_Device new_dev;
