@@ -154,7 +154,9 @@ struct _SOOL_SPI_DMA_Struct {
  * in reference manual (RM0008, Table 78. Summary of DMA1 requests for each channel, p. 282).
  * @note SPI does not have a buffer itself. Due to different data types, which can be sent via SPI,
  * the buffer (RX or TX) is a separate component associated with a created sensor/IC etc. (device in general).
- *
+ * @note IMPORTANT: DO NOT USE SEND METHOD. TC flag is set too early (transfer is still in progress) so device's
+ * CS cannot be set HIGH (idle state) until transfer fully finishes. Everything works fine with SendReceive method
+ * but it takes buffer space.
  * @param SPIx
  * @param SPI_Direction
  * @param SPI_DataSize

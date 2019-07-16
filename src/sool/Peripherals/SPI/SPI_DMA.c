@@ -434,6 +434,10 @@ static uint8_t SOOL_SPI_DMA_TransmitReceive(volatile SOOL_SPI_DMA *spi_ptr, SOOL
 static uint8_t SOOL_SPI_DMA_DmaRxIrqHandler(volatile SOOL_SPI_DMA *spi_ptr) {
 	spi_ptr->_state.last_dev_ptr->base.SetHigh(&spi_ptr->_state.last_dev_ptr->base);
 	spi_ptr->_state_rx.finished = 1;
+
+	/* Disable DMA Channels - it is safe to do this after finished transfer and reception */
+	spi_ptr->base_dma_rx.Stop(&spi_ptr->base_dma_rx);
+	spi_ptr->base_dma_tx.Stop(&spi_ptr->base_dma_tx);
 	return (1);
 }
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
