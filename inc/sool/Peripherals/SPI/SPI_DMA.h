@@ -101,6 +101,8 @@ struct _SOOL_SPI_DMA_Struct {
 	 * @brief Send request
 	 * @note SPI_Device's buffer should be prepared accordingly first (resized, filled with data etc)
 	 * @note sizeof(data_element) is deducted from SPI constructor
+	 * @note When only sending data TransferComplete interrupt flag is set when transfer
+	 * has not finished yet, so it REQUIRES manual state change of device's CS pin in the main loop.
 	 * @param SOOL_SPI_DMA instance
 	 * @param memory address (start)
 	 * @param buffer length

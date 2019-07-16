@@ -155,6 +155,9 @@ volatile SOOL_SPI_DMA SOOL_Periph_SPI_DMA_Init(SPI_TypeDef *SPIx, uint16_t SPI_D
 	spi.SPI_FirstBit = SPI_FirstBit;
 	SPI_Init(SPIx, &spi);
 
+//	/* Software slave management ?? */
+//	SPIx->CR1 |= SPI_CR1_SSM;
+
 	/* SPIx interrupts are not enabled because DMA takes care of clearing of all flags */
 
 	/* Prepare some values for DMA channel configuration */
@@ -263,6 +266,9 @@ static volatile SOOL_SPI_Device SOOL_SPI_DMA_AddDevice(volatile SOOL_SPI_DMA *sp
 	SOOL_PinConfig_NoInt pin_cfg = SOOL_Periph_GPIO_PinConfig_Initialize_NoInt(GPIOx, GPIO_Pin, GPIO_Mode_Out_PP);
 	SOOL_PinSwitch switcher = SOOL_Effector_PinSwitch_Init(pin_cfg);
 
+	/* Set device in IDLE state (SetHigh) */
+	switcher.SetHigh(&switcher);
+
 	/* Fill structure fields */
 	new_dev._setup.SPIx = spi_ptr->_setup.SPIx;
 	new_dev._setup.DEV_ID = ++spi_ptr->_setup.device_counter; // 0 is reserved for UNKNOWN
@@ -303,8 +309,11 @@ static uint8_t SOOL_SPI_DMA_Send(volatile SOOL_SPI_DMA *spi_ptr, SOOL_SPI_Device
 
 	/* Configure DMA transfer */
 	spi_ptr->base_dma_tx.Stop(&spi_ptr->base_dma_tx);
+
+	spi_ptr->base_dma_tx.SetPeriphBaseAddr(&spi_ptr->base_dma_tx, (uint32_t)&spi_ptr->_setup.SPIx->DR);
 	spi_ptr->base_dma_tx.SetMemoryBaseAddr(&spi_ptr->base_dma_tx, mem_addr);
 	spi_ptr->base_dma_tx.SetBufferSize(&spi_ptr->base_dma_tx, length);
+
 	if ( length > 1 ) {
 		spi_ptr->base_dma_tx.SetMemoryInc(&spi_ptr->base_dma_tx, ENABLE);
 	} else {
@@ -340,6 +349,8 @@ static uint8_t SOOL_SPI_DMA_Read(volatile SOOL_SPI_DMA *spi_ptr, SOOL_SPI_Device
 
 	/* Configure DMA transfer */
 	spi_ptr->base_dma_rx.Stop(&spi_ptr->base_dma_rx);
+
+	spi_ptr->base_dma_tx.SetPeriphBaseAddr(&spi_ptr->base_dma_rx, (uint32_t)&spi_ptr->_setup.SPIx->DR);
 	spi_ptr->base_dma_rx.SetMemoryBaseAddr(&spi_ptr->base_dma_rx, mem_addr);
 	spi_ptr->base_dma_rx.SetBufferSize(&spi_ptr->base_dma_rx, length);
 	if ( length > 1 ) {
@@ -389,10 +400,12 @@ static uint8_t SOOL_SPI_DMA_TransmitReceive(volatile SOOL_SPI_DMA *spi_ptr, SOOL
 	/* Disable both DMA Channels */ // not needed, it is checked in SOOL_SPI_DMA_IsBusy()
 
 	/* Configure DMA RX */
+	spi_ptr->base_dma_tx.SetPeriphBaseAddr(&spi_ptr->base_dma_rx, (uint32_t)&spi_ptr->_setup.SPIx->DR);
 	spi_ptr->base_dma_rx.SetMemoryBaseAddr(&spi_ptr->base_dma_rx, mem_addr_rx);
 	spi_ptr->base_dma_rx.SetBufferSize(&spi_ptr->base_dma_rx, length);
 
 	/* Configure DMA TX */
+	spi_ptr->base_dma_tx.SetPeriphBaseAddr(&spi_ptr->base_dma_tx, (uint32_t)&spi_ptr->_setup.SPIx->DR);
 	spi_ptr->base_dma_tx.SetMemoryBaseAddr(&spi_ptr->base_dma_tx, mem_addr_tx);
 	spi_ptr->base_dma_tx.SetBufferSize(&spi_ptr->base_dma_tx, length);
 
@@ -426,10 +439,11 @@ static uint8_t SOOL_SPI_DMA_DmaRxIrqHandler(volatile SOOL_SPI_DMA *spi_ptr) {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Called on TransferComplete event
 static uint8_t SOOL_SPI_DMA_DmaTxIrqHandler(volatile SOOL_SPI_DMA *spi_ptr) {
-	/* Push CS line HIGH back again when only sending data (1) */
-	if ( spi_ptr->_state.operation == 1 ) {
-		spi_ptr->_state.last_dev_ptr->base.SetHigh(&spi_ptr->_state.last_dev_ptr->base);
-	}
+	/* Push CS line HIGH back again when only sending data (1)
+	 * DEPRECATED: TC flag is set while data still going through MOSI! */
+//	if ( spi_ptr->_state.operation == 1 ) {
+//		spi_ptr->_state.last_dev_ptr->base.SetHigh(&spi_ptr->_state.last_dev_ptr->base);
+//	}
 	spi_ptr->_state_tx.finished = 1;
 	return (1);
 }

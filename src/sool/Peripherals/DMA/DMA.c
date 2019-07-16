@@ -182,8 +182,8 @@ static uint8_t SOOL_DMA_ErrorInterruptHandler(volatile SOOL_DMA *dma) {
 		 * 	- 	the peripheral register's address is wrong
 		 *	- 	data couldn't be pushed due to the full buffer (RX-TX of MCU transfer)
 		 */
-//		DMA_ClearITPendingBit(dma->_setup.int_flags.ERROR_FLAG);
-		DMA_ClearITPendingBit(dma->_setup.int_flags.GLOBAL_FLAG);
+		DMA_ClearITPendingBit(dma->_setup.int_flags.ERROR_FLAG);
+//		DMA_ClearITPendingBit(dma->_setup.int_flags.GLOBAL_FLAG);
 		// TODO: some error message
 
 		return (1);
@@ -202,8 +202,8 @@ static uint8_t SOOL_DMA_HalfInterruptHandler(volatile SOOL_DMA *dma) {
 	if ( DMA_GetITStatus(dma->_setup.int_flags.HALF_FLAG) == SET ) {
 
 		/* Half Transfer Interrupt */
-//		DMA_ClearITPendingBit(dma->_setup.int_flags.HALF_FLAG);
-		DMA_ClearITPendingBit(dma->_setup.int_flags.GLOBAL_FLAG);
+		DMA_ClearITPendingBit(dma->_setup.int_flags.HALF_FLAG);
+//		DMA_ClearITPendingBit(dma->_setup.int_flags.GLOBAL_FLAG);
 		return (1);
 
 	}
@@ -219,8 +219,8 @@ static uint8_t SOOL_DMA_CompleteInterruptHandler(volatile SOOL_DMA *dma) {
 	 if ( DMA_GetITStatus(dma->_setup.int_flags.COMPLETE_FLAG) == SET ) {
 
 			/* Transfer Complete Interrupt */
-	//		DMA_ClearITPendingBit(dma->_setup.int_flags.COMPLETE_FLAG);
-			DMA_ClearITPendingBit(dma->_setup.int_flags.GLOBAL_FLAG);
+			DMA_ClearITPendingBit(dma->_setup.int_flags.COMPLETE_FLAG);
+//			DMA_ClearITPendingBit(dma->_setup.int_flags.GLOBAL_FLAG);
 
 			return (1);
 	 }
