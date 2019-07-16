@@ -83,31 +83,31 @@ struct _SOOL_SPI_DMA_Struct {
 	 */
 	uint8_t (*IsBusy)(volatile SOOL_SPI_DMA*);
 
-	/**
-	 * @brief Send request
-	 * @note SPI_Device's buffer should be prepared accordingly first (resized, filled with data etc)
-	 * @note sizeof(data_element) is deducted from SPI constructor
-	 * @note When only sending data TransferComplete interrupt flag is set when transfer
-	 * has not finished yet, so it REQUIRES manual state change of device's CS pin in the main loop.
-	 * @param SOOL_SPI_DMA instance
-	 * @param memory address (start)
-	 * @param buffer length
-	 * @return status
-	 */
-	uint8_t (*Send)(volatile SOOL_SPI_DMA*, SOOL_SPI_Device*, uint32_t, uint32_t);
-
-	/**
-	 * @brief Generates read request, it must be preceded by Send request; during read request
-	 * the MCU send some dummy data to force the other device (usually slave) to send meaningful data
-	 * @note SPI_Device's buffer should be prepared accordingly first (resized, filled with data etc)
-	 * and start DMA transfer
-	 * @note sizeof(data_element) is deducted from SPI constructor
-	 * @param SOOL_SPI_DMA instance
-	 * @param memory address (start)
-	 * @param number of elements to read
-	 * @return status
-	 */
-	uint8_t (*Read)(volatile SOOL_SPI_DMA*, SOOL_SPI_Device*, uint32_t, uint32_t); // TODO: not tested
+//	/**
+//	 * @brief Send request
+//	 * @note SPI_Device's buffer should be prepared accordingly first (resized, filled with data etc)
+//	 * @note sizeof(data_element) is deducted from SPI constructor
+//	 * @note When only sending data TransferComplete interrupt flag is set when transfer
+//	 * has not finished yet, so it REQUIRES manual state change of device's CS pin in the main loop.
+//	 * @param SOOL_SPI_DMA instance
+//	 * @param memory address (start)
+//	 * @param buffer length
+//	 * @return status
+//	 */
+//	uint8_t (*Send)(volatile SOOL_SPI_DMA*, SOOL_SPI_Device*, uint32_t, uint32_t);
+//
+//	/**
+//	 * @brief Generates read request, it must be preceded by Send request; during read request
+//	 * the MCU send some dummy data to force the other device (usually slave) to send meaningful data
+//	 * @note SPI_Device's buffer should be prepared accordingly first (resized, filled with data etc)
+//	 * and start DMA transfer
+//	 * @note sizeof(data_element) is deducted from SPI constructor
+//	 * @param SOOL_SPI_DMA instance
+//	 * @param memory address (start)
+//	 * @param number of elements to read
+//	 * @return status
+//	 */
+//	uint8_t (*Read)(volatile SOOL_SPI_DMA*, SOOL_SPI_Device*, uint32_t, uint32_t); // TODO: not tested
 
 	// TODO: SwitchInterrupts(volatile SOOL_SPI_DMA*, FunctionalState)
 	// TODO: TransmitReceive - add Blocking version with DMA

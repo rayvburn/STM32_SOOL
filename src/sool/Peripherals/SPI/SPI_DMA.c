@@ -235,8 +235,8 @@ volatile SOOL_SPI_DMA SOOL_Periph_SPI_DMA_Init(SPI_TypeDef *SPIx, uint16_t SPI_D
 	spi_dma.GetNewDataDeviceID = SOOL_SPI_DMA_GetNewDataDeviceID;
 	spi_dma.IsBusy = SOOL_SPI_DMA_IsBusy;
 	spi_dma.IsNewData = SOOL_SPI_DMA_IsNewData;
-	spi_dma.Read = SOOL_SPI_DMA_Read;
-	spi_dma.Send = SOOL_SPI_DMA_Send;
+//	spi_dma.Read = SOOL_SPI_DMA_Read;
+//	spi_dma.Send = SOOL_SPI_DMA_Send;
 	spi_dma.SendReceive = SOOL_SPI_DMA_TransmitReceive;
 	spi_dma._DmaRxIrqHandler = SOOL_SPI_DMA_DmaRxIrqHandler;
 	spi_dma._DmaTxIrqHandler = SOOL_SPI_DMA_DmaTxIrqHandler;
