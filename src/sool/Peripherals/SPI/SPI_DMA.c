@@ -439,12 +439,16 @@ static uint8_t SOOL_SPI_DMA_DmaRxIrqHandler(volatile SOOL_SPI_DMA *spi_ptr) {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // Called on TransferComplete event
 static uint8_t SOOL_SPI_DMA_DmaTxIrqHandler(volatile SOOL_SPI_DMA *spi_ptr) {
+
 	/* Push CS line HIGH back again when only sending data (1)
-	 * DEPRECATED: TC flag is set while data still going through MOSI! */
-//	if ( spi_ptr->_state.operation == 1 ) {
-//		spi_ptr->_state.last_dev_ptr->base.SetHigh(&spi_ptr->_state.last_dev_ptr->base);
-//	}
+	 * DEPRECATED: TC flag is set while data still going through MOSI!
+	if ( spi_ptr->_state.operation == 1 ) {
+		spi_ptr->_state.last_dev_ptr->base.SetHigh(&spi_ptr->_state.last_dev_ptr->base);
+	}
+	*/
+
 	spi_ptr->_state_tx.finished = 1;
 	return (1);
+
 }
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

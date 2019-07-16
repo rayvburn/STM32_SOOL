@@ -64,11 +64,6 @@ struct _SOOL_SPI_DMA_Struct {
 	void (*EnableNVIC)(volatile SOOL_SPI_DMA*);
 	void (*DisableNVIC)(volatile SOOL_SPI_DMA*);
 
-//	/**
-//	 * Preloads queue before running multiple transfers (second and following ones are started in ISR).
-//	 */
-//	void AddToTxQueue(volatile SOOL_SPI_DMA*);
-
 	/**
 	 * This will return a new instance of SOOL_SPI_Device.
 	 * SOOL_SPI_Device should have a unique identifier assigned so many devices of the same type
@@ -88,15 +83,6 @@ struct _SOOL_SPI_DMA_Struct {
 	 */
 	uint8_t (*IsBusy)(volatile SOOL_SPI_DMA*);
 
-//	/**
-//	 * Loads data to SPI Tx buffer and sends it one by one
-//	 * @param
-//	 * @param
-//
-//	 * @return
-//	 */
-//	uint8_t (*Send)(volatile SOOL_SPI_DMA*, volatile SOOL_SPI_Device);
-
 	/**
 	 * @brief Send request
 	 * @note SPI_Device's buffer should be prepared accordingly first (resized, filled with data etc)
@@ -110,16 +96,6 @@ struct _SOOL_SPI_DMA_Struct {
 	 */
 	uint8_t (*Send)(volatile SOOL_SPI_DMA*, SOOL_SPI_Device*, uint32_t, uint32_t);
 
-//	/**
-//	 * This should take SPI_Device's buffer, resize it accordingly (or shrink if needed)
-//	 * and start DMA transfer
-//	 * @param
-//	 * @param
-//	 * @param how many
-//	 * @return
-//	 */
-//	uint8_t (*Read)(volatile SOOL_SPI_DMA*, volatile SOOL_SPI_Device, uint8_t);
-
 	/**
 	 * @brief Generates read request, it must be preceded by Send request; during read request
 	 * the MCU send some dummy data to force the other device (usually slave) to send meaningful data
@@ -131,13 +107,17 @@ struct _SOOL_SPI_DMA_Struct {
 	 * @param number of elements to read
 	 * @return status
 	 */
-	uint8_t (*Read)(volatile SOOL_SPI_DMA*, SOOL_SPI_Device*, uint32_t, uint32_t);
+	uint8_t (*Read)(volatile SOOL_SPI_DMA*, SOOL_SPI_Device*, uint32_t, uint32_t); // TODO: not tested
 
 	// TODO: SwitchInterrupts(volatile SOOL_SPI_DMA*, FunctionalState)
 	// TODO: TransmitReceive - add Blocking version with DMA
 
 	/**
-	 *
+	 * @brief Sends data pointed by mem_addr_tx. Data type is known (deducted from the SPI initializer),
+	 * number of data to send (buffer length) is set via `length` parameter.
+	 * @note Both buffers (RX and TX) must have the same length. All received data will be saved
+	 * in the RX buffer. After finished reading one must select meaningful data (i.e. those which
+	 * are equal to device's buffer content) and discard those which device sends during Mater transmission.
 	 * @param spi_ptr
 	 * @param dev_ptr
 	 * @param mem_addr_rx
@@ -161,22 +141,19 @@ struct _SOOL_SPI_DMA_Struct {
 	 */
 	uint8_t (*GetNewDataDeviceID)(volatile SOOL_SPI_DMA*);
 
-	// interrupt handlers
+	// interrupt service routines
 	uint8_t (*_DmaRxIrqHandler)(volatile SOOL_SPI_DMA*);
 	uint8_t (*_DmaTxIrqHandler)(volatile SOOL_SPI_DMA*);
 
 };
 
-// FIXME: there must be an `unknown` ID for device, like `0` to recognize temporary situation
-// when Read is called and in main loop GetNewDataDeviceID is checked
-
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-// SPI does not have a buffer itself. Due to different data types, which can be sent via SPI,
-// the buffer (RX or TX) is a separate component associated with a created sensor/IC etc.
-//* @note Some peripherals may interference with each other, see DMA requests for each channel table
-//* in reference manual (RM0008, Table 78. Summary of DMA1 requests for each channel, p. 282).
 /**
+ * @note Some peripherals may interference with each other, see DMA requests for each channel table
+ * in reference manual (RM0008, Table 78. Summary of DMA1 requests for each channel, p. 282).
+ * @note SPI does not have a buffer itself. Due to different data types, which can be sent via SPI,
+ * the buffer (RX or TX) is a separate component associated with a created sensor/IC etc. (device in general).
  *
  * @param SPIx
  * @param SPI_Direction
@@ -186,6 +163,8 @@ struct _SOOL_SPI_DMA_Struct {
  * @param SPI_BaudRatePrescaler
  * @param SPI_FirstBit
  * @return
+ * @note Example of use can be found here:
+ * https://gitlab.com/frb-pow/002tubewaterflowmcu/commit/d6620f1b1c9b17c5026e6bca05b277238e9560eb
  */
 extern volatile SOOL_SPI_DMA SOOL_Periph_SPI_DMA_Init(SPI_TypeDef *SPIx, uint16_t SPI_Direction,
 		uint16_t SPI_DataSize, uint16_t SPI_CPOL, uint16_t SPI_CPHA,
