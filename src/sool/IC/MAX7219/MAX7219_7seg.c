@@ -7,8 +7,18 @@
 
 #include <sool/IC/MAX7219/MAX7219_7seg.h>
 #include <stdlib.h> // itoa()
+#include <sool/Maths/PowInt.h>
 
-// Reference: https://github.com/lamik/MAX7219_digits_STM32_HAL/blob/master/Src/max7219_digits.c
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+uint8_t MAX7219_Print(volatile SOOL_MAX7219 *max7219_ptr, int32_t value);
+uint8_t MAX7219_PrintSection(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, int32_t value);
+uint8_t MAX7219_PrintDots(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, uint8_t dots_num);
+uint8_t MAX7219_SetDigit(volatile SOOL_MAX7219 *max7219_ptr, uint8_t digit, char value, uint8_t dot);
+uint8_t MAX7219_SendData(volatile SOOL_MAX7219 *max7219_ptr);
+
+uint8_t MAX7219_FindDotPosition(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to);
+uint8_t MAX7219_TurnOffExcessiveDigits(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, uint8_t length);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -32,20 +42,6 @@ volatile SOOL_MAX7219 SOOL_IC_MAX7219_Initialize(SPI_TypeDef *SPIx, uint8_t do_r
 		}
 	}
 
-	/* Buffer */
-	// See Table 1 in (https://datasheets.maximintegrated.com/en/ds/MAX7219-MAX7221.pdf)
-	// 16 bits - D15 ... D0
-	SOOL_Vector_Uint16 buf = SOOL_Memory_Vector_Uint16_Init();
-	for ( uint8_t i = 0; i < disp_num; i++ ) {
-		// buffer structure is as follows:
-		//  o each element of the vector is 16-bit number
-		//  o 8 LSB (D7 - D0) store data to be send via SPI
-		//  o 8 MSB (D15 - D8) store address of the register
-		//  o (D15-D12) are `don't care` bits, setting them
-		//	  do not have any effect
-		buf.Add(&buf, 0);
-	}
-
 	/* Initialize SPI peripheral */
 	volatile SOOL_SPI_DMA spi = SOOL_Periph_SPI_DMA_Init(SPIx, SPI_Direction_1Line_Tx,
 														 SPI_DataSize_16b, SPI_CPOL_Low, SPI_CPHA_1Edge,
@@ -56,12 +52,12 @@ volatile SOOL_MAX7219 SOOL_IC_MAX7219_Initialize(SPI_TypeDef *SPIx, uint8_t do_r
 
 	/* Save `Setup` structure */
 	max7219.base_spi = spi;
-	max7219._setup.spi_device = spi_device;
-//	max7219._setup.cascade_num = 0;
+	max7219.base_device = spi_device;
+	max7219._setup.disp_num = disp_num;
 
 	/* Save `Buffer` structure */
-	max7219._buf.tx = buf;
-	max7219._buf.rx = buf;
+	max7219._buf.tx = SOOL_Memory_Vector_Uint16_Init(); // buf;
+	max7219._buf.rx = SOOL_Memory_Vector_Uint16_Init(); // buf;
 
 	return (max7219);
 
@@ -69,37 +65,26 @@ volatile SOOL_MAX7219 SOOL_IC_MAX7219_Initialize(SPI_TypeDef *SPIx, uint8_t do_r
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-//uint8_t MAX7219_AddDeviceCascade(volatile SOOL_MAX7219 *max7219_ptr) {
-//
-////	uint8_t new_size = max7219_ptr->_setup.cascade_num + 1;
-////
-////	if ( SOOL_Memory_Vector_Uint16_Extend(max7219_ptr._buf.ptr, new_size) ) {
-////
-////		SOOL_Vector_Uint16 buf = SOOL_Memory_Vector_Uint16_Init();
-////		*(max7219_ptr._buf.ptr + new_size) = buf;
-////		max7219_ptr->_setup.cascade_num++;
-////
-////		return (1);
-////
-////	}
-////
-////	return (0);
-//
-//	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, 0);
-//	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
-//	return (1);
-//
-//}
+uint8_t MAX7219_Print(volatile SOOL_MAX7219 *max7219_ptr, int32_t value) {
+
+	if ( !MAX7219_PrintSection(max7219_ptr, 0, (max7219_ptr->_setup.disp_num - 1), value) ) {
+		return (0);
+	}
+	return (1);
+
+}
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 // TODO: DISP_FROM must be smaller than DISP_TO, like DISP_FROM indicates the units whereas DISP_TO shows hundreds for example
+// NOTE: DISP_FROM is the index of the first digit the `value` will be printed on
 // NOTE: DISP_TO inclusive!
-uint8_t MAX7219_PrintSection(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_to, uint8_t disp_from,
+// NOTE: `disp_from` and `disp_to` are digit indexes
+uint8_t MAX7219_PrintSection(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to,
 		int32_t value) {
 
 	/* Allocate some memory */
-	char *arr = malloc( (disp_from - disp_to) * sizeof(char));
+	char *arr = malloc( (disp_to - disp_from + 1) * sizeof(char));
 
 	// check if allocation was successful
 	if ( arr == NULL ) {
@@ -107,87 +92,205 @@ uint8_t MAX7219_PrintSection(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_to
 	}
 
 	/* Convert value to a character array */
-	itoa(value, arr, 10) ;
+	itoa(value, arr, 10);
 
-	/* Update buffer content */
-	uint8_t disp_num = 0;
+	/* Unsupported character flag */
+	uint8_t fail_flag = 0;
+
+	/* Helper variable to start from the string's end */
+	int8_t str_idx = strlen(arr);
+
+	/* Prepare buffers */
+	max7219_ptr->_buf.tx.Clear(&max7219_ptr->_buf.tx);
+	max7219_ptr->_buf.rx.Clear(&max7219_ptr->_buf.rx);
+	uint8_t show_dot = 0;
+
+	/* Check whether addition of 0 in front of the DOT is necessary */
+	// check dot position within the given section
+	uint8_t section_dot_pos = MAX7219_FindDotPosition(max7219_ptr, disp_from, disp_to);
+	uint8_t extra_zero_pos = SOOL_MAX7219_DISABLE_DP;
+	if ( SOOL_Maths_PowInt(10, section_dot_pos) > value ) {
+		// add 0 in front
+		extra_zero_pos = section_dot_pos;
+	}
+
+//	/* Turn off excessive digits */
+//	if ( MAX7219_TurnOffExcessiveDigits(max7219_ptr, disp_from, disp_to, str_idx) ) {
+//
+//	}
+
+	// iterate over a given display section
 	for ( uint8_t i = disp_from; i <= disp_to; i++ ) {
-		disp_num = (disp_from + i);
-		MAX7219_SetDigit(max7219_ptr, disp_num, arr[i], disp_num == max7219_ptr->_setup.disp_dot);
+
+		// add 0 in front of the `dot`
+		if ( extra_zero_pos == i ) {
+			MAX7219_SetDigit(max7219_ptr, i, '0', 1); // this character is always valid
+			continue;
+		}
+
+		// decrement index of the character to-be-send
+		if ( --str_idx < 0 ) {
+			// skip the `for` loop when it is known in advance that
+			// there are some excessive digits that need to be hidden;
+			// `space` character turns off a digit
+			MAX7219_SetDigit(max7219_ptr, i, ' ', 0);
+			continue;
+		}
+
+		// check whether DP segment should be enabled
+		for ( uint8_t j = 0; j < max7219_ptr->_setup.dots._info.size; j++ ) {
+
+			uint8_t dot_disp = max7219_ptr->_setup.dots.Get(&max7219_ptr->_setup.dots, j);
+			if ( i == dot_disp ) {
+				show_dot = 1;
+				break; // stop the inner `for` loop
+			}
+
+		}
+
+		// update buffer content
+		if ( !MAX7219_SetDigit(max7219_ptr, i, arr[str_idx], show_dot) ) {
+			fail_flag = 1;
+			break;
+		}
+
 	}
 
 	/* Deallocate */
 	free(arr);
 
-	return (1);
-
-}
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-uint8_t MAX7219_SendData(volatile SOOL_MAX7219 *max7219_ptr) {
-
-	// FIXME: cascade mode support
-	uint8_t status = max7219_ptr->base_spi.SendReceive(&max7219_ptr->base_spi,
-												   	   &max7219_ptr->_setup.spi_device,
-													   (uint32_t)&max7219_ptr->_buf.rx._data[0],
-													   (uint32_t)&max7219_ptr->_buf.tx._data[0], 1);
-//													   max7219_ptr->_setup.cascade_num + 1); // FIXME ^
-	return (status);
-
-}
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-// Private, low-level function
-// FIXME: Why use 2 x uint8_t when 1 x uint16_t possible?
-uint8_t MAX7219_PrepareSendToDevice(volatile SOOL_MAX7219 *max7219_ptr, uint8_t dev_num, uint8_t reg,
-		uint8_t data) {
-
-//	SOOL_Vector_Uint16* dev_buf_ptr = max7219_ptr->_buf.ptr + dev_num;
-//
-//	// convert register address and data into 16 bits serial format which MAX7219 is able to read
-//	uint16_t value = 0;
-//	value |= data; // lower byte
-//	uint16_t temp = reg << 8;
-//	value |= temp; // higher byte
-//
-//	dev_buf_ptr->Set(dev_buf_ptr, (uint16_t)0, value);
-
-	// convert register address and data into 16 bits serial format which MAX7219 is able to read
-	uint16_t value = 0x00;
-	value |= (uint16_t)data; // lower byte
-	value |= (reg << 8); 	 // higher byte
-	max7219_ptr->_buf.tx.Set(&max7219_ptr->_buf.tx, dev_num, value);
-
+	if ( !fail_flag ) {
+		// FIXME: check whether SendData is called rarely enough for SPI to keep up with each transfer
+		return (MAX7219_SendData(max7219_ptr));
+	}
 	return (0);
 
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+uint8_t MAX7219_PrintDots(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to,
+		uint8_t dots_num) {
+
+	// TODO:
+//	// iterate over a given display section
+//	for ( uint8_t i = disp_from; i <= disp_to; i++ ) {
+//		MAX7219_SetDigit(max7219_ptr, i, ' ', 1)
+//	}
+	return (0);
+
+}
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-uint8_t MAX7219_SetDigit(volatile SOOL_MAX7219 *max7219_ptr, uint8_t digit, uint8_t value, uint8_t dot) {
+uint8_t MAX7219_SetDigit(volatile SOOL_MAX7219 *max7219_ptr, uint8_t digit, char value, uint8_t dot) {
 
 	/* Convert value from human-readable to MAX7219-readable data */
+	// prepare register address value (see Table 2. Register Address Map)
+	uint8_t address = (digit + 1);
 
-	/*
-#define MAX7219_SYMBOL_0	0x7E
-#define MAX7219_SYMBOL_1	0x30
-#define MAX7219_SYMBOL_2	0x6D
-#define MAX7219_SYMBOL_3	0x79
-#define MAX7219_SYMBOL_4	0x33
-#define MAX7219_SYMBOL_5	0x5B
-#define MAX7219_SYMBOL_6	0x5F
-#define MAX7219_SYMBOL_7	0x70
-#define MAX7219_SYMBOL_8	0x7F
-#define MAX7219_SYMBOL_9	0x7B
-#define MAX7219_SYMBOL_LINE	0xA0
-	 */
+	// prepare MAX7219-readable data (half word, see Table 5. Code B Font)
+	uint8_t data = 0;
+	switch ( value ) {
 
-//	max7219_ptr->_buf.tx.Set(&max7219_ptr->_buf.tx, digit, value)
+	case('0'):
+	case('1'):
+	case('2'):
+	case('3'):
+	case('4'):
+	case('5'):
+	case('6'):
+	case('7'):
+	case('8'):
+	case('9'):
+			data = (uint8_t)(value - '0');
+			break;
+	case('-'):
+			data = MAX7219_SYMBOL_LINE;
+			break;
+	case(' '):
+			data = MAX7219_SYMBOL_BLANK;
+			break;
+	default:
+			return (0); // character not supported
+	}
+
+	/* Low level, SPI transfer related section */
+	// set D7 according to `dot` variable which is 1 if DP should be enabled
+	data |= (dot << 7);
+
+	// prepare half-word variable
+	uint16_t reg = 0;
+	reg  = (uint16_t)(address << 8);
+	reg |= (uint16_t)data;
+
+	// add value to the TX buffer
+	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
+
+	// add any value to the RX buffer so it has the same size as TX buffer
+	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+
 	return (1);
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+uint8_t MAX7219_SendData(volatile SOOL_MAX7219 *max7219_ptr) {
+
+	// TODO: cascade mode support?
+	uint8_t status = max7219_ptr->base_spi.SendReceive(&max7219_ptr->base_spi,
+												   	   &max7219_ptr->base_device,
+													   (uint32_t)&max7219_ptr->_buf.rx._data[0],
+													   (uint32_t)&max7219_ptr->_buf.tx._data[0],
+													   (uint32_t)max7219_ptr->_buf.tx._info.size);
+	return (status);
+
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+// - - - private functions - - - - - - - - - - - - - - - - - - - - - - -
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+uint8_t MAX7219_FindDotPosition(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to) {
+
+	// iterate over a given display section
+	for ( uint8_t i = disp_from; i <= disp_to; i++ ) {
+
+		// check whether DP segment is within section's range
+		for ( uint8_t j = 0; j < max7219_ptr->_setup.dots._info.size; j++ ) {
+
+			uint8_t dot_disp = max7219_ptr->_setup.dots.Get(&max7219_ptr->_setup.dots, j);
+			if ( i == dot_disp ) {
+				return (i);
+				break;
+			}
+
+		}
+
+	}
+	return (SOOL_MAX7219_DISABLE_DP);
+
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+// FIXME? is needed?
+uint8_t MAX7219_TurnOffExcessiveDigits(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, uint8_t length) {
+
+	int8_t num_excessive_digits = (disp_to - disp_from + 1) - length;
+
+	if ( num_excessive_digits > 0 ) {
+
+		for ( uint8_t i = disp_to; i >= (disp_to - num_excessive_digits); i-- ) {
+			if ( !MAX7219_SetDigit(max7219_ptr, i, ' ', 0) ) {
+
+			}
+		}
+
+		return (num_excessive_digits);
+
+	} else {
+
+		return (0);
+
+	}
+
 }
