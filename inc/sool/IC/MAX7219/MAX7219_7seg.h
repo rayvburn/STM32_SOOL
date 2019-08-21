@@ -46,12 +46,11 @@ struct _SOOL_MAX7219_Struct {
 	struct _SOOL_MAX7219_BufStruct		_buf;
 
 	// --------------------------------- //
-	uint8_t (*AddDeviceCascade)(volatile SOOL_MAX7219*);
 
-	// SetDotDisplay TODO:
-
-	// TODO:
-	uint8_t (*Print)(volatile SOOL_MAX7219*, uint32_t number);
+	uint8_t (*AddDotDisplay)(volatile SOOL_MAX7219 *max7219_ptr, uint8_t dot_disp_num);
+	uint8_t (*Print)(volatile SOOL_MAX7219 *max7219_ptr, int32_t value);
+	uint8_t (*PrintSection)(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, int32_t value);
+	uint8_t (*PrintDots)(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, uint8_t dots_num);
 
 };
 

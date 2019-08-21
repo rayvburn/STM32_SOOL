@@ -11,14 +11,16 @@
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-uint8_t MAX7219_Print(volatile SOOL_MAX7219 *max7219_ptr, int32_t value);
-uint8_t MAX7219_PrintSection(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, int32_t value);
-uint8_t MAX7219_PrintDots(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, uint8_t dots_num);
-uint8_t MAX7219_SetDigit(volatile SOOL_MAX7219 *max7219_ptr, uint8_t digit, char value, uint8_t dot);
-uint8_t MAX7219_SendData(volatile SOOL_MAX7219 *max7219_ptr);
+static uint8_t MAX7219_AddDotDisplay(volatile SOOL_MAX7219 *max7219_ptr, uint8_t dot_disp_num);
+static uint8_t MAX7219_Print(volatile SOOL_MAX7219 *max7219_ptr, int32_t value);
+static uint8_t MAX7219_PrintSection(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, int32_t value);
+static uint8_t MAX7219_PrintDots(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, uint8_t dots_num);
 
-uint8_t MAX7219_FindDotPosition(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to);
-uint8_t MAX7219_TurnOffExcessiveDigits(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, uint8_t length);
+static uint8_t MAX7219_SetDigit(volatile SOOL_MAX7219 *max7219_ptr, uint8_t digit, char value, uint8_t dot);
+static uint8_t MAX7219_SendData(volatile SOOL_MAX7219 *max7219_ptr);
+
+static uint8_t MAX7219_FindDotPosition(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to);
+static uint8_t MAX7219_TurnOffExcessiveDigits(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, uint8_t length);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -43,7 +45,11 @@ volatile SOOL_MAX7219 SOOL_IC_MAX7219_Initialize(SPI_TypeDef *SPIx, uint8_t do_r
 	}
 
 	/* Initialize SPI peripheral */
-	volatile SOOL_SPI_DMA spi = SOOL_Periph_SPI_DMA_Init(SPIx, SPI_Direction_1Line_Tx,
+	// NOTE: SPI_Direction must be set to allow 2 line operation. This provides possibility
+	// to RX's ISR be called and transfer will be marked as completed.
+	// Initially SPI_Direction was set to SPI_Direction_1Line_Tx but CS remained HIGH
+	// after successful transfer.
+	volatile SOOL_SPI_DMA spi = SOOL_Periph_SPI_DMA_Init(SPIx, SPI_Direction_2Lines_FullDuplex,
 														 SPI_DataSize_16b, SPI_CPOL_Low, SPI_CPHA_1Edge,
 														 SPI_BaudRatePrescaler_64, SPI_FirstBit_MSB);
 
@@ -54,10 +60,17 @@ volatile SOOL_MAX7219 SOOL_IC_MAX7219_Initialize(SPI_TypeDef *SPIx, uint8_t do_r
 	max7219.base_spi = spi;
 	max7219.base_device = spi_device;
 	max7219._setup.disp_num = disp_num;
+	max7219._setup.dots = SOOL_Memory_Vector_Uint16_Init();
 
 	/* Save `Buffer` structure */
 	max7219._buf.tx = SOOL_Memory_Vector_Uint16_Init(); // buf;
 	max7219._buf.rx = SOOL_Memory_Vector_Uint16_Init(); // buf;
+
+	/* Save methods pointers */
+	max7219.AddDotDisplay = MAX7219_AddDotDisplay;
+	max7219.Print = MAX7219_Print;
+	max7219.PrintDots = MAX7219_PrintDots;
+	max7219.PrintSection = MAX7219_PrintSection;
 
 	return (max7219);
 
@@ -65,7 +78,19 @@ volatile SOOL_MAX7219 SOOL_IC_MAX7219_Initialize(SPI_TypeDef *SPIx, uint8_t do_r
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-uint8_t MAX7219_Print(volatile SOOL_MAX7219 *max7219_ptr, int32_t value) {
+static uint8_t MAX7219_AddDotDisplay(volatile SOOL_MAX7219 *max7219_ptr, uint8_t dot_disp_num) {
+
+	if ( dot_disp_num <= max7219_ptr->_setup.disp_num ) {
+		max7219_ptr->_setup.dots.Add(&max7219_ptr->_setup.dots, dot_disp_num);
+		return (1);
+	}
+	return (0);
+
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static uint8_t MAX7219_Print(volatile SOOL_MAX7219 *max7219_ptr, int32_t value) {
 
 	if ( !MAX7219_PrintSection(max7219_ptr, 0, (max7219_ptr->_setup.disp_num - 1), value) ) {
 		return (0);
@@ -80,7 +105,7 @@ uint8_t MAX7219_Print(volatile SOOL_MAX7219 *max7219_ptr, int32_t value) {
 // NOTE: DISP_FROM is the index of the first digit the `value` will be printed on
 // NOTE: DISP_TO inclusive!
 // NOTE: `disp_from` and `disp_to` are digit indexes
-uint8_t MAX7219_PrintSection(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to,
+static uint8_t MAX7219_PrintSection(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to,
 		int32_t value) {
 
 	/* Allocate some memory */
@@ -169,7 +194,7 @@ uint8_t MAX7219_PrintSection(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_fr
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-uint8_t MAX7219_PrintDots(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to,
+static uint8_t MAX7219_PrintDots(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to,
 		uint8_t dots_num) {
 
 	// TODO:
@@ -183,7 +208,7 @@ uint8_t MAX7219_PrintDots(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from,
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-uint8_t MAX7219_SetDigit(volatile SOOL_MAX7219 *max7219_ptr, uint8_t digit, char value, uint8_t dot) {
+static uint8_t MAX7219_SetDigit(volatile SOOL_MAX7219 *max7219_ptr, uint8_t digit, char value, uint8_t dot) {
 
 	/* Convert value from human-readable to MAX7219-readable data */
 	// prepare register address value (see Table 2. Register Address Map)
@@ -235,7 +260,7 @@ uint8_t MAX7219_SetDigit(volatile SOOL_MAX7219 *max7219_ptr, uint8_t digit, char
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-uint8_t MAX7219_SendData(volatile SOOL_MAX7219 *max7219_ptr) {
+static uint8_t MAX7219_SendData(volatile SOOL_MAX7219 *max7219_ptr) {
 
 	// TODO: cascade mode support?
 	uint8_t status = max7219_ptr->base_spi.SendReceive(&max7219_ptr->base_spi,
@@ -250,7 +275,7 @@ uint8_t MAX7219_SendData(volatile SOOL_MAX7219 *max7219_ptr) {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // - - - private functions - - - - - - - - - - - - - - - - - - - - - - -
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-uint8_t MAX7219_FindDotPosition(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to) {
+static uint8_t MAX7219_FindDotPosition(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to) {
 
 	// iterate over a given display section
 	for ( uint8_t i = disp_from; i <= disp_to; i++ ) {
@@ -273,7 +298,7 @@ uint8_t MAX7219_FindDotPosition(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // FIXME? is needed?
-uint8_t MAX7219_TurnOffExcessiveDigits(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, uint8_t length) {
+static uint8_t MAX7219_TurnOffExcessiveDigits(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, uint8_t length) {
 
 	int8_t num_excessive_digits = (disp_to - disp_from + 1) - length;
 
