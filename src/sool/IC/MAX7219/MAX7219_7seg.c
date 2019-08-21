@@ -19,6 +19,7 @@ static uint8_t MAX7219_PrintDots(volatile SOOL_MAX7219 *max7219_ptr, uint8_t dis
 static uint8_t MAX7219_SetDigit(volatile SOOL_MAX7219 *max7219_ptr, uint8_t digit, char value, uint8_t dot);
 static uint8_t MAX7219_SendData(volatile SOOL_MAX7219 *max7219_ptr);
 
+//static uint8_t MAX7219_InitializeOperation(volatile SOOL_MAX7219 *max_7219_ptr, uint8_t digits_to_scan);
 static uint8_t MAX7219_FindDotPosition(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to);
 static uint8_t MAX7219_TurnOffExcessiveDigits(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, uint8_t length);
 
@@ -56,9 +57,11 @@ volatile SOOL_MAX7219 SOOL_IC_MAX7219_Initialize(SPI_TypeDef *SPIx, uint8_t do_r
 	/* Initialize SPI device class instance */
 	SOOL_SPI_Device spi_device = spi.AddDevice(&spi, GPIOx, GPIO_Pin);
 
-	/* Save `Setup` structure */
+	/* Save base `classes` */
 	max7219.base_spi = spi;
 	max7219.base_device = spi_device;
+
+	/* Save `Setup` structure */
 	max7219._setup.disp_num = disp_num;
 	max7219._setup.dots = SOOL_Memory_Vector_Uint16_Init();
 
@@ -72,7 +75,176 @@ volatile SOOL_MAX7219 SOOL_IC_MAX7219_Initialize(SPI_TypeDef *SPIx, uint8_t do_r
 	max7219.PrintDots = MAX7219_PrintDots;
 	max7219.PrintSection = MAX7219_PrintSection;
 
+//	/* Initialize MAX7219 settings to default */
+//	if ( !MAX7219_InitializeOperation(&max7219, disp_num) ) {
+//		// TODO: throw some exception
+//	}
+
 	return (max7219);
+
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+extern uint8_t SOOL_IC_MAX7219_ConfigureDefault(volatile SOOL_MAX7219 *max7219_ptr) {
+
+	/* Check parameter correctness */
+	if (max7219_ptr->_setup.disp_num <= 0) {
+		return (0);
+	}
+
+//	/* Helper variable */
+//	uint16_t reg = 0;
+//
+//	/* Decode mode configuration */
+//	reg  = (uint16_t)(0x09 << 8);			// Decode Mode register address
+//	reg |= (uint16_t)0;						// no decode mode (Table 4. Decode-Mode Register Examples (Address (Hex) = 0xX9))
+//	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
+//	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+//
+//	/* Intensity register configuration */
+//	reg  = (uint16_t)(0x0A << 8);			// Intensity register address
+//	reg |= (uint16_t)0x0F;					// max intensity (Table 7. Intensity Register Format (Address (Hex) = 0xXA))
+//	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
+//	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+//
+//	/* Scan limit configuration */
+//	reg  = (uint16_t)(0x0B << 8);			// Scan-Limit register address
+//	reg |= (uint16_t)(max7219_ptr->_setup.disp_num-1);	// set according to instance initializer (`constructor`) (Table 8. Scan-Limit Register Format (Address (Hex) = 0xXB))
+//	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
+//	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+//
+//	/* Display test mode configuration */
+//	reg  = (uint16_t)(0x0F << 8);			// Display-Test register address
+//	reg |= (uint16_t)0;						// normal operation (Table 10. Display-Test Register Format(Address (Hex) = 0xXF))
+//	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
+//	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+//
+//	/* Shutdown mode configuration */
+//	reg  = (uint16_t)(0x0C << 8);			// Shutdown mode register address
+//	reg |= (uint16_t)1;						// normal operation (Table 3. Shutdown Register Format (Address (Hex) = 0xXC))
+//	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
+//	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+//
+//	/* Clear all digits */
+//	for ( uint8_t i = 0; i < max7219_ptr->_setup.disp_num; i++ ) {
+//		MAX7219_SetDigit(max7219_ptr, i, ' ', DISABLE); // hard-coded symbol - it's error-proof
+//	}
+
+	// ----------------------------------------------------------
+/*
+	// Arduino-library-based V1
+	int i = 0;
+	while ( i++ < 500000 );
+
+	// The  display  drivercan  be  programmed  while  in  shutdown  mode,  andshutdown  mode  can  be  overridden  by  the  display-testfunction
+
+	// 3072 = 0x0C00 -> ShutdownRegister, power-saving mode
+	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, 3072);
+	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+
+	if ( !MAX7219_SendData(max7219_ptr) ) {
+		return (0);
+	}
+
+	// some time to get into shutdown mode
+	i = 0;
+	while ( i++ < 200000 );
+	while ( max7219_ptr->base_spi.IsBusy(&max7219_ptr->base_spi) );
+	while ( i++ < 200000 ); // wait until full reception occurs
+	max7219_ptr->_buf.tx.Remove(&max7219_ptr->_buf.tx, 0);
+	max7219_ptr->_buf.rx.Remove(&max7219_ptr->_buf.rx, 0);
+
+
+
+	// 3840 = 0x0F00 -> Display-Test, normal operation
+	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, 3840);
+	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+
+	// 2823 = 0x0B07 -> ScanLimit, 0-7 digits
+	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, 2823);
+	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+
+	// 2304 = 0x0900 -> DecodeMode, NoDecode
+	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, 2304);
+	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+
+	if ( !MAX7219_SendData(max7219_ptr) ) {
+		return (0);
+	}
+
+	// some time to get into shutdown mode
+	i = 0;
+	while ( i++ < 200000 );
+	while ( max7219_ptr->base_spi.IsBusy(&max7219_ptr->base_spi) );
+	while ( i++ < 200000 ); // wait until full reception occurs
+	max7219_ptr->_buf.tx.Remove(&max7219_ptr->_buf.tx, 0);
+	max7219_ptr->_buf.rx.Remove(&max7219_ptr->_buf.rx, 0);
+	max7219_ptr->_buf.tx.Remove(&max7219_ptr->_buf.tx, 0);
+	max7219_ptr->_buf.rx.Remove(&max7219_ptr->_buf.rx, 0);
+	max7219_ptr->_buf.tx.Remove(&max7219_ptr->_buf.tx, 0);
+	max7219_ptr->_buf.rx.Remove(&max7219_ptr->_buf.rx, 0);
+
+
+
+	// 3073 = 0x0C01 -> ShutdownRegister, NormalOperation
+	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, 3073);
+	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+*/
+
+	// ----------------------------------------------------------
+	// Arduino library based V2
+
+	int i = 0;
+	while ( i++ < 500000 );
+
+
+
+
+	// 2823 = 0x0B07 -> ScanLimit, 0-7 digits
+	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, 2823);
+	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+	if ( !MAX7219_SendData(max7219_ptr) ) {
+		return (0);
+	}
+	i = 0;
+	while ( i++ < 100000 );
+	while ( max7219_ptr->base_spi.IsBusy(&max7219_ptr->base_spi) );
+	while ( i++ < 100000 ); // wait until full reception occurs
+	max7219_ptr->_buf.tx.Remove(&max7219_ptr->_buf.tx, 0);
+	max7219_ptr->_buf.rx.Remove(&max7219_ptr->_buf.rx, 0);
+
+
+
+
+	// 2304 = 0x0900 -> DecodeMode, NoDecode
+	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, 2304);
+	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+	if ( !MAX7219_SendData(max7219_ptr) ) {
+		return (0);
+	}
+	i = 0;
+	while ( i++ < 100000 );
+	while ( max7219_ptr->base_spi.IsBusy(&max7219_ptr->base_spi) );
+	while ( i++ < 100000 ); // wait until full reception occurs
+	max7219_ptr->_buf.tx.Remove(&max7219_ptr->_buf.tx, 0);
+	max7219_ptr->_buf.rx.Remove(&max7219_ptr->_buf.rx, 0);
+
+
+
+
+	// 3073 = 0x0C01 -> ShutdownRegister, NormalOperation
+	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, 3073);
+	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+
+
+
+	/* Send prepared data to the MAX7219 */
+	if ( !MAX7219_SendData(max7219_ptr) ) {
+		return (0);
+	}
+
+	return (1);
 
 }
 
@@ -126,8 +298,13 @@ static uint8_t MAX7219_PrintSection(volatile SOOL_MAX7219 *max7219_ptr, uint8_t 
 	int8_t str_idx = strlen(arr);
 
 	/* Prepare buffers */
-	max7219_ptr->_buf.tx.Clear(&max7219_ptr->_buf.tx);
-	max7219_ptr->_buf.rx.Clear(&max7219_ptr->_buf.rx);
+	uint16_t buf_init_size = max7219_ptr->_buf.tx._info.size;
+	for ( uint16_t i = 0; i < buf_init_size; i++ ) {
+		max7219_ptr->_buf.tx.Remove(&max7219_ptr->_buf.tx, 0);
+		max7219_ptr->_buf.rx.Remove(&max7219_ptr->_buf.rx, 0);
+	}
+//	max7219_ptr->_buf.tx.Clear(&max7219_ptr->_buf.tx);
+//	max7219_ptr->_buf.rx.Clear(&max7219_ptr->_buf.rx);
 	uint8_t show_dot = 0;
 
 	/* Check whether addition of 0 in front of the DOT is necessary */
@@ -275,6 +452,13 @@ static uint8_t MAX7219_SendData(volatile SOOL_MAX7219 *max7219_ptr) {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // - - - private functions - - - - - - - - - - - - - - - - - - - - - - -
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+//static uint8_t MAX7219_InitializeOperation(volatile SOOL_MAX7219 *max7219_ptr, uint8_t digits_to_scan) {
+//
+//
+//}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 static uint8_t MAX7219_FindDotPosition(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to) {
 
 	// iterate over a given display section

@@ -56,6 +56,22 @@ struct _SOOL_MAX7219_Struct {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+/// @brief MAX7219 driver constructor.
+/// @note Remember to enable base class' (base_spi) NVICs
+/// @param SPIx: SPI instance
+/// @param do_remap: flag telling whether remapping needs to be performed
+/// @param GPIOx: GPIO port of the CS line
+/// @param GPIO_Pin: GPIO pin of the CS line
+/// @param disp_num: number of digits, scanning will be limited to this value
+/// @return new SOOL_MAX7219 instance
 extern volatile SOOL_MAX7219 SOOL_IC_MAX7219_Initialize(SPI_TypeDef *SPIx, uint8_t do_remap, GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin, uint8_t disp_num);
+
+/// @brief Configures MAX7219 driver instance to the default state.
+/// @note This MUST be called after switching on the NVICs for SPI and DMAs -
+/// otherwise the CS line will never be pulled up after successful transfer
+/// because ISR (related to RX/MISO line) will not be called.
+/// @param max7219_ptr: MAX7219 driver instance that needs to be configured
+/// @return 1 if configuration was successful
+extern uint8_t SOOL_IC_MAX7219_ConfigureDefault(volatile SOOL_MAX7219 *max7219_ptr);
 
 #endif /* INC_SOOL_IC_MAX7219_MAX7219_7SEG_H_ */
