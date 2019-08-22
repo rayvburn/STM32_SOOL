@@ -35,6 +35,16 @@ struct _SOOL_MAX7219_BufStruct {
 /* Forward declaration */
 typedef struct _SOOL_MAX7219_Struct SOOL_MAX7219;
 
+/*
+ * NOTE: MAX7219 seems not to keep up with communication when following byte-pairs
+ * are sent without any interrupt one by one (DMA buffer). There is some delay
+ * required after successful transfer.
+ * The delay can be generated via WHILE loop (blocking). Another way to do so is to wait
+ * for RX (MISO) line interrupt - a few extra SCK pulses will be generated until next
+ * 16 bits will be written into RX buffer. This is much more efficient way but
+ * requires calling buffer preparation procedure (for each transfer)
+ * after RX interrupt occurs.
+ */
 struct _SOOL_MAX7219_Struct {
 
 	// --------- base class ------------ // in fact it is rather a composition but let it be
@@ -51,6 +61,9 @@ struct _SOOL_MAX7219_Struct {
 	uint8_t (*Print)(volatile SOOL_MAX7219 *max7219_ptr, int32_t value);
 	uint8_t (*PrintSection)(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, int32_t value);
 	uint8_t (*PrintDots)(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, uint8_t dots_num);
+
+	// interrupt service routines (ISRs)
+	uint8_t (*_ReceptionCompleteIrqHandler)(volatile SOOL_MAX7219 *max7219_ptr);
 
 };
 
@@ -70,6 +83,7 @@ extern volatile SOOL_MAX7219 SOOL_IC_MAX7219_Initialize(SPI_TypeDef *SPIx, uint8
 /// @note This MUST be called after switching on the NVICs for SPI and DMAs -
 /// otherwise the CS line will never be pulled up after successful transfer
 /// because ISR (related to RX/MISO line) will not be called.
+/// @note This blocks main program for about 20 milliseconds.
 /// @param max7219_ptr: MAX7219 driver instance that needs to be configured
 /// @return 1 if configuration was successful
 extern uint8_t SOOL_IC_MAX7219_ConfigureDefault(volatile SOOL_MAX7219 *max7219_ptr);

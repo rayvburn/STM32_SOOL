@@ -8,6 +8,7 @@
 #include <sool/IC/MAX7219/MAX7219_7seg.h>
 #include <stdlib.h> // itoa()
 #include <sool/Maths/PowInt.h>
+#include <sool/Common/Delay.h>
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -15,6 +16,7 @@ static uint8_t MAX7219_AddDotDisplay(volatile SOOL_MAX7219 *max7219_ptr, uint8_t
 static uint8_t MAX7219_Print(volatile SOOL_MAX7219 *max7219_ptr, int32_t value);
 static uint8_t MAX7219_PrintSection(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, int32_t value);
 static uint8_t MAX7219_PrintDots(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, uint8_t dots_num);
+static uint8_t MAX7219_ReceptionCompleteIrqHandler(volatile SOOL_MAX7219 *max7219_ptr);
 
 static uint8_t MAX7219_SetDigit(volatile SOOL_MAX7219 *max7219_ptr, uint8_t digit, char value, uint8_t dot);
 static uint8_t MAX7219_SendData(volatile SOOL_MAX7219 *max7219_ptr);
@@ -74,11 +76,7 @@ volatile SOOL_MAX7219 SOOL_IC_MAX7219_Initialize(SPI_TypeDef *SPIx, uint8_t do_r
 	max7219.Print = MAX7219_Print;
 	max7219.PrintDots = MAX7219_PrintDots;
 	max7219.PrintSection = MAX7219_PrintSection;
-
-//	/* Initialize MAX7219 settings to default */
-//	if ( !MAX7219_InitializeOperation(&max7219, disp_num) ) {
-//		// TODO: throw some exception
-//	}
+	max7219._ReceptionCompleteIrqHandler = MAX7219_ReceptionCompleteIrqHandler;
 
 	return (max7219);
 
@@ -93,163 +91,49 @@ extern uint8_t SOOL_IC_MAX7219_ConfigureDefault(volatile SOOL_MAX7219 *max7219_p
 		return (0);
 	}
 
-//	/* Helper variable */
-//	uint16_t reg = 0;
-//
-//	/* Decode mode configuration */
-//	reg  = (uint16_t)(0x09 << 8);			// Decode Mode register address
-//	reg |= (uint16_t)0;						// no decode mode (Table 4. Decode-Mode Register Examples (Address (Hex) = 0xX9))
-//	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
-//	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
-//
-//	/* Intensity register configuration */
-//	reg  = (uint16_t)(0x0A << 8);			// Intensity register address
-//	reg |= (uint16_t)0x0F;					// max intensity (Table 7. Intensity Register Format (Address (Hex) = 0xXA))
-//	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
-//	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
-//
-//	/* Scan limit configuration */
-//	reg  = (uint16_t)(0x0B << 8);			// Scan-Limit register address
-//	reg |= (uint16_t)(max7219_ptr->_setup.disp_num-1);	// set according to instance initializer (`constructor`) (Table 8. Scan-Limit Register Format (Address (Hex) = 0xXB))
-//	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
-//	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
-//
-//	/* Display test mode configuration */
-//	reg  = (uint16_t)(0x0F << 8);			// Display-Test register address
-//	reg |= (uint16_t)0;						// normal operation (Table 10. Display-Test Register Format(Address (Hex) = 0xXF))
-//	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
-//	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
-//
-//	/* Shutdown mode configuration */
-//	reg  = (uint16_t)(0x0C << 8);			// Shutdown mode register address
-//	reg |= (uint16_t)1;						// normal operation (Table 3. Shutdown Register Format (Address (Hex) = 0xXC))
-//	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
-//	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
-//
-//	/* Clear all digits */
-//	for ( uint8_t i = 0; i < max7219_ptr->_setup.disp_num; i++ ) {
-//		MAX7219_SetDigit(max7219_ptr, i, ' ', DISABLE); // hard-coded symbol - it's error-proof
-//	}
+	/* Approximately 15 milliseconds are needed for stable operation of MAX7219 */
+	SOOL_Common_Delay(20, SystemCoreClock);
+	// This ^ may be confusing for the compiler which may interpret library's
+	// default SystemCoreClock as firm whereas MCU this class is compiled
+	// for may have a different value. This is not crucial though.
 
-	// ----------------------------------------------------------
-/*
-	// Arduino-library-based V1
-	int i = 0;
-	while ( i++ < 500000 );
+	/* Helper variable */
+	uint16_t reg = 0;
 
-	// The  display  drivercan  be  programmed  while  in  shutdown  mode,  andshutdown  mode  can  be  overridden  by  the  display-testfunction
-
-	// 3072 = 0x0C00 -> ShutdownRegister, power-saving mode
-	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, 3072);
+	/* Decode mode configuration */
+	reg  = (uint16_t)(0x09 << 8);			// Decode Mode register address
+	reg |= (uint16_t)0;						// no decode mode (Table 4. Decode-Mode Register Examples (Address (Hex) = 0xX9))
+	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
 	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
 
-	if ( !MAX7219_SendData(max7219_ptr) ) {
-		return (0);
+	/* Intensity register configuration */
+	reg  = (uint16_t)(0x0A << 8);			// Intensity register address
+	reg |= (uint16_t)0x0F;					// max intensity (Table 7. Intensity Register Format (Address (Hex) = 0xXA))
+	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
+	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+
+	/* Scan limit configuration */
+	reg  = (uint16_t)(0x0B << 8);			// Scan-Limit register address
+	reg |= (uint16_t)(max7219_ptr->_setup.disp_num-1);	// set according to instance initializer (`constructor`) (Table 8. Scan-Limit Register Format (Address (Hex) = 0xXB))
+	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
+	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+
+	/* Display test mode configuration */
+	reg  = (uint16_t)(0x0F << 8);			// Display-Test register address
+	reg |= (uint16_t)0;						// normal operation (Table 10. Display-Test Register Format(Address (Hex) = 0xXF))
+	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
+	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+
+	/* Shutdown mode configuration */
+	reg  = (uint16_t)(0x0C << 8);			// Shutdown mode register address
+	reg |= (uint16_t)1;						// normal operation (Table 3. Shutdown Register Format (Address (Hex) = 0xXC))
+	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
+	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+
+	/* Clear all digits */
+	for ( uint8_t i = 0; i < max7219_ptr->_setup.disp_num; i++ ) {
+		MAX7219_SetDigit(max7219_ptr, i, ' ', DISABLE); // hard-coded symbol - it's error-proof
 	}
-
-	// some time to get into shutdown mode
-	i = 0;
-	while ( i++ < 200000 );
-	while ( max7219_ptr->base_spi.IsBusy(&max7219_ptr->base_spi) );
-	while ( i++ < 200000 ); // wait until full reception occurs
-	max7219_ptr->_buf.tx.Remove(&max7219_ptr->_buf.tx, 0);
-	max7219_ptr->_buf.rx.Remove(&max7219_ptr->_buf.rx, 0);
-
-
-
-	// 3840 = 0x0F00 -> Display-Test, normal operation
-	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, 3840);
-	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
-
-	// 2823 = 0x0B07 -> ScanLimit, 0-7 digits
-	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, 2823);
-	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
-
-	// 2304 = 0x0900 -> DecodeMode, NoDecode
-	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, 2304);
-	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
-
-	if ( !MAX7219_SendData(max7219_ptr) ) {
-		return (0);
-	}
-
-	// some time to get into shutdown mode
-	i = 0;
-	while ( i++ < 200000 );
-	while ( max7219_ptr->base_spi.IsBusy(&max7219_ptr->base_spi) );
-	while ( i++ < 200000 ); // wait until full reception occurs
-	max7219_ptr->_buf.tx.Remove(&max7219_ptr->_buf.tx, 0);
-	max7219_ptr->_buf.rx.Remove(&max7219_ptr->_buf.rx, 0);
-	max7219_ptr->_buf.tx.Remove(&max7219_ptr->_buf.tx, 0);
-	max7219_ptr->_buf.rx.Remove(&max7219_ptr->_buf.rx, 0);
-	max7219_ptr->_buf.tx.Remove(&max7219_ptr->_buf.tx, 0);
-	max7219_ptr->_buf.rx.Remove(&max7219_ptr->_buf.rx, 0);
-
-
-
-	// 3073 = 0x0C01 -> ShutdownRegister, NormalOperation
-	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, 3073);
-	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
-*/
-
-	// ----------------------------------------------------------
-	// Arduino library based V2
-
-	/*
-	 * NOTE: MAX7219 seems not to keep up with communication when following byte-pairs
-	 * are sent without any interrupt one by one (DMA buffer). There is some delay
-	 * required after successful transfer.
-	 * The delay can be generated via WHILE loop. Another way to do so is to wait for
-	 * RX (MISO) line interrupt - a few extra SCK pulses will be generated until next
-	 * 16 bits will be written into RX buffer. This is much more efficient way but
-	 * requires calling buffer preparation procedure (for each transfer)
-	 * after RX interrupt occurs.
-	 * TODO
-	 */
-
-	int i = 0;
-	while ( i++ < 500000 );
-
-
-
-
-	// 2823 = 0x0B07 -> ScanLimit, 0-7 digits
-	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, 2823);
-	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
-	if ( !MAX7219_SendData(max7219_ptr) ) {
-		return (0);
-	}
-	i = 0;
-	while ( i++ < 100000 );
-	while ( max7219_ptr->base_spi.IsBusy(&max7219_ptr->base_spi) );
-	while ( i++ < 100000 ); // wait until full reception occurs
-	max7219_ptr->_buf.tx.Remove(&max7219_ptr->_buf.tx, 0);
-	max7219_ptr->_buf.rx.Remove(&max7219_ptr->_buf.rx, 0);
-
-
-
-
-	// 2304 = 0x0900 -> DecodeMode, NoDecode
-	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, 2304);
-	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
-//	if ( !MAX7219_SendData(max7219_ptr) ) {
-//		return (0);
-//	}
-//	i = 0;
-//	while ( i++ < 100000 );
-//	while ( max7219_ptr->base_spi.IsBusy(&max7219_ptr->base_spi) );
-//	while ( i++ < 100000 ); // wait until full reception occurs
-//	max7219_ptr->_buf.tx.Remove(&max7219_ptr->_buf.tx, 0);
-//	max7219_ptr->_buf.rx.Remove(&max7219_ptr->_buf.rx, 0);
-
-
-
-
-	// 3073 = 0x0C01 -> ShutdownRegister, NormalOperation
-	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, 3073);
-	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
-
-
 
 	/* Send prepared data to the MAX7219 */
 	if ( !MAX7219_SendData(max7219_ptr) ) {
@@ -397,6 +281,31 @@ static uint8_t MAX7219_PrintDots(volatile SOOL_MAX7219 *max7219_ptr, uint8_t dis
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+static uint8_t MAX7219_ReceptionCompleteIrqHandler(volatile SOOL_MAX7219 *max7219_ptr) {
+
+	/* Process interrupt in terms of SPI peripheral (called on TransferComplete event) */
+	if ( !max7219_ptr->base_spi._DmaRxIrqHandler(&max7219_ptr->base_spi) ) {
+		return (0);
+	}
+
+	/* It is assumed that only single dataframe (16-bits) was sent
+	 * so clear the buffers' first elements */
+	max7219_ptr->_buf.tx.Remove(&max7219_ptr->_buf.tx, 0);
+	max7219_ptr->_buf.rx.Remove(&max7219_ptr->_buf.rx, 0);
+
+	/* Start next transfer if buffer is not empty */
+	if ( max7219_ptr->_buf.tx._info.size > 0 ) {
+		MAX7219_SendData(max7219_ptr);
+	}
+
+	// check if buffer
+
+	return (1);
+
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 static uint8_t MAX7219_SetDigit(volatile SOOL_MAX7219 *max7219_ptr, uint8_t digit, char value, uint8_t dot) {
 
 	/* Convert value from human-readable to MAX7219-readable data */
@@ -456,19 +365,13 @@ static uint8_t MAX7219_SendData(volatile SOOL_MAX7219 *max7219_ptr) {
 												   	   &max7219_ptr->base_device,
 													   (uint32_t)&max7219_ptr->_buf.rx._data[0],
 													   (uint32_t)&max7219_ptr->_buf.tx._data[0],
-													   (uint32_t)max7219_ptr->_buf.tx._info.size);
+													   1);
 	return (status);
 
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 // - - - private functions - - - - - - - - - - - - - - - - - - - - - - -
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-//static uint8_t MAX7219_InitializeOperation(volatile SOOL_MAX7219 *max7219_ptr, uint8_t digits_to_scan) {
-//
-//
-//}
-
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 static uint8_t MAX7219_FindDotPosition(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to) {
