@@ -48,6 +48,7 @@ struct _SOOL_FSMStruct {
 	struct _SOOL_FSM_StateStruct	_state;
 
 	uint8_t (*SwitchToState)(SOOL_FSM *fsm, uint8_t state_id);
+	uint8_t (*SwitchToPreviousState)(SOOL_FSM *fsm);
 	void 	(*SetMinStateDuration)(SOOL_FSM *fsm, uint32_t ms);		/* useful when states are switched via push-buttons */
 	uint8_t (*GetCurrentState)(SOOL_FSM *fsm);						/* to be used in main's while(1) to choose proper handler */
 	uint32_t (*GetStateDuration)(SOOL_FSM *fsm);
