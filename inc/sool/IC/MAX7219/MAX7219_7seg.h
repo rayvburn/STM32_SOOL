@@ -100,4 +100,12 @@ extern volatile SOOL_MAX7219 SOOL_IC_MAX7219_Initialize(SPI_TypeDef *SPIx, uint8
 /// @return 1 if configuration was successful
 uint8_t SOOL_IC_MAX7219_Configure(volatile SOOL_MAX7219 *max7219_ptr, uint8_t bcd_decode, uint8_t test_mode);
 
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+/* Example can be found at:
+ * https://gitlab.com/frb-pow/002tubewaterflowmcu/commit/5e38cccb00211c88f02f15a73f9a49150a764e90
+ */
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 #endif /* INC_SOOL_IC_MAX7219_MAX7219_7SEG_H_ */
