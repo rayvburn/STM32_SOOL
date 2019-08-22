@@ -195,6 +195,18 @@ extern uint8_t SOOL_IC_MAX7219_ConfigureDefault(volatile SOOL_MAX7219 *max7219_p
 	// ----------------------------------------------------------
 	// Arduino library based V2
 
+	/*
+	 * NOTE: MAX7219 seems not to keep up with communication when following byte-pairs
+	 * are sent without any interrupt one by one (DMA buffer). There is some delay
+	 * required after successful transfer.
+	 * The delay can be generated via WHILE loop. Another way to do so is to wait for
+	 * RX (MISO) line interrupt - a few extra SCK pulses will be generated until next
+	 * 16 bits will be written into RX buffer. This is much more efficient way but
+	 * requires calling buffer preparation procedure (for each transfer)
+	 * after RX interrupt occurs.
+	 * TODO
+	 */
+
 	int i = 0;
 	while ( i++ < 500000 );
 
@@ -220,15 +232,15 @@ extern uint8_t SOOL_IC_MAX7219_ConfigureDefault(volatile SOOL_MAX7219 *max7219_p
 	// 2304 = 0x0900 -> DecodeMode, NoDecode
 	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, 2304);
 	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
-	if ( !MAX7219_SendData(max7219_ptr) ) {
-		return (0);
-	}
-	i = 0;
-	while ( i++ < 100000 );
-	while ( max7219_ptr->base_spi.IsBusy(&max7219_ptr->base_spi) );
-	while ( i++ < 100000 ); // wait until full reception occurs
-	max7219_ptr->_buf.tx.Remove(&max7219_ptr->_buf.tx, 0);
-	max7219_ptr->_buf.rx.Remove(&max7219_ptr->_buf.rx, 0);
+//	if ( !MAX7219_SendData(max7219_ptr) ) {
+//		return (0);
+//	}
+//	i = 0;
+//	while ( i++ < 100000 );
+//	while ( max7219_ptr->base_spi.IsBusy(&max7219_ptr->base_spi) );
+//	while ( i++ < 100000 ); // wait until full reception occurs
+//	max7219_ptr->_buf.tx.Remove(&max7219_ptr->_buf.tx, 0);
+//	max7219_ptr->_buf.rx.Remove(&max7219_ptr->_buf.rx, 0);
 
 
 
