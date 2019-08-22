@@ -23,6 +23,7 @@
 struct _SOOL_MAX7219_SetupStruct {
 	SOOL_Vector_Uint16	dots;	// stores IDs of displays which should have dots enabled
 	uint8_t 			disp_num;
+	uint8_t				bcd_decode;
 };
 
 struct _SOOL_MAX7219_BufStruct {
@@ -58,6 +59,14 @@ struct _SOOL_MAX7219_Struct {
 	// --------------------------------- //
 
 	uint8_t (*AddDotDisplay)(volatile SOOL_MAX7219 *max7219_ptr, uint8_t dot_disp_num);
+
+	/// @brief Turns on or off the display.
+	/// @param max7219_ptr
+	/// @param shutdown: if true (ENABLE), the display will be turned on; if false (DISABLE), the display
+	/// will be turned off (matches ST's ENABLE/DISABLE enum)
+	/// @return
+	uint8_t (*Shutdown)(volatile SOOL_MAX7219 *max7219_ptr, uint8_t shutdown);
+
 	uint8_t (*Print)(volatile SOOL_MAX7219 *max7219_ptr, int32_t value);
 	uint8_t (*PrintSection)(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, int32_t value);
 	uint8_t (*PrintDots)(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, uint8_t dots_num);
@@ -85,7 +94,16 @@ extern volatile SOOL_MAX7219 SOOL_IC_MAX7219_Initialize(SPI_TypeDef *SPIx, uint8
 /// because ISR (related to RX/MISO line) will not be called.
 /// @note This blocks main program for about 20 milliseconds.
 /// @param max7219_ptr: MAX7219 driver instance that needs to be configured
+/// @param bcd_decode: if true, MAX7219 works in `Code B` decode mode, otherwise in `No decode mode`
+/// @note Only full decode and no-decode modes are supported, yet 2 more modes are available.
+/// @param test_mode: if true, MAX7219 works in `Display-test mode`
 /// @return 1 if configuration was successful
-extern uint8_t SOOL_IC_MAX7219_ConfigureDefault(volatile SOOL_MAX7219 *max7219_ptr);
+uint8_t SOOL_IC_MAX7219_Configure(volatile SOOL_MAX7219 *max7219_ptr, uint8_t bcd_decode, uint8_t test_mode);
+//extern uint8_t SOOL_IC_MAX7219_ConfigureDefault(volatile SOOL_MAX7219 *max7219_ptr);
+
+///// @brief Configures MAX7219 in Test Mode (all segments and digits are ON).
+///// @param max7219_ptr: MAX7219 driver instance that needs to be configured
+///// @return 1 if configuration was successful
+//extern uint8_t SOOL_IC_MAX7219_TestMode(volatile SOOL_MAX7219 *max7219_ptr);
 
 #endif /* INC_SOOL_IC_MAX7219_MAX7219_7SEG_H_ */

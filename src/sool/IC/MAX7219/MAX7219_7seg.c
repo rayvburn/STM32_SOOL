@@ -13,11 +13,14 @@
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 static uint8_t MAX7219_AddDotDisplay(volatile SOOL_MAX7219 *max7219_ptr, uint8_t dot_disp_num);
+static uint8_t MAX7219_Shutdown(volatile SOOL_MAX7219 *max7219_ptr, uint8_t shutdown);
+
 static uint8_t MAX7219_Print(volatile SOOL_MAX7219 *max7219_ptr, int32_t value);
 static uint8_t MAX7219_PrintSection(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, int32_t value);
 static uint8_t MAX7219_PrintDots(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, uint8_t dots_num);
 static uint8_t MAX7219_ReceptionCompleteIrqHandler(volatile SOOL_MAX7219 *max7219_ptr);
 
+static uint8_t MAX7219_ShutdownFull(volatile SOOL_MAX7219 *max7219_ptr, uint8_t shutdown, uint8_t send);
 static uint8_t MAX7219_SetDigit(volatile SOOL_MAX7219 *max7219_ptr, uint8_t digit, char value, uint8_t dot);
 static uint8_t MAX7219_SendData(volatile SOOL_MAX7219 *max7219_ptr);
 
@@ -66,6 +69,7 @@ volatile SOOL_MAX7219 SOOL_IC_MAX7219_Initialize(SPI_TypeDef *SPIx, uint8_t do_r
 	/* Save `Setup` structure */
 	max7219._setup.disp_num = disp_num;
 	max7219._setup.dots = SOOL_Memory_Vector_Uint16_Init();
+	max7219._setup.bcd_decode = 0;
 
 	/* Save `Buffer` structure */
 	max7219._buf.tx = SOOL_Memory_Vector_Uint16_Init(); // buf;
@@ -73,6 +77,7 @@ volatile SOOL_MAX7219 SOOL_IC_MAX7219_Initialize(SPI_TypeDef *SPIx, uint8_t do_r
 
 	/* Save methods pointers */
 	max7219.AddDotDisplay = MAX7219_AddDotDisplay;
+	max7219.Shutdown = MAX7219_Shutdown;
 	max7219.Print = MAX7219_Print;
 	max7219.PrintDots = MAX7219_PrintDots;
 	max7219.PrintSection = MAX7219_PrintSection;
@@ -84,7 +89,7 @@ volatile SOOL_MAX7219 SOOL_IC_MAX7219_Initialize(SPI_TypeDef *SPIx, uint8_t do_r
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-extern uint8_t SOOL_IC_MAX7219_ConfigureDefault(volatile SOOL_MAX7219 *max7219_ptr) {
+uint8_t SOOL_IC_MAX7219_Configure(volatile SOOL_MAX7219 *max7219_ptr, uint8_t bcd_decode, uint8_t test_mode) {
 
 	/* Check parameter correctness */
 	if (max7219_ptr->_setup.disp_num <= 0) {
@@ -102,7 +107,15 @@ extern uint8_t SOOL_IC_MAX7219_ConfigureDefault(volatile SOOL_MAX7219 *max7219_p
 
 	/* Decode mode configuration */
 	reg  = (uint16_t)(0x09 << 8);			// Decode Mode register address
-	reg |= (uint16_t)0;						// no decode mode (Table 4. Decode-Mode Register Examples (Address (Hex) = 0xX9))
+	// 0x00: no decode mode  (Table 4. Decode-Mode Register Examples (Address (Hex) = 0xX9))
+	// 0xFF: BCD decode mode (Table 4. Decode-Mode Register Examples (Address (Hex) = 0xX9))
+	if (bcd_decode) {
+		max7219_ptr->_setup.bcd_decode = 1;
+		reg |= (uint16_t)0xFF;
+	} else {
+		max7219_ptr->_setup.bcd_decode = 0;
+		reg |= (uint16_t)0x00;
+	}
 	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
 	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
 
@@ -119,16 +132,25 @@ extern uint8_t SOOL_IC_MAX7219_ConfigureDefault(volatile SOOL_MAX7219 *max7219_p
 	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
 
 	/* Display test mode configuration */
+	// In  display-test mode, 8 digits are scanned.
 	reg  = (uint16_t)(0x0F << 8);			// Display-Test register address
-	reg |= (uint16_t)0;						// normal operation (Table 10. Display-Test Register Format(Address (Hex) = 0xXF))
+	// 0: normal operation  (Table 10. Display-Test Register Format(Address (Hex) = 0xXF))
+	// 1: test mode 		(Table 10. Display-Test Register Format(Address (Hex) = 0xXF))
+	(test_mode) ? (reg |= (uint16_t)1) : (reg |= (uint16_t)0);
 	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
 	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
 
 	/* Shutdown mode configuration */
-	reg  = (uint16_t)(0x0C << 8);			// Shutdown mode register address
-	reg |= (uint16_t)1;						// normal operation (Table 3. Shutdown Register Format (Address (Hex) = 0xXC))
-	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
-	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+	// The display-test register operates in two modes: normal
+	// and  display  test.
+	// Display-test  mode  turns  all  LEDs  on by overriding, but not altering,
+	// all controls and digit registers  (including  the  shutdown  register).
+	if ( !test_mode ) {
+		// FIXME: start in shutdown mode by default
+		if ( !MAX7219_ShutdownFull(max7219_ptr, ENABLE, DISABLE) ) {
+			return (0);
+		}
+	}
 
 	/* Clear all digits */
 	for ( uint8_t i = 0; i < max7219_ptr->_setup.disp_num; i++ ) {
@@ -140,9 +162,37 @@ extern uint8_t SOOL_IC_MAX7219_ConfigureDefault(volatile SOOL_MAX7219 *max7219_p
 		return (0);
 	}
 
+	// debugging
+	SOOL_Common_Delay(500, SystemCoreClock);
+
 	return (1);
 
 }
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+//uint8_t SOOL_IC_MAX7219_TestMode(volatile SOOL_MAX7219 *max7219_ptr) {
+//
+//	/* Helper variable */
+//	uint16_t reg = 0;
+//
+//	/* Approximately 15 milliseconds are needed for stable operation of MAX7219 */
+//	SOOL_Common_Delay(20, SystemCoreClock);
+//
+//	/* Display test mode configuration */
+//	reg  = (uint16_t)(0x0F << 8);			// Display-Test register address
+//	reg |= (uint16_t)1;						// display test mode (Table 10. Display-Test Register Format(Address (Hex) = 0xXF))
+//	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
+//	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+//
+//	/* Send prepared data to the MAX7219 */
+//	if ( !MAX7219_SendData(max7219_ptr) ) {
+//		return (0);
+//	}
+//
+//	return (1);
+//
+//}
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -153,6 +203,34 @@ static uint8_t MAX7219_AddDotDisplay(volatile SOOL_MAX7219 *max7219_ptr, uint8_t
 		return (1);
 	}
 	return (0);
+
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static uint8_t MAX7219_Shutdown(volatile SOOL_MAX7219 *max7219_ptr, uint8_t shutdown) {
+	return (MAX7219_ShutdownFull(max7219_ptr, shutdown, 1));
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static uint8_t MAX7219_ShutdownFull(volatile SOOL_MAX7219 *max7219_ptr, uint8_t shutdown, uint8_t send) {
+
+	uint16_t reg = 0;
+	reg  = (uint16_t)(0x0C << 8);			// Shutdown mode register address
+	// 0: shutdown mode 	(Table 3. Shutdown Register Format (Address (Hex) = 0xXC))
+	// 1: normal operation 	(Table 3. Shutdown Register Format (Address (Hex) = 0xXC))
+	(shutdown) ? (reg |= (uint16_t)1) : (reg |= (uint16_t)0);
+	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
+	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+
+	/* Send prepared data to the MAX7219 if needed */
+	if ( send ) {
+		if ( !MAX7219_SendData(max7219_ptr) ) {
+			return (0);
+		}
+	}
+	return (1);
 
 }
 
@@ -199,9 +277,6 @@ static uint8_t MAX7219_PrintSection(volatile SOOL_MAX7219 *max7219_ptr, uint8_t 
 		max7219_ptr->_buf.tx.Remove(&max7219_ptr->_buf.tx, 0);
 		max7219_ptr->_buf.rx.Remove(&max7219_ptr->_buf.rx, 0);
 	}
-//	max7219_ptr->_buf.tx.Clear(&max7219_ptr->_buf.tx);
-//	max7219_ptr->_buf.rx.Clear(&max7219_ptr->_buf.rx);
-	uint8_t show_dot = 0;
 
 	/* Check whether addition of 0 in front of the DOT is necessary */
 	// check dot position within the given section
@@ -236,6 +311,7 @@ static uint8_t MAX7219_PrintSection(volatile SOOL_MAX7219 *max7219_ptr, uint8_t 
 		}
 
 		// check whether DP segment should be enabled
+		uint8_t show_dot = 0; // reset to 0 after each iteration
 		for ( uint8_t j = 0; j < max7219_ptr->_setup.dots._info.size; j++ ) {
 
 			uint8_t dot_disp = max7219_ptr->_setup.dots.Get(&max7219_ptr->_setup.dots, j);
@@ -312,30 +388,41 @@ static uint8_t MAX7219_SetDigit(volatile SOOL_MAX7219 *max7219_ptr, uint8_t digi
 	// prepare register address value (see Table 2. Register Address Map)
 	uint8_t address = (digit + 1);
 
-	// prepare MAX7219-readable data (half word, see Table 5. Code B Font)
+	// prepare MAX7219-readable data (half word, see `Table 5. Code B Font` for BCD decode mode
+	// or `Table 6. No-Decode Mode Data Bits andCorresponding Segment Lines` for no decode mode
 	uint8_t data = 0;
-	switch ( value ) {
 
-	case('0'):
-	case('1'):
-	case('2'):
-	case('3'):
-	case('4'):
-	case('5'):
-	case('6'):
-	case('7'):
-	case('8'):
-	case('9'):
-			data = (uint8_t)(value - '0');
-			break;
-	case('-'):
-			data = MAX7219_SYMBOL_LINE;
-			break;
-	case(' '):
-			data = MAX7219_SYMBOL_BLANK;
-			break;
-	default:
-			return (0); // character not supported
+	// BCD decode mode enabled
+	if ( max7219_ptr->_setup.bcd_decode ) {
+
+		switch ( value ) {
+			case('0'):
+			case('1'):
+			case('2'):
+			case('3'):
+			case('4'):
+			case('5'):
+			case('6'):
+			case('7'):
+			case('8'):
+			case('9'):
+					data = (uint8_t)(value - '0');
+					break;
+			case('-'):
+					data = MAX7219_SYMBOL_LINE;
+					break;
+			case(' '):
+					data = MAX7219_SYMBOL_BLANK;
+					break;
+			default:
+					return (0); // character not supported
+		}
+
+	} else {
+
+		// TODO:
+		// Create MAX7219 SYMBOLS
+
 	}
 
 	/* Low level, SPI transfer related section */
