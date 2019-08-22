@@ -99,11 +99,5 @@ extern volatile SOOL_MAX7219 SOOL_IC_MAX7219_Initialize(SPI_TypeDef *SPIx, uint8
 /// @param test_mode: if true, MAX7219 works in `Display-test mode`
 /// @return 1 if configuration was successful
 uint8_t SOOL_IC_MAX7219_Configure(volatile SOOL_MAX7219 *max7219_ptr, uint8_t bcd_decode, uint8_t test_mode);
-//extern uint8_t SOOL_IC_MAX7219_ConfigureDefault(volatile SOOL_MAX7219 *max7219_ptr);
-
-///// @brief Configures MAX7219 in Test Mode (all segments and digits are ON).
-///// @param max7219_ptr: MAX7219 driver instance that needs to be configured
-///// @return 1 if configuration was successful
-//extern uint8_t SOOL_IC_MAX7219_TestMode(volatile SOOL_MAX7219 *max7219_ptr);
 
 #endif /* INC_SOOL_IC_MAX7219_MAX7219_7SEG_H_ */

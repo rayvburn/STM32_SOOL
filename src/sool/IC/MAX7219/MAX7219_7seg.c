@@ -12,21 +12,21 @@
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+// public methods
 static uint8_t MAX7219_AddDotDisplay(volatile SOOL_MAX7219 *max7219_ptr, uint8_t dot_disp_num);
 static uint8_t MAX7219_Shutdown(volatile SOOL_MAX7219 *max7219_ptr, uint8_t shutdown);
-
 static uint8_t MAX7219_Print(volatile SOOL_MAX7219 *max7219_ptr, int32_t value);
 static uint8_t MAX7219_PrintSection(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, int32_t value);
 static uint8_t MAX7219_PrintDots(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, uint8_t dots_num);
 static uint8_t MAX7219_ReceptionCompleteIrqHandler(volatile SOOL_MAX7219 *max7219_ptr);
 
+// private class functions
 static uint8_t MAX7219_ShutdownFull(volatile SOOL_MAX7219 *max7219_ptr, uint8_t shutdown, uint8_t send);
 static uint8_t MAX7219_SetDigit(volatile SOOL_MAX7219 *max7219_ptr, uint8_t digit, char value, uint8_t dot);
 static uint8_t MAX7219_SendData(volatile SOOL_MAX7219 *max7219_ptr);
 
-//static uint8_t MAX7219_InitializeOperation(volatile SOOL_MAX7219 *max_7219_ptr, uint8_t digits_to_scan);
+// helper functions
 static uint8_t MAX7219_FindDotPosition(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to);
-static uint8_t MAX7219_TurnOffExcessiveDigits(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, uint8_t length);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -146,8 +146,7 @@ uint8_t SOOL_IC_MAX7219_Configure(volatile SOOL_MAX7219 *max7219_ptr, uint8_t bc
 	// Display-test  mode  turns  all  LEDs  on by overriding, but not altering,
 	// all controls and digit registers  (including  the  shutdown  register).
 	if ( !test_mode ) {
-		// FIXME: start in shutdown mode by default
-		if ( !MAX7219_ShutdownFull(max7219_ptr, ENABLE, DISABLE) ) {
+		if ( !MAX7219_ShutdownFull(max7219_ptr, DISABLE, DISABLE) ) {
 			return (0);
 		}
 	}
@@ -168,31 +167,6 @@ uint8_t SOOL_IC_MAX7219_Configure(volatile SOOL_MAX7219 *max7219_ptr, uint8_t bc
 	return (1);
 
 }
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-//uint8_t SOOL_IC_MAX7219_TestMode(volatile SOOL_MAX7219 *max7219_ptr) {
-//
-//	/* Helper variable */
-//	uint16_t reg = 0;
-//
-//	/* Approximately 15 milliseconds are needed for stable operation of MAX7219 */
-//	SOOL_Common_Delay(20, SystemCoreClock);
-//
-//	/* Display test mode configuration */
-//	reg  = (uint16_t)(0x0F << 8);			// Display-Test register address
-//	reg |= (uint16_t)1;						// display test mode (Table 10. Display-Test Register Format(Address (Hex) = 0xXF))
-//	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
-//	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
-//
-//	/* Send prepared data to the MAX7219 */
-//	if ( !MAX7219_SendData(max7219_ptr) ) {
-//		return (0);
-//	}
-//
-//	return (1);
-//
-//}
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -287,15 +261,10 @@ static uint8_t MAX7219_PrintSection(volatile SOOL_MAX7219 *max7219_ptr, uint8_t 
 		extra_zero_pos = section_dot_pos;
 	}
 
-//	/* Turn off excessive digits */
-//	if ( MAX7219_TurnOffExcessiveDigits(max7219_ptr, disp_from, disp_to, str_idx) ) {
-//
-//	}
-
 	// iterate over a given display section
 	for ( uint8_t i = disp_from; i <= disp_to; i++ ) {
 
-		// add 0 in front of the `dot`
+		// add 0 in front of the `dot` because only floating part is given
 		if ( extra_zero_pos == i ) {
 			MAX7219_SetDigit(max7219_ptr, i, '0', 1); // this character is always valid
 			continue;
@@ -373,8 +342,6 @@ static uint8_t MAX7219_ReceptionCompleteIrqHandler(volatile SOOL_MAX7219 *max721
 	if ( max7219_ptr->_buf.tx._info.size > 0 ) {
 		MAX7219_SendData(max7219_ptr);
 	}
-
-	// check if buffer
 
 	return (1);
 
@@ -483,25 +450,3 @@ static uint8_t MAX7219_FindDotPosition(volatile SOOL_MAX7219 *max7219_ptr, uint8
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-// FIXME? is needed?
-static uint8_t MAX7219_TurnOffExcessiveDigits(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, uint8_t length) {
-
-	int8_t num_excessive_digits = (disp_to - disp_from + 1) - length;
-
-	if ( num_excessive_digits > 0 ) {
-
-		for ( uint8_t i = disp_to; i >= (disp_to - num_excessive_digits); i-- ) {
-			if ( !MAX7219_SetDigit(max7219_ptr, i, ' ', 0) ) {
-
-			}
-		}
-
-		return (num_excessive_digits);
-
-	} else {
-
-		return (0);
-
-	}
-
-}
