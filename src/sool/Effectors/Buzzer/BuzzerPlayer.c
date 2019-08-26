@@ -25,9 +25,12 @@ SOOL_Buzzer SOOL_Effector_Buzzer_Init(SOOL_PinConfig_NoInt setup) {
 	// initialize PinSwitch instance
 	buzzer.base = SOOL_Effector_PinSwitch_Init(setup);
 
+	// initialize ActionTimer instance
+	buzzer.base_tim = SOOL_Workflow_ActionTimer_Init();
+
 	// save initial setup
-	buzzer._setup.start_time = 0;
-	buzzer._setup.status = 0x00;
+	buzzer._setup.status = 0;
+	buzzer._setup.mode = SOOL_BUZZER_MODE_IDLE;
 
 	// save method pointers
 	buzzer.SetMode = SOOL_Buzzer_SetMode;
@@ -43,20 +46,18 @@ static uint8_t SOOL_Buzzer_SetMode(SOOL_Buzzer *buzz_ptr, SOOL_Buzzer_Mode mode,
 
 	buzz_ptr->_setup.mode = (uint8_t)mode;
 
-	// TODO: millis + X can overflow, implement some kind of immunity
-
 	switch (mode) {
 
 	case(SOOL_BUZZER_MODE_SINGLE):
-			buzz_ptr->_setup.start_time = millis;
+			buzz_ptr->base_tim.SetStartTime(&buzz_ptr->base_tim, millis);
 			break;
 
 	case(SOOL_BUZZER_MODE_DOUBLE):
-			buzz_ptr->_setup.start_time = millis;
+			buzz_ptr->base_tim.SetStartTime(&buzz_ptr->base_tim, millis);
 			break;
 
 	case(SOOL_BUZZER_MODE_WARNING):
-			buzz_ptr->_setup.start_time = millis;
+			buzz_ptr->base_tim.SetStartTime(&buzz_ptr->base_tim, millis);
 			break;
 
 	default:
@@ -77,19 +78,22 @@ static uint8_t SOOL_Buzzer_Play(SOOL_Buzzer *buzz_ptr, uint32_t millis) {
 	// play only when status is 1
 	if ( buzz_ptr->_setup.status == 1 ) {
 
+		buzz_ptr->base_tim.SetEndTime(&buzz_ptr->base_tim, millis);
+		uint32_t duration = buzz_ptr->base_tim.GetTimeDiff(&buzz_ptr->base_tim);
+
 		// execute correct function related to the current mode
 		switch (buzz_ptr->_setup.mode) {
 
 		case(SOOL_BUZZER_MODE_SINGLE):
-				return (SOOL_Buzzer_Single(buzz_ptr, millis));
+				return (SOOL_Buzzer_Single(buzz_ptr, duration));
 				break;
 
 		case(SOOL_BUZZER_MODE_DOUBLE):
-				return (SOOL_Buzzer_Double(buzz_ptr, millis));
+				return (SOOL_Buzzer_Double(buzz_ptr, duration));
 				break;
 
 		case(SOOL_BUZZER_MODE_WARNING):
-				return (SOOL_Buzzer_Warning(buzz_ptr, millis));
+				return (SOOL_Buzzer_Warning(buzz_ptr, duration));
 				break;
 
 		default:
@@ -104,9 +108,9 @@ static uint8_t SOOL_Buzzer_Play(SOOL_Buzzer *buzz_ptr, uint32_t millis) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t SOOL_Buzzer_Single(SOOL_Buzzer *buzz_ptr, uint32_t millis) {
+static uint8_t SOOL_Buzzer_Single(SOOL_Buzzer *buzz_ptr, uint32_t duration) {
 
-	if ( (millis - buzz_ptr->_setup.start_time) <= 1000 ) {
+	if ( duration <= 1000 ) {
 		buzz_ptr->base.SetHigh(&buzz_ptr->base);
 	} else {
 		buzz_ptr->base.SetLow(&buzz_ptr->base);
@@ -119,15 +123,15 @@ static uint8_t SOOL_Buzzer_Single(SOOL_Buzzer *buzz_ptr, uint32_t millis) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t SOOL_Buzzer_Double(SOOL_Buzzer *buzz_ptr, uint32_t millis) {
+static uint8_t SOOL_Buzzer_Double(SOOL_Buzzer *buzz_ptr, uint32_t duration) {
 
-	if ( (millis - buzz_ptr->_setup.start_time) <= 750 ) {
+	if ( duration <= 750 ) {
 		buzz_ptr->base.SetHigh(&buzz_ptr->base);
-	} else if ( (millis - buzz_ptr->_setup.start_time) <= 1500 ) {
+	} else if ( duration <= 1500 ) {
 		buzz_ptr->base.SetLow(&buzz_ptr->base);
-	} else if ( (millis - buzz_ptr->_setup.start_time) <= 2250 ) {
+	} else if ( duration <= 2250 ) {
 		buzz_ptr->base.SetHigh(&buzz_ptr->base);
-	} else { // if ( (millis - buzz_ptr->_setup.start_time) >= 3000 ) {
+	} else {
 		buzz_ptr->base.SetLow(&buzz_ptr->base);
 		buzz_ptr->_setup.status = 0;
 		return (0);
@@ -138,36 +142,36 @@ static uint8_t SOOL_Buzzer_Double(SOOL_Buzzer *buzz_ptr, uint32_t millis) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t SOOL_Buzzer_Warning(SOOL_Buzzer *buzz_ptr, uint32_t millis) {
+static uint8_t SOOL_Buzzer_Warning(SOOL_Buzzer *buzz_ptr, uint32_t duration) {
 
 	// first ticking section
-	if ( (millis - buzz_ptr->_setup.start_time) <= 100 ) {
+	if ( duration <= 100 ) {
 		buzz_ptr->base.SetHigh(&buzz_ptr->base);
-	} else if ( (millis - buzz_ptr->_setup.start_time) <= 200 ) {
+	} else if ( duration <= 200 ) {
 		buzz_ptr->base.SetLow(&buzz_ptr->base);
-	} else if ( (millis - buzz_ptr->_setup.start_time) <= 300 ) {
+	} else if ( duration <= 300 ) {
 		buzz_ptr->base.SetHigh(&buzz_ptr->base);
-	} else if ( (millis - buzz_ptr->_setup.start_time) <= 400 ) {
+	} else if ( duration <= 400 ) {
 		buzz_ptr->base.SetLow(&buzz_ptr->base);
-	} else if ( (millis - buzz_ptr->_setup.start_time) <= 500 ) {
+	} else if ( duration <= 500 ) {
 		buzz_ptr->base.SetHigh(&buzz_ptr->base);
-	} else if ( (millis - buzz_ptr->_setup.start_time) <= 1500 ) {
+	} else if ( duration <= 1500 ) {
 		buzz_ptr->base.SetLow(&buzz_ptr->base);
 
 	// second ticking section
-	} else if ( (millis - buzz_ptr->_setup.start_time) <= 1600 ) {
+	} else if ( duration <= 1600 ) {
 		buzz_ptr->base.SetHigh(&buzz_ptr->base);
-	} else if ( (millis - buzz_ptr->_setup.start_time) <= 1700 ) {
+	} else if ( duration <= 1700 ) {
 		buzz_ptr->base.SetLow(&buzz_ptr->base);
-	} else if ( (millis - buzz_ptr->_setup.start_time) <= 1800 ) {
+	} else if ( duration <= 1800 ) {
 		buzz_ptr->base.SetHigh(&buzz_ptr->base);
-	} else if ( (millis - buzz_ptr->_setup.start_time) <= 1900 ) {
+	} else if ( duration <= 1900 ) {
 		buzz_ptr->base.SetLow(&buzz_ptr->base);
-	} else if ( (millis - buzz_ptr->_setup.start_time) <= 2000 ) {
+	} else if ( duration <= 2000 ) {
 		buzz_ptr->base.SetHigh(&buzz_ptr->base);
 
 	// finish
-	} else { // if ( (millis - buzz_ptr->_setup.start_time) >= 2100 ) {
+	} else {
 		buzz_ptr->base.SetLow(&buzz_ptr->base);
 		buzz_ptr->_setup.status = 0;
 		return (0);
