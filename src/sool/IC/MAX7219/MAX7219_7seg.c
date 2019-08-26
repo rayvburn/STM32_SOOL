@@ -14,13 +14,16 @@
 
 // public methods
 static uint8_t MAX7219_AddDotDisplay(volatile SOOL_MAX7219 *max7219_ptr, uint8_t dot_disp_num);
+static void    MAX7219_ShowDots(volatile SOOL_MAX7219 *max7219_ptr, uint8_t state);
 static uint8_t MAX7219_Shutdown(volatile SOOL_MAX7219 *max7219_ptr, uint8_t shutdown);
 static uint8_t MAX7219_Print(volatile SOOL_MAX7219 *max7219_ptr, int32_t value);
+static uint8_t MAX7219_PrintString(volatile SOOL_MAX7219 *max7219_ptr, char* str, uint8_t to_free);
 static uint8_t MAX7219_PrintSection(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, int32_t value);
-static uint8_t MAX7219_PrintDots(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, uint8_t dots_num);
+static uint8_t MAX7219_PrintSectionString(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, char* string, uint8_t to_free);
 static uint8_t MAX7219_ReceptionCompleteIrqHandler(volatile SOOL_MAX7219 *max7219_ptr);
 
 // private class functions
+static uint8_t MAX7219_PrintSectionStringFull(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, char* str, uint8_t extra_zero_pos, uint8_t to_free);
 static uint8_t MAX7219_ShutdownFull(volatile SOOL_MAX7219 *max7219_ptr, uint8_t shutdown, uint8_t send);
 static uint8_t MAX7219_SetDigit(volatile SOOL_MAX7219 *max7219_ptr, uint8_t digit, char value, uint8_t dot);
 static uint8_t MAX7219_SendData(volatile SOOL_MAX7219 *max7219_ptr);
@@ -79,8 +82,10 @@ volatile SOOL_MAX7219 SOOL_IC_MAX7219_Initialize(SPI_TypeDef *SPIx, uint8_t do_r
 	max7219.AddDotDisplay = MAX7219_AddDotDisplay;
 	max7219.Shutdown = MAX7219_Shutdown;
 	max7219.Print = MAX7219_Print;
-	max7219.PrintDots = MAX7219_PrintDots;
 	max7219.PrintSection = MAX7219_PrintSection;
+	max7219.PrintString = MAX7219_PrintString;
+	max7219.PrintSectionString = MAX7219_PrintSectionString;
+	max7219.ShowDots = MAX7219_ShowDots;
 	max7219._ReceptionCompleteIrqHandler = MAX7219_ReceptionCompleteIrqHandler;
 
 	return (max7219);
@@ -161,9 +166,6 @@ uint8_t SOOL_IC_MAX7219_Configure(volatile SOOL_MAX7219 *max7219_ptr, uint8_t bc
 		return (0);
 	}
 
-	// debugging
-	SOOL_Common_Delay(500, SystemCoreClock);
-
 	return (1);
 
 }
@@ -178,6 +180,12 @@ static uint8_t MAX7219_AddDotDisplay(volatile SOOL_MAX7219 *max7219_ptr, uint8_t
 	}
 	return (0);
 
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static void MAX7219_ShowDots(volatile SOOL_MAX7219 *max7219_ptr, uint8_t state) {
+	max7219_ptr->_setup.show_dots = (uint8_t)state;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -211,17 +219,18 @@ static uint8_t MAX7219_ShutdownFull(volatile SOOL_MAX7219 *max7219_ptr, uint8_t 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 static uint8_t MAX7219_Print(volatile SOOL_MAX7219 *max7219_ptr, int32_t value) {
-
-	if ( !MAX7219_PrintSection(max7219_ptr, 0, (max7219_ptr->_setup.disp_num - 1), value) ) {
-		return (0);
-	}
-	return (1);
-
+	return (MAX7219_PrintSection(max7219_ptr, 0, (max7219_ptr->_setup.disp_num - 1), value));
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-// TODO: DISP_FROM must be smaller than DISP_TO, like DISP_FROM indicates the units whereas DISP_TO shows hundreds for example
+static uint8_t MAX7219_PrintString(volatile SOOL_MAX7219 *max7219_ptr, char* str, uint8_t to_free) {
+	return (MAX7219_PrintSectionString(max7219_ptr, 0, (max7219_ptr->_setup.disp_num - 1), str, to_free));
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+// NOTE: DISP_FROM must be smaller than DISP_TO, like DISP_FROM indicates the units whereas DISP_TO shows hundreds for example
 // NOTE: DISP_FROM is the index of the first digit the `value` will be printed on
 // NOTE: DISP_TO inclusive!
 // NOTE: `disp_from` and `disp_to` are digit indexes
@@ -229,98 +238,38 @@ static uint8_t MAX7219_PrintSection(volatile SOOL_MAX7219 *max7219_ptr, uint8_t 
 		int32_t value) {
 
 	/* Allocate some memory */
-	char *arr = malloc( (disp_to - disp_from + 1) * sizeof(char));
+	char *str = malloc( (disp_to - disp_from + 1) * sizeof(char));
 
 	// check if allocation was successful
-	if ( arr == NULL ) {
+	if ( str == NULL ) {
 		return (0);
 	}
 
 	/* Convert value to a character array */
-	itoa(value, arr, 10);
-
-	/* Unsupported character flag */
-	uint8_t fail_flag = 0;
-
-	/* Helper variable to start from the string's end */
-	int8_t str_idx = strlen(arr);
-
-	/* Prepare buffers */
-	uint16_t buf_init_size = max7219_ptr->_buf.tx._info.size;
-	for ( uint16_t i = 0; i < buf_init_size; i++ ) {
-		max7219_ptr->_buf.tx.Remove(&max7219_ptr->_buf.tx, 0);
-		max7219_ptr->_buf.rx.Remove(&max7219_ptr->_buf.rx, 0);
-	}
+	itoa(value, str, 10);
 
 	/* Check whether addition of 0 in front of the DOT is necessary */
 	// check dot position within the given section
 	uint8_t section_dot_pos = MAX7219_FindDotPosition(max7219_ptr, disp_from, disp_to);
+	// correct dot position according to the section's beginning
+	section_dot_pos -= disp_from;
 	uint8_t extra_zero_pos = SOOL_MAX7219_DISABLE_DP;
 	if ( SOOL_Maths_PowInt(10, section_dot_pos) > value ) {
 		// add 0 in front
 		extra_zero_pos = section_dot_pos;
 	}
 
-	// iterate over a given display section
-	for ( uint8_t i = disp_from; i <= disp_to; i++ ) {
-
-		// add 0 in front of the `dot` because only floating part is given
-		if ( extra_zero_pos == i ) {
-			MAX7219_SetDigit(max7219_ptr, i, '0', 1); // this character is always valid
-			continue;
-		}
-
-		// decrement index of the character to-be-send
-		if ( --str_idx < 0 ) {
-			// skip the `for` loop when it is known in advance that
-			// there are some excessive digits that need to be hidden;
-			// `space` character turns off a digit
-			MAX7219_SetDigit(max7219_ptr, i, ' ', 0);
-			continue;
-		}
-
-		// check whether DP segment should be enabled
-		uint8_t show_dot = 0; // reset to 0 after each iteration
-		for ( uint8_t j = 0; j < max7219_ptr->_setup.dots._info.size; j++ ) {
-
-			uint8_t dot_disp = max7219_ptr->_setup.dots.Get(&max7219_ptr->_setup.dots, j);
-			if ( i == dot_disp ) {
-				show_dot = 1;
-				break; // stop the inner `for` loop
-			}
-
-		}
-
-		// update buffer content
-		if ( !MAX7219_SetDigit(max7219_ptr, i, arr[str_idx], show_dot) ) {
-			fail_flag = 1;
-			break;
-		}
-
-	}
-
-	/* Deallocate */
-	free(arr);
-
-	if ( !fail_flag ) {
-		// FIXME: check whether SendData is called rarely enough for SPI to keep up with each transfer
-		return (MAX7219_SendData(max7219_ptr));
-	}
-	return (0);
+	return (MAX7219_PrintSectionStringFull(max7219_ptr, disp_from, disp_to, str, extra_zero_pos, ENABLE));
 
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t MAX7219_PrintDots(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to,
-		uint8_t dots_num) {
+// `to_free` must be true (1/ENABLE) if the string was created via malloc() etc.
+static uint8_t MAX7219_PrintSectionString(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to,
+		char* string, uint8_t to_free) {
 
-	// TODO:
-//	// iterate over a given display section
-//	for ( uint8_t i = disp_from; i <= disp_to; i++ ) {
-//		MAX7219_SetDigit(max7219_ptr, i, ' ', 1)
-//	}
-	return (0);
+	return (MAX7219_PrintSectionStringFull(max7219_ptr, disp_from, disp_to, string, SOOL_MAX7219_DISABLE_DP, to_free));
 
 }
 
@@ -421,6 +370,77 @@ static uint8_t MAX7219_SendData(volatile SOOL_MAX7219 *max7219_ptr) {
 													   (uint32_t)&max7219_ptr->_buf.tx._data[0],
 													   1);
 	return (status);
+
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static uint8_t MAX7219_PrintSectionStringFull(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from,
+		uint8_t disp_to, char* str, uint8_t extra_zero_pos, uint8_t to_free) {
+
+	/* Unsupported character flag */
+	uint8_t fail_flag = 0;
+
+	/* Helper variable to start from the string's end */
+	int8_t str_idx = strlen(str);
+
+	/* Prepare buffers */
+	uint16_t buf_init_size = max7219_ptr->_buf.tx._info.size;
+	for ( uint16_t i = 0; i < buf_init_size; i++ ) {
+		max7219_ptr->_buf.tx.Remove(&max7219_ptr->_buf.tx, 0);
+		max7219_ptr->_buf.rx.Remove(&max7219_ptr->_buf.rx, 0);
+	}
+
+	// iterate over a given display section
+	for ( uint8_t i = disp_from; i <= disp_to; i++ ) {
+
+		// add 0 in front of the `dot` because only floating part is given
+		if ( extra_zero_pos == i ) {
+			MAX7219_SetDigit(max7219_ptr, i, '0', 1); // this character is always valid
+			continue;
+		}
+
+		// decrement index of the character to-be-send
+		if ( --str_idx < 0 ) {
+			// skip the `for` loop when it is known in advance that
+			// there are some excessive digits that need to be hidden;
+			// `space` character turns off a digit
+			MAX7219_SetDigit(max7219_ptr, i, ' ', 0);
+			continue;
+		}
+
+		// check whether DP segment should be enabled
+		uint8_t show_dot = 0; // reset to 0 after each iteration
+		// if dots are desired to be shown, execute the `for` loop
+		if ( max7219_ptr->_setup.show_dots ) {
+			for ( uint8_t j = 0; j < max7219_ptr->_setup.dots._info.size; j++ ) {
+
+				uint8_t dot_disp = max7219_ptr->_setup.dots.Get(&max7219_ptr->_setup.dots, j);
+				if ( i == dot_disp ) {
+					show_dot = 1;
+					break; // stop the inner `for` loop
+				}
+
+			}
+		}
+
+		// update buffer content
+		if ( !MAX7219_SetDigit(max7219_ptr, i, str[str_idx], show_dot) ) {
+			fail_flag = 1;
+			break;
+		}
+
+	}
+
+	/* Deallocate */
+	if ( to_free ) {
+		free(str);
+	}
+
+	if ( !fail_flag ) {
+		return (MAX7219_SendData(max7219_ptr));
+	}
+	return (0);
 
 }
 

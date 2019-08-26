@@ -22,6 +22,7 @@
 
 struct _SOOL_MAX7219_SetupStruct {
 	SOOL_Vector_Uint16	dots;	// stores IDs of displays which should have dots enabled
+	uint8_t				show_dots;
 	uint8_t 			disp_num;
 	uint8_t				bcd_decode;
 };
@@ -60,6 +61,13 @@ struct _SOOL_MAX7219_Struct {
 
 	uint8_t (*AddDotDisplay)(volatile SOOL_MAX7219 *max7219_ptr, uint8_t dot_disp_num);
 
+	/// @brief Updates MAX7219 driver's internal state. Does not send any data to the device.
+	/// Must be called before some Print() function - it does affect only the following
+	/// commands.
+	/// @param max7219_ptr
+	/// @param state
+	void (*ShowDots)(volatile SOOL_MAX7219 *max7219_ptr, uint8_t state);
+
 	/// @brief Turns on or off the display.
 	/// @param max7219_ptr
 	/// @param shutdown: if true (ENABLE), the display will be turned on; if false (DISABLE), the display
@@ -67,9 +75,36 @@ struct _SOOL_MAX7219_Struct {
 	/// @return
 	uint8_t (*Shutdown)(volatile SOOL_MAX7219 *max7219_ptr, uint8_t shutdown);
 
+	/// @brief Prints a given number on the display.
+	/// @param max7219_ptr
+	/// @param value
+	/// @return 1 if operation successful
 	uint8_t (*Print)(volatile SOOL_MAX7219 *max7219_ptr, int32_t value);
+
+	/// @brief Prints a given array of characters on the display (if character is supported).
+	/// @param max7219_ptr
+	/// @param str: array of characters to print
+	/// @param to_free: whether to free the allocated memory, set this 0
+	/// if `const char*` is used (i.e. when text in `''` is used)
+	/// @return 1 if operation successful (i.e. all characters are supported)
+	uint8_t (*PrintString)(volatile SOOL_MAX7219 *max7219_ptr, char* str, uint8_t to_free);
+
+	/// @brief Same as @ref Print() but uses only selected consecutive displays.
+	/// @param max7219_ptr
+	/// @param disp_from
+	/// @param disp_to
+	/// @param value
+	/// @return
 	uint8_t (*PrintSection)(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, int32_t value);
-	uint8_t (*PrintDots)(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, uint8_t dots_num);
+
+	/// @brief Same as @ref PrintString() but uses only selected consecutive displays.
+	/// @param max7219_ptr
+	/// @param disp_from
+	/// @param disp_to
+	/// @param string
+	/// @param to_free
+	/// @return
+	uint8_t (*PrintSectionString)(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, char* string, uint8_t to_free);
 
 	// interrupt service routines (ISRs)
 	uint8_t (*_ReceptionCompleteIrqHandler)(volatile SOOL_MAX7219 *max7219_ptr);
@@ -104,6 +139,37 @@ uint8_t SOOL_IC_MAX7219_Configure(volatile SOOL_MAX7219 *max7219_ptr, uint8_t bc
 
 /* Example can be found at:
  * https://gitlab.com/frb-pow/002tubewaterflowmcu/commit/5e38cccb00211c88f02f15a73f9a49150a764e90
+ */
+
+/* Test code (without configuration procedure, see above for that):
+ *
+   	// MAX7219 Test
+	while ( max7219.base_spi.IsBusy(&max7219.base_spi) );
+	max7219.Print(&max7219, 124);
+
+	SOOL_Common_Delay(2000, SystemCoreClock);
+	max7219.Print(&max7219, 29);
+	SOOL_Common_Delay(2000, SystemCoreClock);
+	max7219.Print(&max7219, 3);
+	SOOL_Common_Delay(2000, SystemCoreClock);
+	max7219.PrintSection(&max7219, 0, 2, 111);
+	max7219.PrintSection(&max7219, 3, 5, 444);
+	SOOL_Common_Delay(2000, SystemCoreClock);
+	max7219.PrintSection(&max7219, 3, 5, 111);
+	max7219.PrintSection(&max7219, 0, 2, 444);
+	SOOL_Common_Delay(2000, SystemCoreClock);
+	max7219.PrintSectionString(&max7219, 3, 5, "---", 0);
+	max7219.PrintSectionString(&max7219, 0, 2, "---", 0);
+	SOOL_Common_Delay(2000, SystemCoreClock);
+	max7219.ShowDots(&max7219, DISABLE);
+	max7219.PrintSectionString(&max7219, 3, 5, "---", 0);
+	max7219.PrintSectionString(&max7219, 0, 2, "---", 0);
+	SOOL_Common_Delay(2000, SystemCoreClock);
+	max7219.ShowDots(&max7219, ENABLE);
+	max7219.PrintSectionString(&max7219, 3, 5, "---", 0);
+	max7219.PrintSectionString(&max7219, 0, 2, "---", 0);
+	SOOL_Common_Delay(2000, SystemCoreClock);
+	max7219.Shutdown(&max7219, DISABLE);
  */
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
