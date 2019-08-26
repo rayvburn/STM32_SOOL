@@ -28,6 +28,7 @@ struct _SOOL_Vector_Uint16Struct {
 	uint8_t  (*Remove)(SOOL_Vector_Uint16 *v_ptr, uint16_t idx);
 	void 	 (*Clear)(SOOL_Vector_Uint16 *v_ptr);
 	void	 (*Free)(SOOL_Vector_Uint16 *v_ptr);
+	uint8_t  (*Find)(SOOL_Vector_Uint16 *v_ptr, uint16_t *index_ptr, uint16_t value); // returns 1 if found, index_ptr is points to the first element which is equal to the given value
 
 };
 

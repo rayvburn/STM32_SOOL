@@ -15,6 +15,7 @@ static uint8_t SOOL_Vector_Set(SOOL_Vector_Uint16 *v_ptr, uint16_t idx, uint16_t
 static uint8_t SOOL_Vector_Remove(SOOL_Vector_Uint16 *v_ptr, uint16_t idx);
 static void SOOL_Vector_Clear(SOOL_Vector_Uint16 *v_ptr);
 static void	SOOL_Vector_Free(SOOL_Vector_Uint16 *v_ptr);
+static uint8_t SOOL_Vector_Find(SOOL_Vector_Uint16 *v_ptr, uint16_t *index_ptr, uint16_t value);
 
 // helper
 static uint8_t SOOL_Vector_Resize(SOOL_Vector_Uint16 *v_ptr, unsigned int new_size);
@@ -36,6 +37,7 @@ SOOL_Vector_Uint16 SOOL_Memory_Vector_Uint16_Init() {
 	v.Get = SOOL_Vector_Get;
 	v.Remove = SOOL_Vector_Remove;
 	v.Set = SOOL_Vector_Set;
+	v.Find = SOOL_Vector_Find;
 
 	return (v);
 
@@ -117,6 +119,18 @@ static void SOOL_Vector_Clear(SOOL_Vector_Uint16 *v_ptr) {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 static void	SOOL_Vector_Free(SOOL_Vector_Uint16 *v_ptr) {
 	free(v_ptr->_data);
+}
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+static uint8_t SOOL_Vector_Find(SOOL_Vector_Uint16 *v_ptr, uint16_t *index_ptr, uint16_t value) {
+
+	for ( uint16_t i = 0; i < (v_ptr->_info.size); i++ ) {
+		if ( v_ptr->_data[i] == value ) {
+			*index_ptr = i;
+			return (1);
+		}
+	}
+	return (0);
+
 }
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 static uint8_t SOOL_Vector_Resize(SOOL_Vector_Uint16 *v_ptr, unsigned int new_size) {
