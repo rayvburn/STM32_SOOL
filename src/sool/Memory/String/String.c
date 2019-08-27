@@ -13,6 +13,7 @@
 /* Char array */
 static void SOOL_String_Add(SOOL_String *string_ptr, char c);
 static void SOOL_String_Append(SOOL_String *string_ptr, const char *str);
+static void SOOL_String_Terminate(SOOL_String *string_ptr);
 static void SOOL_String_SetString(SOOL_String *string_ptr, const char *str);
 //static char* SOOL_String_GetString(SOOL_String *string_ptr); 	 // dynamic allocation (memory needs to be freed after finished processing)
 static const char* SOOL_String_GetString(SOOL_String *string_ptr); // return pointer to `data` field
@@ -32,6 +33,7 @@ SOOL_String SOOL_Memory_String_Init(const size_t capacity) {
 
 	string.Add = SOOL_String_Add;
 	string.Append = SOOL_String_Append;
+	string.Terminate = SOOL_String_Terminate;
 	string.Clear = SOOL_String_Clear;
 	string.GetString = SOOL_String_GetString;
 	string.SetString = SOOL_String_SetString;
@@ -71,6 +73,20 @@ static void SOOL_String_Append(SOOL_String *string_ptr, const char *str) {
 		/* We're safe to add another character to the buffer */
 		SOOL_String_Add(string_ptr, *str++); // pointer increment
 	}
+
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static void SOOL_String_Terminate(SOOL_String *string_ptr) {
+
+	/* Check whether the string should be resized due to too small buffer */
+	if ( string_ptr->_info.capacity <= string_ptr->_info.total ) { 		// `<=` instead of `==` and `if` instead of `while` here just in case, SOOL_Array_Char acts as a circular buffer when using public functions only (not modifying its contents
+		SOOL_String_Resize(string_ptr, string_ptr->_info.capacity + 1);
+	}
+
+	/* We're safe to add another character to the buffer */
+	SOOL_String_Add(string_ptr, '\0');
 
 }
 

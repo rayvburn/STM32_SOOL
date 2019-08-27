@@ -24,6 +24,7 @@ struct _SOOL_StringStruct {
 
 	void 	(*Add)(SOOL_String *string_ptr, char c);			// acts like a circular buffer
 	void	(*Append)(SOOL_String *string_ptr, const char *str); // keeps adding a given string to the end of Array_Char but RESIZES the buffer as it becomes too small to store a given string
+	void 	(*Terminate)(SOOL_String *string_ptr);
 	void 	(*SetString)(SOOL_String *string_ptr, const char *str); // if str is longer than Array_Char capacity then values from the start of the array will be overwritten
 	const char* 	(*GetString)(SOOL_String *string_ptr);
 	void 	(*Clear)(SOOL_String *string_ptr);
