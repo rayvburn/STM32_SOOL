@@ -112,8 +112,10 @@ static uint8_t SOOL_Buzzer_Single(SOOL_Buzzer *buzz_ptr, uint32_t duration) {
 
 	if ( duration <= 1000 ) {
 		buzz_ptr->base.SetHigh(&buzz_ptr->base);
-	} else {
+	} else if ( duration <= 2000 ) { // delay before possible next repetition
 		buzz_ptr->base.SetLow(&buzz_ptr->base);
+	} else {
+		buzz_ptr->base.SetLow(&buzz_ptr->base); // just in case
 		buzz_ptr->_setup.status = 0;
 		return (0);
 	}
@@ -131,8 +133,10 @@ static uint8_t SOOL_Buzzer_Double(SOOL_Buzzer *buzz_ptr, uint32_t duration) {
 		buzz_ptr->base.SetLow(&buzz_ptr->base);
 	} else if ( duration <= 2250 ) {
 		buzz_ptr->base.SetHigh(&buzz_ptr->base);
-	} else {
+	} else if ( duration <= 3000 ) { // delay before possible next repetition
 		buzz_ptr->base.SetLow(&buzz_ptr->base);
+	} else {
+		buzz_ptr->base.SetLow(&buzz_ptr->base); // just in case
 		buzz_ptr->_setup.status = 0;
 		return (0);
 	}
@@ -171,8 +175,10 @@ static uint8_t SOOL_Buzzer_Warning(SOOL_Buzzer *buzz_ptr, uint32_t duration) {
 		buzz_ptr->base.SetHigh(&buzz_ptr->base);
 
 	// finish
-	} else {
+	} else if ( duration <= 2100 ) { // delay before possible next repetition
 		buzz_ptr->base.SetLow(&buzz_ptr->base);
+	} else {
+		buzz_ptr->base.SetLow(&buzz_ptr->base); // just in case
 		buzz_ptr->_setup.status = 0;
 		return (0);
 	}

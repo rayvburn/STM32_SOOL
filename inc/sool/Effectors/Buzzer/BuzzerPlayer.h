@@ -50,7 +50,7 @@ struct _SOOL_Buzzer_Struct {
 	/// @brief Play should follow the `SetMode` call.
 	/// @param buzz_ptr
 	/// @param millis
-	/// @return
+	/// @return 1 if currently playing or 0 if finished
 	uint8_t (*Play)(SOOL_Buzzer *buzz_ptr, uint32_t millis);
 
 };
