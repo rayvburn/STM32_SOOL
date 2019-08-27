@@ -253,10 +253,15 @@ static uint8_t MAX7219_PrintSection(volatile SOOL_MAX7219 *max7219_ptr, uint8_t 
 	uint8_t section_dot_pos = MAX7219_FindDotPosition(max7219_ptr, disp_from, disp_to);
 	// correct dot position according to the section's beginning
 	section_dot_pos -= disp_from;
+
+	// add extra zero if only floating point part defined
 	uint8_t extra_zero_pos = SOOL_MAX7219_DISABLE_DP;
-	if ( SOOL_Maths_PowInt(10, section_dot_pos) > value ) {
-		// add 0 in front
-		extra_zero_pos = section_dot_pos;
+	// abandon operation when dots should not be shown
+	if ( max7219_ptr->_setup.show_dots ) {
+		if ( SOOL_Maths_PowInt(10, section_dot_pos) > value ) {
+			// add 0 in front
+			extra_zero_pos = section_dot_pos;
+		}
 	}
 
 	return (MAX7219_PrintSectionStringFull(max7219_ptr, disp_from, disp_to, str, extra_zero_pos, ENABLE));
