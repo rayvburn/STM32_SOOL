@@ -39,7 +39,18 @@ struct _SOOL_Buzzer_Struct {
 
 	struct _SOOL_Buzzer_SetupStruct _setup;
 
+	/// @brief Sets the buzzer `melody`. Start time stamp is set which is further utilized
+	/// by `Play` method.
+	/// @param buzz_ptr
+	/// @param mode
+	/// @param millis
+	/// @return
 	uint8_t (*SetMode)(SOOL_Buzzer *buzz_ptr, SOOL_Buzzer_Mode mode, uint32_t millis);
+
+	/// @brief Play should follow the `SetMode` call.
+	/// @param buzz_ptr
+	/// @param millis
+	/// @return
 	uint8_t (*Play)(SOOL_Buzzer *buzz_ptr, uint32_t millis);
 
 };
