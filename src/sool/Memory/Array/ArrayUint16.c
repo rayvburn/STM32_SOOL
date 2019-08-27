@@ -37,7 +37,9 @@ static void Array_Uint16_Add(SOOL_Array_Uint16 *arr_ptr, uint16_t val) {
 	if ( arr_ptr->_info.add_index == arr_ptr->_info.capacity ) {
 		arr_ptr->_info.add_index = 0;
 	} else {
-		arr_ptr->_info.total++;
+		if (++arr_ptr->_info.total > arr_ptr->_info.capacity ) {
+			arr_ptr->_info.total = arr_ptr->_info.capacity;
+		}
 	}
 	arr_ptr->_data[arr_ptr->_info.add_index] = val;
 	arr_ptr->_info.add_index++;

@@ -51,7 +51,9 @@ static void SOOL_String_Add(SOOL_String *string_ptr, char c) {
 	if ( string_ptr->_info.add_index == string_ptr->_info.capacity ) {
 		string_ptr->_info.add_index = 0;
 	} else {
-		string_ptr->_info.total++;
+		if (++string_ptr->_info.total > string_ptr->_info.capacity ) {
+			string_ptr->_info.total = string_ptr->_info.capacity;
+		}
 	}
 	string_ptr->_data[string_ptr->_info.add_index] = c;
 	string_ptr->_info.add_index++;
