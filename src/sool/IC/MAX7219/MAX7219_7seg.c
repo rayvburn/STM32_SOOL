@@ -24,13 +24,14 @@ static uint8_t MAX7219_ReceptionCompleteIrqHandler(volatile SOOL_MAX7219 *max721
 
 // private class functions
 static uint8_t MAX7219_PrintSectionStringFull(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, char* str, uint8_t extra_zero_pos, uint8_t to_free);
-static uint8_t MAX7219_ShutdownFull(volatile SOOL_MAX7219 *max7219_ptr, uint8_t shutdown, uint8_t send);
+//static uint8_t MAX7219_ShutdownFull(volatile SOOL_MAX7219 *max7219_ptr, uint8_t shutdown, uint8_t send);
 static uint8_t MAX7219_SetDigit(volatile SOOL_MAX7219 *max7219_ptr, uint8_t digit, char value, uint8_t dot);
 static uint8_t MAX7219_SendData(volatile SOOL_MAX7219 *max7219_ptr);
 
 // helper functions
 static uint8_t MAX7219_FindDotPosition(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to);
-
+static uint8_t MAX7219_ExtendBuffers(volatile SOOL_MAX7219 *max7219_ptr, uint16_t tx_value);
+static void    MAX7219_EraseBuffers(volatile SOOL_MAX7219 *max7219_ptr);
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 // NOTE: only SPI1 remap supported in STM32F103C8T6
@@ -86,6 +87,7 @@ volatile SOOL_MAX7219 SOOL_IC_MAX7219_Initialize(SPI_TypeDef *SPIx, uint8_t do_r
 	max7219.PrintString = MAX7219_PrintString;
 	max7219.PrintSectionString = MAX7219_PrintSectionString;
 	max7219.ShowDots = MAX7219_ShowDots;
+	max7219.Send = MAX7219_SendData;
 	max7219._ReceptionCompleteIrqHandler = MAX7219_ReceptionCompleteIrqHandler;
 
 	return (max7219);
@@ -121,20 +123,29 @@ uint8_t SOOL_IC_MAX7219_Configure(volatile SOOL_MAX7219 *max7219_ptr, uint8_t bc
 		max7219_ptr->_setup.bcd_decode = 0;
 		reg |= (uint16_t)0x00;
 	}
-	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
-	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+//	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
+//	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+	if ( !MAX7219_ExtendBuffers(max7219_ptr, reg) ) {
+		return (0);
+	}
 
 	/* Intensity register configuration */
 	reg  = (uint16_t)(0x0A << 8);			// Intensity register address
 	reg |= (uint16_t)0x0F;					// max intensity (Table 7. Intensity Register Format (Address (Hex) = 0xXA))
-	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
-	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+//	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
+//	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+	if ( !MAX7219_ExtendBuffers(max7219_ptr, reg) ) {
+		return (0);
+	}
 
 	/* Scan limit configuration */
 	reg  = (uint16_t)(0x0B << 8);			// Scan-Limit register address
 	reg |= (uint16_t)(max7219_ptr->_setup.disp_num-1);	// set according to instance initializer (`constructor`) (Table 8. Scan-Limit Register Format (Address (Hex) = 0xXB))
-	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
-	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+//	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
+//	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+	if ( !MAX7219_ExtendBuffers(max7219_ptr, reg) ) {
+		return (0);
+	}
 
 	/* Display test mode configuration */
 	// In  display-test mode, 8 digits are scanned.
@@ -142,8 +153,11 @@ uint8_t SOOL_IC_MAX7219_Configure(volatile SOOL_MAX7219 *max7219_ptr, uint8_t bc
 	// 0: normal operation  (Table 10. Display-Test Register Format(Address (Hex) = 0xXF))
 	// 1: test mode 		(Table 10. Display-Test Register Format(Address (Hex) = 0xXF))
 	(test_mode) ? (reg |= (uint16_t)1) : (reg |= (uint16_t)0);
-	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
-	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+//	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
+//	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+	if ( !MAX7219_ExtendBuffers(max7219_ptr, reg) ) {
+		return (0);
+	}
 
 	/* Shutdown mode configuration */
 	// The display-test register operates in two modes: normal
@@ -151,7 +165,8 @@ uint8_t SOOL_IC_MAX7219_Configure(volatile SOOL_MAX7219 *max7219_ptr, uint8_t bc
 	// Display-test  mode  turns  all  LEDs  on by overriding, but not altering,
 	// all controls and digit registers  (including  the  shutdown  register).
 	if ( !test_mode ) {
-		if ( !MAX7219_ShutdownFull(max7219_ptr, DISABLE, DISABLE) ) {
+//		if ( !MAX7219_ShutdownFull(max7219_ptr, DISABLE, DISABLE) ) {
+		if ( !MAX7219_Shutdown(max7219_ptr, DISABLE) ) {
 			return (0);
 		}
 	}
@@ -191,30 +206,31 @@ static void MAX7219_ShowDots(volatile SOOL_MAX7219 *max7219_ptr, uint8_t state) 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 static uint8_t MAX7219_Shutdown(volatile SOOL_MAX7219 *max7219_ptr, uint8_t shutdown) {
-	return (MAX7219_ShutdownFull(max7219_ptr, shutdown, 1));
-}
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-static uint8_t MAX7219_ShutdownFull(volatile SOOL_MAX7219 *max7219_ptr, uint8_t shutdown, uint8_t send) {
 
 	uint16_t reg = 0;
 	reg  = (uint16_t)(0x0C << 8);			// Shutdown mode register address
 	// 0: shutdown mode 	(Table 3. Shutdown Register Format (Address (Hex) = 0xXC))
 	// 1: normal operation 	(Table 3. Shutdown Register Format (Address (Hex) = 0xXC))
 	(shutdown) ? (reg |= (uint16_t)1) : (reg |= (uint16_t)0);
-	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
-	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
-
-	/* Send prepared data to the MAX7219 if needed */
-	if ( send ) {
-		if ( !MAX7219_SendData(max7219_ptr) ) {
-			return (0);
-		}
+//	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
+//	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+	if ( !MAX7219_ExtendBuffers(max7219_ptr, reg) ) {
+		return (0);
 	}
-	return (1);
 
+//	/* Send prepared data to the MAX7219 if needed */
+//	if ( send ) {
+//		if ( !MAX7219_SendData(max7219_ptr) ) {
+//			return (0);
+//		}
+//	}
+	return (1);
 }
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+//static uint8_t MAX7219_ShutdownFull(volatile SOOL_MAX7219 *max7219_ptr, uint8_t shutdown, uint8_t send) {
+//}
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -238,7 +254,7 @@ static uint8_t MAX7219_PrintSection(volatile SOOL_MAX7219 *max7219_ptr, uint8_t 
 		int32_t value) {
 
 	/* Allocate some memory */
-	char *str = malloc( (disp_to - disp_from + 1) * sizeof(char));
+	char *str = (char*)(malloc( (disp_to - disp_from + 1) * sizeof(char)));
 
 	// check if allocation was successful
 	if ( str == NULL ) {
@@ -251,14 +267,21 @@ static uint8_t MAX7219_PrintSection(volatile SOOL_MAX7219 *max7219_ptr, uint8_t 
 	/* Check whether addition of 0 in front of the DOT is necessary */
 	// check dot position within the given section
 	uint8_t section_dot_pos = MAX7219_FindDotPosition(max7219_ptr, disp_from, disp_to);
-	// correct dot position according to the section's beginning
-	section_dot_pos -= disp_from;
+	// TODO
+//	section_dot_pos -= disp_from;
 
 	// add extra zero if only floating point part defined
 	uint8_t extra_zero_pos = SOOL_MAX7219_DISABLE_DP;
 	// abandon operation when dots should not be shown
 	if ( max7219_ptr->_setup.show_dots ) {
-		if ( SOOL_Maths_PowInt(10, section_dot_pos) > value ) {
+
+		if ( disp_from == 3 ) {
+			int aaaa = 0;
+			aaaa++;
+		}
+
+		// correct dot position according to the section's beginning
+		if ( SOOL_Maths_PowInt(10, section_dot_pos - disp_from) > value ) {
 			// add 0 in front
 			extra_zero_pos = section_dot_pos;
 		}
@@ -295,6 +318,14 @@ static uint8_t MAX7219_ReceptionCompleteIrqHandler(volatile SOOL_MAX7219 *max721
 	/* Start next transfer if buffer is not empty */
 	if ( max7219_ptr->_buf.tx._info.size > 0 ) {
 		MAX7219_SendData(max7219_ptr);
+	} else if ( max7219_ptr->_buf.tx._info.size == 0 ) {
+		// seems that RX buffer is not erased completely;
+		// when TX buffer is empty, the RX's one still has
+		// one element;
+		// this is just a workaround, where is the problem?
+		while (max7219_ptr->_buf.rx._info.size != 0) {
+			max7219_ptr->_buf.rx.Remove(&max7219_ptr->_buf.rx, 0);
+		}
 	}
 
 	return (1);
@@ -355,11 +386,15 @@ static uint8_t MAX7219_SetDigit(volatile SOOL_MAX7219 *max7219_ptr, uint8_t digi
 	reg  = (uint16_t)(address << 8);
 	reg |= (uint16_t)data;
 
-	// add value to the TX buffer
-	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
+//	// add value to the TX buffer
+//	max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, reg);
+//
+//	// add any value to the RX buffer so it has the same size as TX buffer
+//	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
 
-	// add any value to the RX buffer so it has the same size as TX buffer
-	max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0);
+	if ( !MAX7219_ExtendBuffers(max7219_ptr, reg) ) {
+		return (0);
+	}
 
 	return (1);
 }
@@ -367,6 +402,14 @@ static uint8_t MAX7219_SetDigit(volatile SOOL_MAX7219 *max7219_ptr, uint8_t digi
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 static uint8_t MAX7219_SendData(volatile SOOL_MAX7219 *max7219_ptr) {
+
+	// debugging
+	if ( max7219_ptr->_buf.tx._info.size != max7219_ptr->_buf.rx._info.size ) {
+		size_t tx_size = max7219_ptr->_buf.tx._info.size;
+		size_t rx_size = max7219_ptr->_buf.rx._info.size;
+		int err = 0;
+		err++;
+	}
 
 	// TODO: cascade mode support?
 	uint8_t status = max7219_ptr->base_spi.SendReceive(&max7219_ptr->base_spi,
@@ -389,12 +432,8 @@ static uint8_t MAX7219_PrintSectionStringFull(volatile SOOL_MAX7219 *max7219_ptr
 	/* Helper variable to start from the string's end */
 	int8_t str_idx = strlen(str);
 
-	/* Prepare buffers */
-	uint16_t buf_init_size = max7219_ptr->_buf.tx._info.size;
-	for ( uint16_t i = 0; i < buf_init_size; i++ ) {
-		max7219_ptr->_buf.tx.Remove(&max7219_ptr->_buf.tx, 0);
-		max7219_ptr->_buf.rx.Remove(&max7219_ptr->_buf.rx, 0);
-	}
+	/* Delete all buffers' elements */
+//	MAX7219_EraseBuffers(max7219_ptr);
 
 	// iterate over a given display section
 	for ( uint8_t i = disp_from; i <= disp_to; i++ ) {
@@ -443,7 +482,8 @@ static uint8_t MAX7219_PrintSectionStringFull(volatile SOOL_MAX7219 *max7219_ptr
 	}
 
 	if ( !fail_flag ) {
-		return (MAX7219_SendData(max7219_ptr));
+//		return (MAX7219_SendData(max7219_ptr));
+		return (1);
 	}
 	return (0);
 
@@ -475,3 +515,35 @@ static uint8_t MAX7219_FindDotPosition(volatile SOOL_MAX7219 *max7219_ptr, uint8
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static uint8_t MAX7219_ExtendBuffers(volatile SOOL_MAX7219 *max7219_ptr, uint16_t tx_value) {
+
+	// FIXME: wait until DMA transfer finishes, modification of buffers during
+	// DMA operation will produce memory-related errors later on
+	while (max7219_ptr->base_spi.IsBusy(&max7219_ptr->base_spi));
+
+	// add value to the TX buffer
+	if ( !max7219_ptr->_buf.tx.Add(&max7219_ptr->_buf.tx, tx_value) ) {
+		return (0);
+	}
+
+	// add any value to the RX buffer so it has the same size as TX buffer
+	if ( !max7219_ptr->_buf.rx.Add(&max7219_ptr->_buf.rx, 0) ) {
+		// remove the just added TX value
+		max7219_ptr->_buf.tx.Remove(&max7219_ptr->_buf.tx, max7219_ptr->_buf.tx._info.size - 1);
+		return (0);
+	}
+	return (1);
+
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static void MAX7219_EraseBuffers(volatile SOOL_MAX7219 *max7219_ptr) {
+	/* Prepare buffers */
+	uint16_t buf_init_size = max7219_ptr->_buf.tx._info.size;
+	for ( uint16_t i = 0; i < buf_init_size; i++ ) {
+		max7219_ptr->_buf.tx.Remove(&max7219_ptr->_buf.tx, 0);
+		max7219_ptr->_buf.rx.Remove(&max7219_ptr->_buf.rx, 0);
+	}
+}

@@ -69,6 +69,7 @@ struct _SOOL_MAX7219_Struct {
 	void (*ShowDots)(volatile SOOL_MAX7219 *max7219_ptr, uint8_t state);
 
 	/// @brief Turns on or off the display.
+	/// @note This function only prepares the TX buffer, does not send anything actually.
 	/// @param max7219_ptr
 	/// @param shutdown: if true (ENABLE), the display will be turned on; if false (DISABLE), the display
 	/// will be turned off (matches ST's ENABLE/DISABLE enum)
@@ -76,12 +77,16 @@ struct _SOOL_MAX7219_Struct {
 	uint8_t (*Shutdown)(volatile SOOL_MAX7219 *max7219_ptr, uint8_t shutdown);
 
 	/// @brief Prints a given number on the display.
+	/// @note This function only prepares the TX buffer, does not send anything actually.
+	/// @note May block the program until the previous transfer finishes.
 	/// @param max7219_ptr
 	/// @param value
 	/// @return 1 if operation successful
 	uint8_t (*Print)(volatile SOOL_MAX7219 *max7219_ptr, int32_t value);
 
 	/// @brief Prints a given array of characters on the display (if character is supported).
+	/// @note This function only prepares the TX buffer, does not send anything actually.
+	/// @note May block the program until the previous transfer finishes.
 	/// @param max7219_ptr
 	/// @param str: array of characters to print
 	/// @param to_free: whether to free the allocated memory, set this 0
@@ -90,6 +95,8 @@ struct _SOOL_MAX7219_Struct {
 	uint8_t (*PrintString)(volatile SOOL_MAX7219 *max7219_ptr, char* str, uint8_t to_free);
 
 	/// @brief Same as @ref Print() but uses only selected consecutive displays.
+	/// @note This function only prepares the TX buffer, does not send anything actually.
+	/// @note May block the program until the previous transfer finishes.
 	/// @param max7219_ptr
 	/// @param disp_from
 	/// @param disp_to
@@ -98,6 +105,8 @@ struct _SOOL_MAX7219_Struct {
 	uint8_t (*PrintSection)(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, int32_t value);
 
 	/// @brief Same as @ref PrintString() but uses only selected consecutive displays.
+	/// @note This function only prepares the TX buffer, does not send anything actually.
+	/// @note May block the program until the previous transfer finishes.
 	/// @param max7219_ptr
 	/// @param disp_from
 	/// @param disp_to
@@ -105,6 +114,11 @@ struct _SOOL_MAX7219_Struct {
 	/// @param to_free
 	/// @return
 	uint8_t (*PrintSectionString)(volatile SOOL_MAX7219 *max7219_ptr, uint8_t disp_from, uint8_t disp_to, char* string, uint8_t to_free);
+
+	/// @brief Sends previously filled buffer via SPI peripheral. Uses DMA.
+	/// @param max7219_ptr
+	/// @return
+	uint8_t (*Send)(volatile SOOL_MAX7219 *max7219_ptr);
 
 	// interrupt service routines (ISRs)
 	uint8_t (*_ReceptionCompleteIrqHandler)(volatile SOOL_MAX7219 *max7219_ptr);
@@ -114,7 +128,8 @@ struct _SOOL_MAX7219_Struct {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 /// @brief MAX7219 driver constructor.
-/// @note Remember to enable base class' (base_spi) NVICs
+/// @note Remember to enable base class' (base_spi) NVICs.
+/// @note It's better to not change buffers (call Print() etc.) while data are being transmitted.
 /// @param SPIx: SPI instance
 /// @param do_remap: flag telling whether remapping needs to be performed
 /// @param GPIOx: GPIO port of the CS line
@@ -128,6 +143,7 @@ extern volatile SOOL_MAX7219 SOOL_IC_MAX7219_Initialize(SPI_TypeDef *SPIx, uint8
 /// otherwise the CS line will never be pulled up after successful transfer
 /// because ISR (related to RX/MISO line) will not be called.
 /// @note This blocks main program for about 20 milliseconds.
+/// @note This function actually sends data to the IC via SPI peripheral.
 /// @param max7219_ptr: MAX7219 driver instance that needs to be configured
 /// @param bcd_decode: if true, MAX7219 works in `Code B` decode mode, otherwise in `No decode mode`
 /// @note Only full decode and no-decode modes are supported, yet 2 more modes are available.
