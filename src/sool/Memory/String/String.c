@@ -180,6 +180,9 @@ static uint8_t SOOL_String_Resize(SOOL_String *string_ptr, const size_t new_capa
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 static void SOOL_String_Free(SOOL_String *string_ptr) {
+	string_ptr->_info.add_index = 0;
+	string_ptr->_info.capacity = 0;
+	string_ptr->_info.total = 0;
 	free(string_ptr->_data);
 	string_ptr->_data = NULL;
 }
