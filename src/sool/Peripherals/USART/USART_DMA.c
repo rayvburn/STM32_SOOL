@@ -649,12 +649,11 @@ static uint8_t USART_DMA_SendFull(volatile SOOL_USART_DMA *usart, const char *to
 			return (0); 	// no luck
 
 		} else if ( USART_DMA_IsTxLineBusy(usart) &&
-
-#ifndef USART_DMA_TX_SINGLE_ELEMENT_QUEUE
+					#ifndef USART_DMA_TX_SINGLE_ELEMENT_QUEUE
 					!usart->_tx.queue.IsFull(&usart->_tx.queue)
-#else
+					#else
 					USART_DMA_IsTxQueueEmpty(usart)
-#endif
+					#endif
 		) {
 
 			/* Check whether currently transmitting data from buffer and queue is empty/FULL */
@@ -677,7 +676,7 @@ static uint8_t USART_DMA_SendFull(volatile SOOL_USART_DMA *usart, const char *to
 
 		} else if ( !USART_DMA_IsTxLineBusy(usart) && !USART_DMA_IsTxQueueEmpty(usart) ) {
 
-			/* TX line is not busy but the queue is not empty (queue must have been feed
+			/* TX line is not busy but the queue is not empty (queue must have been fed
 			 * with data just after last transfer completion) */
 			USART_DMA_SendFromQueue(usart);
 			return (0);		// data from the queue will be sent at first
@@ -699,7 +698,8 @@ static uint8_t USART_DMA_SendFull(volatile SOOL_USART_DMA *usart, const char *to
 	uint32_t length = (uint32_t)strlen(to_send_buf);
 
 	/* Decide whether reallocation is a must */
-	if ( length > usart->_tx.buffer._info.capacity ) {
+	// shrink the buffer if smaller is needed, extend if bigger
+	if ( length != usart->_tx.buffer._info.capacity ) {
 
 		/* `Resize` method discards USART's volatile qualifier - not crucial here */
 		if ( !usart->_tx.buffer.Resize(&usart->_tx.buffer, (size_t)length) ) {
@@ -812,13 +812,29 @@ static uint8_t USART_DMA_SendFromQueue(volatile SOOL_USART_DMA *usart) {
 
 	/* Start transmitting the oldest element in the queue */
 	usart->_state.tx_queue_transfer = 1;
-	SOOL_String front_elem = usart->_tx.queue.GetFront(&usart->_tx.queue);
 
+#ifndef SOOL_QUEUE_STRING_GET_FRONT_PTR
+	SOOL_String front_elem = usart->_tx.queue.GetFront(&usart->_tx.queue);
+#else
+	SOOL_String *front_elem_ptr = usart->_tx.queue.GetFront(&usart->_tx.queue);
+#endif
+
+#ifndef SOOL_QUEUE_STRING_GET_FRONT_PTR
 	/* Pop from the queue */
 	usart->_tx.queue.Pop(&usart->_tx.queue);
+#endif
 
 	/* Run DMA sending function */
+#ifndef SOOL_QUEUE_STRING_GET_FRONT_PTR
 	uint8_t status = USART_DMA_SendFull(usart, front_elem.GetString(&front_elem), 1);
+#else
+	uint8_t status = USART_DMA_SendFull(usart, front_elem_ptr->GetString(front_elem_ptr), 1);
+#endif
+
+#ifdef SOOL_QUEUE_STRING_GET_FRONT_PTR
+	/* Pop from the queue */
+	usart->_tx.queue.Pop(&usart->_tx.queue);
+#endif
 
 	return (status);
 
