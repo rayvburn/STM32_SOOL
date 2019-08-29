@@ -9,7 +9,7 @@
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static void SOOL_Vector_Add(SOOL_Vector_Uint16 *v_ptr, uint16_t c);
+static uint8_t SOOL_Vector_Add(SOOL_Vector_Uint16 *v_ptr, uint16_t c);
 static uint16_t SOOL_Vector_Get(SOOL_Vector_Uint16 *v_ptr, uint16_t idx);
 static uint8_t SOOL_Vector_Set(SOOL_Vector_Uint16 *v_ptr, uint16_t idx, uint16_t value);
 static uint8_t SOOL_Vector_Remove(SOOL_Vector_Uint16 *v_ptr, uint16_t idx);
@@ -29,6 +29,7 @@ SOOL_Vector_Uint16 SOOL_Memory_Vector_Uint16_Init() {
 
 	/* Initial size, no memory allocation here */
 	v._info.size = 0;
+	v._data = NULL;
 
 	/* Assign function pointers */
 	v.Add = SOOL_Vector_Add;
@@ -45,23 +46,28 @@ SOOL_Vector_Uint16 SOOL_Memory_Vector_Uint16_Init() {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static void SOOL_Vector_Add(SOOL_Vector_Uint16 *v_ptr, uint16_t val) {
+static uint8_t SOOL_Vector_Add(SOOL_Vector_Uint16 *v_ptr, uint16_t val) {
 
 	if ( v_ptr->_info.size == 0 ) {
 
 		/* Allocate memory */
 		v_ptr->_data = (uint16_t *)calloc( (size_t)1, sizeof(uint16_t) );
+		if ( v_ptr->_data == NULL ) {
+			return (0);
+		}
 		v_ptr->_info.size = 1;
 
 	} else {
 
 		/* Resize buffer */
-		SOOL_Vector_Resize(v_ptr, v_ptr->_info.size + 1);
+		if ( !SOOL_Vector_Resize(v_ptr, v_ptr->_info.size + 1) ) {
+			return (0);
+		}
 
 	}
 
 	/* We're safe to add value to the buffer */
-	SOOL_Vector_Set(v_ptr, v_ptr->_info.size - 1, val);
+	return (SOOL_Vector_Set(v_ptr, v_ptr->_info.size - 1, val));
 
 }
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -118,7 +124,9 @@ static void SOOL_Vector_Clear(SOOL_Vector_Uint16 *v_ptr) {
 }
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 static void	SOOL_Vector_Free(SOOL_Vector_Uint16 *v_ptr) {
+	v_ptr->_info.size = 0;
 	free(v_ptr->_data);
+	v_ptr->_data = NULL;
 }
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 static uint8_t SOOL_Vector_Find(SOOL_Vector_Uint16 *v_ptr, uint16_t *index_ptr, uint16_t value) {
@@ -139,8 +147,20 @@ static uint8_t SOOL_Vector_Resize(SOOL_Vector_Uint16 *v_ptr, unsigned int new_si
 	uint16_t old_size = v_ptr->_info.size;
 	uint16_t *ptr_backup = v_ptr->_data;
 
-	/* Try to reallocate memory */
-	v_ptr->_data = realloc( (uint16_t*)v_ptr->_data, new_size * sizeof(uint16_t) );
+	/* Check the new desired size of the vector */
+	if ( new_size != 0 ) {
+		// try to reallocate memory
+		v_ptr->_data = realloc( (uint16_t*)v_ptr->_data, new_size * sizeof(uint16_t) );
+	} else {
+		// free the allocated memory block - this is the key for stable operation -
+		// it seems that C library included with StdPeriph has `realloc` implemented
+		// differently compared to ANSI C standard (where `realloc` with 0 size frees
+		// memory block)
+		free(v_ptr->_data);
+		v_ptr->_data = NULL;
+		v_ptr->_info.size = 0;
+		return (1);
+	}
 
 	/* Check if the reallocation was successful */
 	if ( v_ptr->_data != NULL ) {
@@ -155,6 +175,14 @@ static uint8_t SOOL_Vector_Resize(SOOL_Vector_Uint16 *v_ptr, unsigned int new_si
 		/* Update capacity */
 		v_ptr->_info.size = new_size;
 
+		return (1);
+
+	} else if ( new_size == 0 ) {
+
+		// NULL ptr can occur when `new_size` is 0,
+		// pointer restoration mustn't be done then!
+		// NOTE: this should not happen, the case is handled
+		// by calling free explicitly
 		return (1);
 
 	}

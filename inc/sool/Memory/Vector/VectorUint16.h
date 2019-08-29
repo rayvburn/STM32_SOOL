@@ -22,7 +22,7 @@ struct _SOOL_Vector_Uint16Struct {
 	struct _SOOL_Vector_Info 	_info;
 	uint16_t					*_data;
 
-	void 	 (*Add)(SOOL_Vector_Uint16 *v_ptr, uint16_t val);
+	uint8_t	 (*Add)(SOOL_Vector_Uint16 *v_ptr, uint16_t val);
 	uint16_t (*Get)(SOOL_Vector_Uint16 *v_ptr, uint16_t idx);
 	uint8_t  (*Set)(SOOL_Vector_Uint16 *v_ptr, uint16_t idx, uint16_t value);
 	uint8_t  (*Remove)(SOOL_Vector_Uint16 *v_ptr, uint16_t idx);
