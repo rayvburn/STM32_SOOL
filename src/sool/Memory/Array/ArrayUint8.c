@@ -61,7 +61,11 @@ static void Array_Uint8_Clear(SOOL_Array_Uint8 *arr_ptr) {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 static void Array_Uint8_Free(SOOL_Array_Uint8 *arr_ptr) {
+	arr_ptr->_info.add_index = 0;
+	arr_ptr->_info.capacity = 0;
+	arr_ptr->_info.total = 0;
 	free(arr_ptr->_data);
+	arr_ptr->_data = NULL;
 }
 
 
