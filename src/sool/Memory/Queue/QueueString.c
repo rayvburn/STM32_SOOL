@@ -13,7 +13,13 @@ static uint8_t SOOL_QueueString_IsFull(const SOOL_Queue_String *q_ptr);
 static void SOOL_QueueString_Pop(SOOL_Queue_String *q_ptr);
 static uint8_t SOOL_QueueString_PushString(SOOL_Queue_String *q_ptr, SOOL_String str);
 static uint8_t SOOL_QueueString_Push(SOOL_Queue_String *q_ptr, const char *str);
+
+#ifndef SOOL_QUEUE_STRING_GET_FRONT_PTR
 static SOOL_String SOOL_QueueString_GetFront(const SOOL_Queue_String *q_ptr);
+#else
+static SOOL_String* SOOL_QueueString_GetFront(const SOOL_Queue_String *q_ptr);
+#endif
+
 //static SOOL_String SOOL_QueueString_GetBack(const SOOL_Queue_String *q_ptr);
 //static uint8_t SOOL_QueueString_GetSize(const SOOL_Queue_String *q_ptr);
 
@@ -123,6 +129,7 @@ static uint8_t SOOL_QueueString_PushString(SOOL_Queue_String *q_ptr, SOOL_String
 
 	// TODO check NULL termination?
 	q_ptr->_data[new_elem_pos].Append(&q_ptr->_data[new_elem_pos], str._data);
+	q_ptr->_data[new_elem_pos].Terminate(&q_ptr->_data[new_elem_pos]);
 
 	return (1);
 
@@ -153,9 +160,15 @@ static uint8_t SOOL_QueueString_Push(SOOL_Queue_String *q_ptr, const char *str) 
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+#ifndef SOOL_QUEUE_STRING_GET_FRONT_PTR
 static SOOL_String SOOL_QueueString_GetFront(const SOOL_Queue_String *q_ptr) {
 	return (*(q_ptr->_data));
 }
+#else
+static SOOL_String* SOOL_QueueString_GetFront(const SOOL_Queue_String *q_ptr) {
+	return (q_ptr->_data);
+}
+#endif
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 

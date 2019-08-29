@@ -14,6 +14,10 @@
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+#define SOOL_QUEUE_STRING_GET_FRONT_PTR
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 //struct _SOOL_QueueStringStateStruct {
 //	uint8_t front_idx;
 //	uint8_t back_idx;
@@ -42,7 +46,13 @@ struct _SOOL_QueueStringStruct {
 	void 		(*Pop)(SOOL_Queue_String*);
 	uint8_t 	(*PushString)(SOOL_Queue_String*, SOOL_String); // exceptionally as structure, do not inflate it over different types
 	uint8_t 	(*Push)(SOOL_Queue_String*, const char*);
+
+#ifndef SOOL_QUEUE_STRING_GET_FRONT_PTR
 	SOOL_String (*GetFront)(const SOOL_Queue_String*);
+#else
+	SOOL_String* (*GetFront)(const SOOL_Queue_String*);
+#endif
+
 //	SOOL_String (*GetBack)(const SOOL_Queue_String*);
 //	uint8_t 	(*GetSize)(const SOOL_Queue_String*);
 
