@@ -7,10 +7,11 @@
 
 #include "sool/Effectors/BTS7960/BTS7960.h"
 
-static uint8_t SOOL_BTS7960_SetDirection(volatile SOOL_BTS7960* driver_ptr, SOOL_BTS7960_Direction dir);
-static uint8_t SOOL_BTS7960_SetSpeed(volatile SOOL_BTS7960* driver_ptr, SOOL_BTS7960_Direction dir, uint16_t speed);
+static uint8_t	SOOL_BTS7960_Stop(volatile SOOL_BTS7960* driver_ptr);
+static uint8_t 	SOOL_BTS7960_SetDirection(volatile SOOL_BTS7960* driver_ptr, SOOL_BTS7960_Direction dir);
+static uint8_t 	SOOL_BTS7960_SetSpeed(volatile SOOL_BTS7960* driver_ptr, SOOL_BTS7960_Direction dir, uint16_t speed);
 static uint16_t SOOL_BTS7960_GetSpeed(volatile SOOL_BTS7960* driver_ptr, SOOL_BTS7960_Direction dir);
-static uint8_t SOOL_BTS7960_GetOvercurrentStatus(volatile SOOL_BTS7960* driver_ptr, SOOL_BTS7960_Direction dir);
+static uint8_t 	SOOL_BTS7960_GetOvercurrentStatus(volatile SOOL_BTS7960* driver_ptr, SOOL_BTS7960_Direction dir);
 
 // --------------------------------------------------------------------------------------------------
 
@@ -20,7 +21,8 @@ volatile SOOL_BTS7960 SOOL_Effector_BTS7960_Init(volatile SOOL_TimerBasic timer_
 												 SOOL_PinSwitch en_fwd,
 												 SOOL_PinSwitch en_rev,
 												 volatile SOOL_Button fault_fwd,
-												 volatile SOOL_Button fault_rev) {
+												 volatile SOOL_Button fault_rev)
+{
 
 	/* New instance */
 	volatile SOOL_BTS7960 driver;
@@ -35,6 +37,7 @@ volatile SOOL_BTS7960 SOOL_Effector_BTS7960_Init(volatile SOOL_TimerBasic timer_
 	driver.base_fault_rev = fault_rev;
 
 	/* Assign private functions to members */
+	driver.Stop = SOOL_BTS7960_Stop;
 	driver.SetDirection = SOOL_BTS7960_SetDirection;
 	driver.SetSpeed = SOOL_BTS7960_SetSpeed;
 	driver.GetSpeed = SOOL_BTS7960_GetSpeed;
@@ -42,6 +45,14 @@ volatile SOOL_BTS7960 SOOL_Effector_BTS7960_Init(volatile SOOL_TimerBasic timer_
 
 	return (driver);
 
+}
+
+// --------------------------------------------------------------------------------------------------
+
+static uint8_t SOOL_BTS7960_Stop(volatile SOOL_BTS7960* driver_ptr) {
+	driver_ptr->base_en_fwd.SetLow(&driver_ptr->base_en_fwd);
+	driver_ptr->base_en_rev.SetLow(&driver_ptr->base_en_rev);
+	return (1);
 }
 
 // --------------------------------------------------------------------------------------------------
@@ -74,15 +85,20 @@ static uint8_t SOOL_BTS7960_SetDirection(volatile SOOL_BTS7960* driver_ptr, SOOL
 
 static uint8_t SOOL_BTS7960_SetSpeed(volatile SOOL_BTS7960* driver_ptr, SOOL_BTS7960_Direction dir, uint16_t speed) {
 
+	// speed value range
+	if ( !(speed >= 0 && speed < 0xFFFF) ) {
+		return (0);
+	}
+
 	switch (dir) {
 
 	case (BTS7960_FORWARD):
-		driver_ptr->base_pwm_fwd.SetPulse(&driver_ptr->base_pwm_fwd);
+		driver_ptr->base_pwm_fwd.SetPulse(&driver_ptr->base_pwm_fwd, speed);
 		return (1);
 		break;
 
 	case(BTS7960_REVERSE):
-		driver_ptr->base_pwm_rev.SetPulse(&driver_ptr->base_pwm_rev);
+		driver_ptr->base_pwm_rev.SetPulse(&driver_ptr->base_pwm_rev, speed);
 		return (1);
 		break;
 
