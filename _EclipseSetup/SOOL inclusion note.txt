@@ -67,6 +67,14 @@ o Project -> Properties
 
 
 
++
+
+o Project -> Properties
+	o C/C++ General
+		o Paths and Symbols
+			o References
+				o Tick STM32_SOOL->Debug (Crucial!, Debug may be blocked, tick Release then)
+
 
 in main.c put #includes based on folder structure:
 
