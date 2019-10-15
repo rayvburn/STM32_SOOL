@@ -22,7 +22,7 @@ static uint8_t SOOL_Vector_Resize(SOOL_Vector_Uint32 *v_ptr, unsigned int new_si
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-SOOL_Vector_Uint32 SOOL_Memory_Vector_Uint16_Init() {
+SOOL_Vector_Uint32 SOOL_Memory_Vector_Uint32_Init() {
 
 	/* New object */
 	SOOL_Vector_Uint32 v;
