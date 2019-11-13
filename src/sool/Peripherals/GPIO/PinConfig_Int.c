@@ -78,7 +78,7 @@ SOOL_PinConfig_Int SOOL_Periph_GPIO_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_
 	exti.EXTI_Line = exti_ln;
 	exti.EXTI_Mode = EXTI_Mode_Interrupt;
 	exti.EXTI_Trigger = exti_trigger;
-	exti.EXTI_LineCmd = ENABLE;
+	exti.EXTI_LineCmd = DISABLE; // ENABLE;
 	// exti init at the end of the function
 	// exti line config at the end of the function
 
@@ -86,7 +86,7 @@ SOOL_PinConfig_Int SOOL_Periph_GPIO_PinConfig_Initialize_Int(GPIO_TypeDef* gpio_
 	nvic.NVIC_IRQChannel = irqn;
 	nvic.NVIC_IRQChannelPreemptionPriority = 0x00;
 	nvic.NVIC_IRQChannelSubPriority = 0x00;
-	nvic.NVIC_IRQChannelCmd = ENABLE;
+	nvic.NVIC_IRQChannelCmd = DISABLE; // ENABLE;
 	// nvic init at the end of the function
 
 	/* Copy data to internal structures */
