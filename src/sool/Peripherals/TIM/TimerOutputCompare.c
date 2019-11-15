@@ -327,6 +327,13 @@ static volatile SOOL_TimerOutputCompare SOOL_TimerOC_InitializeClass(volatile SO
 	/* Enable interrupts */
 	TIM_ITConfig(tim_basic._setup.TIMx, tim_it_cc, enable_int);
 
+	/* CAUTION! Advanced control timers require MOE bit to be set;
+	 * 14.4.18 TIM1 and TIM8 break and dead-time register (TIMx_BDTR)
+	 * Bit 15 MOE: Main output enable */
+	if ( tim_basic._setup.TIMx == TIM1 || tim_basic._setup.TIMx == TIM8 ) {
+		tim_basic._setup.TIMx->BDTR |= TIM_BDTR_MOE;
+	}
+
 	/* Save class' fields */
 	timer._setup.oc_config = tim_oc;
 	timer._setup.TIM_Channel_x = channel;
