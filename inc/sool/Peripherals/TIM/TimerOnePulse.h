@@ -101,6 +101,18 @@ struct _SOOL_TimerOnePulseStruct {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+/**
+ *
+ * @param timer_oc
+ * @param delay_time
+ * @param trig_immediately
+ * @return
+ * @note Configuration tips could be found in the Reference Manual @ 15.3.10 One-pulse mode,
+ * Figure 132. Example of one-pulse mode
+ * @note `timer_oc` constructor's PULSE argument is a pulse length expressed in timer counts
+ * (considering the prescaler value chosen for SOOL_TimerBasic instance)
+ * @note Not all channels can support OutputCompare mode (thus OnePulse mode is not supported too)
+ */
 extern volatile SOOL_TimerOnePulse SOOL_Periph_TIM_TimerOnePulse_Init(volatile SOOL_TimerOutputCompare timer_oc,
 		uint16_t delay_time, FunctionalState trig_immediately);
 extern volatile SOOL_TimerOnePulse SOOL_Periph_TIM_TimerOnePulse_InitSlave(volatile SOOL_TimerOutputCompare timer_oc,
