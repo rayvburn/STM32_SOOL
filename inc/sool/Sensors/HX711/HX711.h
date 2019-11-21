@@ -10,7 +10,7 @@
 
 #include <sool/Peripherals/GPIO/PinConfig_Int.h>
 #include <sool/Peripherals/GPIO/PinConfig_AltFunction.h>
-#include <sool/Peripherals/TIM/TimerOutputCompare.h>
+#include <sool/Peripherals/TIM/TimerOnePulse.h>
 #include <stdint.h>
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -37,7 +37,7 @@ struct _SOOL_HX711Struct {
 
 	// ----------- base class section
 	SOOL_PinConfig_Int 				base_dout;
-	SOOL_TimerOutputCompare			base_tim_sck;
+	SOOL_TimerOnePulse				base_tim_sck;
 
 	// ----------- derived class section
 	struct _SOOL_HX711StateStruct 	_state;
@@ -54,6 +54,7 @@ struct _SOOL_HX711Struct {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+/// @param TIMx: TIM1 or TIM8 allowed (for STM32F103C8T6)
 /// @note This implementation requires separate timer for the sensor
 /// @note Timer TIMx interrupt (update event) is enabled and must be handled in the application (IRQHandlers setup)
 /// @note SCK pin must be wired according to the Timer channel
@@ -63,7 +64,7 @@ struct _SOOL_HX711Struct {
 /// so the user knows what he does
 extern volatile SOOL_HX711 SOOL_Sensor_HX711_Init(GPIO_TypeDef* dout_port, uint16_t dout_pin,
 												  GPIO_TypeDef* sck_port, uint16_t sck_pin,
-												  TIM_TypeDef* TIMx, uint16_t channel,
+												  TIM_TypeDef* TIMx, uint16_t tim1_channel,
 												  uint8_t gain, int32_t offset, int32_t increment_per_unit);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

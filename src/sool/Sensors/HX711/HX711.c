@@ -56,16 +56,34 @@ volatile SOOL_HX711 SOOL_Sensor_HX711_Init(GPIO_TypeDef* dout_port, uint16_t dou
 //	uint16_t prescaler_us = (uint16_t)(SystemCoreClock / 2000000ul);
 	uint16_t prescaler_us = (uint16_t)(SystemCoreClock / 1000000ul);
 //	uint16_t period = 20;
-	uint16_t period = 6; // 2 us
+	uint16_t period = 20; // 2 us
 	volatile SOOL_TimerBasic tim_basic = SOOL_Periph_TIM_TimerBasic_Init(TIMx, prescaler_us, period, DISABLE); // ENABLE);
 
 	/* Create an instance of SOOL_TimerOutputCompare */
+	// OC v1
 //	load_cell.base_tim_sck = SOOL_Periph_TIM_TimerOutputCompare_Init(tim_basic, channel, TIM_OCMode_PWM2, 1,
 //								DISABLE, TIM_OCIdleState_Set, TIM_OCPolarity_Low, TIM_OutputState_Enable);
-	load_cell.base_tim_sck = SOOL_Periph_TIM_TimerOutputCompare_Init(tim_basic, channel, TIM_OCMode_Toggle, // TIM_OCMode_Toggle,
-								//10, // NOTE: pulse must be in the range: [0 < PULSE < PERIOD]
-								3,
-								ENABLE, TIM_OCIdleState_Reset, TIM_OCPolarity_Low, TIM_OutputState_Enable);
+//	// OC v2
+//	load_cell.base_tim_sck = SOOL_Periph_TIM_TimerOutputCompare_Init(tim_basic, channel, TIM_OCMode_Toggle, // TIM_OCMode_Toggle,
+//								//10, // NOTE: pulse must be in the range: [0 < PULSE < PERIOD]
+//								3,
+//								ENABLE, TIM_OCIdleState_Reset, TIM_OCPolarity_Low, TIM_OutputState_Enable);
+
+	// OP v1
+	// OutputCompare
+	SOOL_TimerOutputCompare tim_oc = SOOL_Periph_TIM_TimerOutputCompare_Init(tim_basic, channel, TIM_OCMode_PWM1, // TIM_OCMode_Toggle,
+												//10, // NOTE: pulse must be in the range: [0 < PULSE < PERIOD]
+												10,
+												ENABLE, TIM_OCIdleState_Reset, TIM_OCPolarity_Low, TIM_OutputState_Enable);
+	// OnePulse
+	/* NOTE:
+	 * at TIMx->CNT == 9 the pulse will be generated;
+	 * instant edge is DISABLED to force all pulses have the same length (otherwise
+	 * the first one can be degenerated);
+	 * Repetition Counter (RCR) value of the TIMx timer is zeroed at that moment (does not matter)
+	 */
+	load_cell.base_tim_sck = SOOL_Periph_TIM_TimerOnePulse_Init(tim_oc, 9, DISABLE);
+	tim_basic._setup.TIMx->RCR = 0;
 
 //	// PD_SCK high (blocks data reception)
 //	SOOL_Periph_GPIO_SetBits(sck_port, sck_pin);
@@ -136,17 +154,29 @@ static uint8_t SOOL_HX711_GetData(volatile SOOL_HX711 *hx_ptr) {
 
 static uint8_t SOOL_HX711_TimerInterruptHandler(volatile SOOL_HX711 *hx_ptr) {
 
+	// test
+	hx_ptr->_state.flag_read_started = 1;
+
 	if ( !hx_ptr->_state.flag_read_started ) {
 		return (0);
+	}
+
+	if ( hx_ptr->base_tim_sck.base.base._setup.TIMx->RCR == 0 ) {
+		int a = 0;
+		a++;
+		a++;
+		int b = hx_ptr->base_tim_sck.base.base._setup.TIMx->RCR;
+		a = a + b;
 	}
 
 	SOOL_HX711_SetHelperPinTIM(ENABLE);
 	/* To prevent unnecessary pulse generation */
 	uint8_t finished = 0;
 	if ( --hx_ptr->_state.data_bits_left == 0 ) {
-		hx_ptr->base_tim_sck.base.DisableNVIC(&hx_ptr->base_tim_sck.base);
-		hx_ptr->base_tim_sck.DisableChannel(&hx_ptr->base_tim_sck);
-		hx_ptr->base_tim_sck.base.EnableNVIC(&hx_ptr->base_tim_sck.base);
+		int b = hx_ptr->base_tim_sck.base.base._setup.TIMx->RCR;
+//		hx_ptr->base_tim_sck.base.DisableNVIC(&hx_ptr->base_tim_sck.base);
+		hx_ptr->base_tim_sck.base.DisableChannel(&hx_ptr->base_tim_sck);
+//		hx_ptr->base_tim_sck.base.EnableNVIC(&hx_ptr->base_tim_sck.base);
 		finished = 1;
 	}
 
@@ -183,25 +213,37 @@ static uint8_t SOOL_HX711_TimerInterruptHandler(volatile SOOL_HX711 *hx_ptr) {
 static uint8_t SOOL_HX711_ExtiInterruptHandler(volatile SOOL_HX711 *hx_ptr) {
 
 	/* DOUT falling edge detection */
-	if ( !SOOL_HX711_ReadBit(hx_ptr) && !hx_ptr->_state.flag_read_started ) {
+	if ( !SOOL_HX711_ReadBit(hx_ptr) //) {
+			 && !hx_ptr->_state.flag_read_started ) {
 
 		// reset internal state
 		hx_ptr->_state.flag_read_started = 1;
 		hx_ptr->_state.data_bits_left = 24 + hx_ptr->_state.gain; //  - 1; TOGGLE CC
 
 		// stop the timer to reset counter
-		hx_ptr->base_tim_sck.Stop(&hx_ptr->base_tim_sck);
+		hx_ptr->base_tim_sck.base.Stop(&hx_ptr->base_tim_sck);
 
 		// reset timer
-		hx_ptr->base_tim_sck.base.SetCounter(&hx_ptr->base_tim_sck.base, 0);
+		hx_ptr->base_tim_sck.base.base.SetCounter(&hx_ptr->base_tim_sck.base, 0);
+
+		// - - - - - - - - - - - - - - - - -
+
+		// OP v1 Generate pulse
+		hx_ptr->base_tim_sck.base.base._setup.TIMx->RCR = 24 + hx_ptr->_state.gain;
+		hx_ptr->base_tim_sck.base.EnableChannel(&hx_ptr->base_tim_sck.base);
+		hx_ptr->base_tim_sck.GeneratePulse(&hx_ptr->base_tim_sck);
+
+		// - - - - - - - - - - - - - - - - -
 
 		SOOL_HX711_SetHelperPinEXTI(ENABLE);
 
+		/* OC v1
 		// enable OutputCompare channel of the timer
-		hx_ptr->base_tim_sck.EnableChannel(&hx_ptr->base_tim_sck);
+		hx_ptr->base_tim_sck.base.EnableChannel(&hx_ptr->base_tim_sck);
 
 		// start the counter
-		hx_ptr->base_tim_sck.Start(&hx_ptr->base_tim_sck);
+		hx_ptr->base_tim_sck.base.Start(&hx_ptr->base_tim_sck);
+		*/
 
 		// reset buffer
 		hx_ptr->_state.data_temp = 0;
