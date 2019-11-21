@@ -154,12 +154,12 @@ static uint8_t SOOL_HX711_GetData(volatile SOOL_HX711 *hx_ptr) {
 
 static uint8_t SOOL_HX711_TimerInterruptHandler(volatile SOOL_HX711 *hx_ptr) {
 
-	// test
-	hx_ptr->_state.flag_read_started = 1;
-
 	if ( !hx_ptr->_state.flag_read_started ) {
 		return (0);
 	}
+
+	/* Restart counter (in OP Mode Update the event stops counter) */
+	hx_ptr->base_tim_sck.base.Start(&hx_ptr->base_tim_sck.base);
 
 	if ( hx_ptr->base_tim_sck.base.base._setup.TIMx->RCR == 0 ) {
 		int a = 0;
@@ -172,8 +172,13 @@ static uint8_t SOOL_HX711_TimerInterruptHandler(volatile SOOL_HX711 *hx_ptr) {
 	SOOL_HX711_SetHelperPinTIM(ENABLE);
 	/* To prevent unnecessary pulse generation */
 	uint8_t finished = 0;
-	if ( --hx_ptr->_state.data_bits_left == 0 ) {
-		int b = hx_ptr->base_tim_sck.base.base._setup.TIMx->RCR;
+	--hx_ptr->_state.data_bits_left;
+
+	// do not save the data bits that are exhibited during the next measurement gain selection
+	if ( hx_ptr->_state.data_bits_left < hx_ptr->_state.gain && hx_ptr->_state.data_bits_left != 0 ) {
+		return (3);
+	} else if ( hx_ptr->_state.data_bits_left == 0 ) {
+		int test_rcr = hx_ptr->base_tim_sck.base.base._setup.TIMx->RCR;
 //		hx_ptr->base_tim_sck.base.DisableNVIC(&hx_ptr->base_tim_sck.base);
 		hx_ptr->base_tim_sck.base.DisableChannel(&hx_ptr->base_tim_sck);
 //		hx_ptr->base_tim_sck.base.EnableNVIC(&hx_ptr->base_tim_sck.base);
@@ -218,7 +223,7 @@ static uint8_t SOOL_HX711_ExtiInterruptHandler(volatile SOOL_HX711 *hx_ptr) {
 
 		// reset internal state
 		hx_ptr->_state.flag_read_started = 1;
-		hx_ptr->_state.data_bits_left = 24 + hx_ptr->_state.gain; //  - 1; TOGGLE CC
+		hx_ptr->_state.data_bits_left = 24 + hx_ptr->_state.gain + 1; //  - 1; TOGGLE CC
 
 		// stop the timer to reset counter
 		hx_ptr->base_tim_sck.base.Stop(&hx_ptr->base_tim_sck);
@@ -229,7 +234,7 @@ static uint8_t SOOL_HX711_ExtiInterruptHandler(volatile SOOL_HX711 *hx_ptr) {
 		// - - - - - - - - - - - - - - - - -
 
 		// OP v1 Generate pulse
-		hx_ptr->base_tim_sck.base.base._setup.TIMx->RCR = 24 + hx_ptr->_state.gain;
+		hx_ptr->base_tim_sck.base.base._setup.TIMx->RCR = 24 + hx_ptr->_state.gain + 1;
 		hx_ptr->base_tim_sck.base.EnableChannel(&hx_ptr->base_tim_sck.base);
 		hx_ptr->base_tim_sck.GeneratePulse(&hx_ptr->base_tim_sck);
 
