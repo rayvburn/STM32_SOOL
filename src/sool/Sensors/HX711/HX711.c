@@ -21,10 +21,6 @@ static uint8_t 	SOOL_HX711_GetData(volatile SOOL_HX711 *hx_ptr);
 // helper
 static uint8_t SOOL_HX711_ReadBit(volatile SOOL_HX711 *hx_ptr) ;
 
-// temp
-static void SOOL_HX711_SetHelperPinTIM(FunctionalState state);
-static void SOOL_HX711_SetHelperPinEXTI(FunctionalState state);
-
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 volatile SOOL_HX711 SOOL_Sensor_HX711_Init(GPIO_TypeDef* dout_port, uint16_t dout_pin,
@@ -43,13 +39,6 @@ volatile SOOL_HX711 SOOL_Sensor_HX711_Init(GPIO_TypeDef* dout_port, uint16_t dou
 	 * at the moment this does not need to be stored internally,
 	 * pure configuration is enough. */
 	SOOL_PinConfig_AltFunction sck = SOOL_Periph_GPIO_PinConfig_Initialize_AltFunction(sck_port, sck_pin, GPIO_Mode_AF_PP);
-
-	////// helper
-	///
-	SOOL_Periph_GPIO_PinConfig_Initialize_NoInt(GPIOA, GPIO_Pin_9, GPIO_Mode_Out_PP);  // EXTI
-	SOOL_Periph_GPIO_PinConfig_Initialize_NoInt(GPIOA, GPIO_Pin_12, GPIO_Mode_Out_PP); // TIM
-	///
-	///
 
 	/* Create an instance of SOOL_TimerBasic */
 	// set prescaler to count microseconds
@@ -153,8 +142,6 @@ static uint8_t SOOL_HX711_TimerInterruptHandler(volatile SOOL_HX711 *hx_ptr) {
 	/* Restart counter (in OP Mode Update the event stops counter) */
 	hx_ptr->base_tim_sck.base.Start(&hx_ptr->base_tim_sck.base);
 
-	SOOL_HX711_SetHelperPinTIM(ENABLE);
-
 	/* To prevent unnecessary pulse generation */
 	uint8_t finished = 0;
 	--hx_ptr->_state.data_bits_left;
@@ -183,14 +170,10 @@ static uint8_t SOOL_HX711_TimerInterruptHandler(volatile SOOL_HX711 *hx_ptr) {
 		hx_ptr->_state.flag_data_ready = 1;
 		hx_ptr->_state.flag_read_started = 0;
 
-		SOOL_HX711_SetHelperPinEXTI(DISABLE);
-		SOOL_HX711_SetHelperPinTIM(DISABLE);
-
 		return (1);
 
 	}
 
-	SOOL_HX711_SetHelperPinTIM(DISABLE);
 	return (2);
 
 }
@@ -217,8 +200,6 @@ static uint8_t SOOL_HX711_ExtiInterruptHandler(volatile SOOL_HX711 *hx_ptr) {
 		hx_ptr->base_tim_sck.base.EnableChannel(&hx_ptr->base_tim_sck.base);
 		hx_ptr->base_tim_sck.GeneratePulse(&hx_ptr->base_tim_sck);
 
-		SOOL_HX711_SetHelperPinEXTI(ENABLE);
-
 		// reset buffer
 		hx_ptr->_state.data_temp = 0;
 
@@ -236,24 +217,3 @@ static uint8_t SOOL_HX711_ReadBit(volatile SOOL_HX711 *hx_ptr) {
 	return (SOOL_Periph_GPIO_ReadInputDataBit(hx_ptr->base_dout._gpio.port, hx_ptr->base_dout._gpio.pin));
 }
 
-// - - - -
-
-static void SOOL_HX711_SetHelperPinTIM(FunctionalState state) {
-
-	if ( state == ENABLE ) {
-		SOOL_Periph_GPIO_SetBits(GPIOA, GPIO_Pin_12);
-	} else {
-		SOOL_Periph_GPIO_ResetBits(GPIOA, GPIO_Pin_12);
-	}
-
-}
-
-static void SOOL_HX711_SetHelperPinEXTI(FunctionalState state) {
-
-	if ( state == ENABLE ) {
-		SOOL_Periph_GPIO_SetBits(GPIOA, GPIO_Pin_9);
-	} else {
-		SOOL_Periph_GPIO_ResetBits(GPIOA, GPIO_Pin_9);
-	}
-
-}
