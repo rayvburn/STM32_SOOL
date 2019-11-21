@@ -56,16 +56,16 @@ volatile SOOL_HX711 SOOL_Sensor_HX711_Init(GPIO_TypeDef* dout_port, uint16_t dou
 //	uint16_t prescaler_us = (uint16_t)(SystemCoreClock / 2000000ul);
 	uint16_t prescaler_us = (uint16_t)(SystemCoreClock / 1000000ul);
 //	uint16_t period = 20;
-	uint16_t period = 20; // 2 us
-	volatile SOOL_TimerBasic tim_basic = SOOL_Periph_TIM_TimerBasic_Init(TIMx, prescaler_us, period, ENABLE);
+	uint16_t period = 6; // 2 us
+	volatile SOOL_TimerBasic tim_basic = SOOL_Periph_TIM_TimerBasic_Init(TIMx, prescaler_us, period, DISABLE); // ENABLE);
 
 	/* Create an instance of SOOL_TimerOutputCompare */
 //	load_cell.base_tim_sck = SOOL_Periph_TIM_TimerOutputCompare_Init(tim_basic, channel, TIM_OCMode_PWM2, 1,
 //								DISABLE, TIM_OCIdleState_Set, TIM_OCPolarity_Low, TIM_OutputState_Enable);
-	load_cell.base_tim_sck = SOOL_Periph_TIM_TimerOutputCompare_Init(tim_basic, channel, TIM_OCMode_PWM2, // TIM_OCMode_Toggle,
+	load_cell.base_tim_sck = SOOL_Periph_TIM_TimerOutputCompare_Init(tim_basic, channel, TIM_OCMode_Toggle, // TIM_OCMode_Toggle,
 								//10, // NOTE: pulse must be in the range: [0 < PULSE < PERIOD]
-								10,
-								DISABLE, TIM_OCIdleState_Reset, TIM_OCPolarity_Low, TIM_OutputState_Enable);
+								3,
+								ENABLE, TIM_OCIdleState_Reset, TIM_OCPolarity_Low, TIM_OutputState_Enable);
 
 //	// PD_SCK high (blocks data reception)
 //	SOOL_Periph_GPIO_SetBits(sck_port, sck_pin);
@@ -187,7 +187,7 @@ static uint8_t SOOL_HX711_ExtiInterruptHandler(volatile SOOL_HX711 *hx_ptr) {
 
 		// reset internal state
 		hx_ptr->_state.flag_read_started = 1;
-		hx_ptr->_state.data_bits_left = 24 + hx_ptr->_state.gain - 1;
+		hx_ptr->_state.data_bits_left = 24 + hx_ptr->_state.gain; //  - 1; TOGGLE CC
 
 		// stop the timer to reset counter
 		hx_ptr->base_tim_sck.Stop(&hx_ptr->base_tim_sck);
