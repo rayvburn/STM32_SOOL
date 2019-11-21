@@ -45,8 +45,6 @@ struct _SOOL_HX711Struct {
 	uint8_t		(*IsDataReady)(volatile SOOL_HX711 *hx_ptr);
 	int32_t		(*GetData)(volatile SOOL_HX711 *hx_ptr);
 
-	// DEPRECATED: BLOCKING IMPLEMENTATION - blocking for about 30 us (safer because blocks interrupts, see power-down mode)
-
 	uint8_t		(*_TimerInterruptHandler)(volatile SOOL_HX711 *hx_ptr);
 	uint8_t 	(*_ExtiInterruptHandler)(volatile SOOL_HX711 *hx_ptr); // a routine fired in a proper ISR (firstly it must check if interrupt has been triggered on sensor's EXTI line)
 
@@ -54,8 +52,19 @@ struct _SOOL_HX711Struct {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+/// @brief A constructor for the interrupt-driven controller of the HX711 load cell IC.
+/// @param dout_port
+/// @param dout_pin
+/// @param sck_port
+/// @param sck_pin
 /// @param TIMx: TIM1 or TIM8 allowed (for STM32F103C8T6)
-/// @note This implementation requires separate timer for the sensor
+/// @param tim1_channel
+/// @param gain
+/// @param offset
+/// @param increment_per_unit
+/// @return
+///
+/// @note This implementation requires separate timer for the sensor(s)
 /// @note Timer TIMx interrupt (update event) is enabled and must be handled in the application (IRQHandlers setup)
 /// @note SCK pin must be wired according to the Timer channel
 /// @note Timer must be configured in such a way providing at most 500 kHz frequency (may be lower,
