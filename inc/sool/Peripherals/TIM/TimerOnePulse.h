@@ -112,6 +112,10 @@ struct _SOOL_TimerOnePulseStruct {
  * @note `timer_oc` constructor's PULSE argument is a pulse length expressed in timer counts
  * (considering the prescaler value chosen for SOOL_TimerBasic instance)
  * @note Not all channels can support OutputCompare mode (thus OnePulse mode is not supported too)
+ * @details Configuration notes:
+ * IMPORTANT: this equation must be fulfilled:
+ * 		period = pulse + delay + 1
+ * 		50% duty cycle is ensured when (pulse = delay + 1)
  */
 extern volatile SOOL_TimerOnePulse SOOL_Periph_TIM_TimerOnePulse_Init(volatile SOOL_TimerOutputCompare timer_oc,
 		uint16_t delay_time, FunctionalState trig_immediately);
