@@ -6,8 +6,6 @@
  */
 
 #include "sool/Sensors/HX711/HX711.h"
-#include "sool/Common/Delay.h"
-#include "sool/Memory/Array/ArrayInt32.h"
 #include "sool/Peripherals/GPIO/GPIO_common.h" // SOOL_Periph_GPIO_SetBits
 #include "sool/Memory/Array/ArrayInt32.h"
 
