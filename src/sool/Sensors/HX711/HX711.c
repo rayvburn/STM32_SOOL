@@ -9,6 +9,7 @@
 #include "sool/Common/Delay.h"
 #include "sool/Memory/Array/ArrayInt32.h"
 #include "sool/Peripherals/GPIO/GPIO_common.h" // SOOL_Periph_GPIO_SetBits
+#include "sool/Memory/Array/ArrayInt32.h"
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -16,7 +17,8 @@ static uint8_t	SOOL_HX711_TimerInterruptHandler(volatile SOOL_HX711 *hx_ptr);
 static uint8_t 	SOOL_HX711_ExtiInterruptHandler(volatile SOOL_HX711 *hx_ptr);
 
 static uint8_t	SOOL_HX711_IsDataReady(volatile SOOL_HX711 *hx_ptr);
-static uint8_t 	SOOL_HX711_GetData(volatile SOOL_HX711 *hx_ptr);
+static int32_t 	SOOL_HX711_GetData(volatile SOOL_HX711 *hx_ptr);
+static uint8_t	SOOL_HX711_Tare(volatile SOOL_HX711 *hx_ptr, uint8_t samples);
 
 // helper
 static uint8_t SOOL_HX711_ReadBit(volatile SOOL_HX711 *hx_ptr) ;
@@ -35,7 +37,7 @@ volatile SOOL_HX711 SOOL_Sensor_HX711_Init(GPIO_TypeDef* dout_port, uint16_t dou
 	/* DT / DOUT pin configuration */										          // GPIO_Mode_IN_FLOATING
 	load_cell.base_dout = SOOL_Periph_GPIO_PinConfig_Initialize_Int(dout_port, dout_pin, GPIO_Mode_IPU, EXTI_Trigger_Rising_Falling);
 
-	/* Create an Alternative Functinon pin configuration;
+	/* Create an Alternative Function pin configuration;
 	 * at the moment this does not need to be stored internally,
 	 * pure configuration is enough. */
 	SOOL_PinConfig_AltFunction sck = SOOL_Periph_GPIO_PinConfig_Initialize_AltFunction(sck_port, sck_pin, GPIO_Mode_AF_PP);
@@ -100,6 +102,7 @@ volatile SOOL_HX711 SOOL_Sensor_HX711_Init(GPIO_TypeDef* dout_port, uint16_t dou
 //	SOOL_Periph_GPIO_ResetBits(sck_port, sck_pin);
 
 	// methods
+	load_cell.Tare = SOOL_HX711_Tare;
 	load_cell.GetData = SOOL_HX711_GetData;
 	load_cell.IsDataReady = SOOL_HX711_IsDataReady;
 
@@ -127,8 +130,26 @@ static uint8_t SOOL_HX711_IsDataReady(volatile SOOL_HX711 *hx_ptr) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t SOOL_HX711_GetData(volatile SOOL_HX711 *hx_ptr) {
+static int32_t SOOL_HX711_GetData(volatile SOOL_HX711 *hx_ptr) {
 	return (hx_ptr->_state.data_last);
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static uint8_t SOOL_HX711_Tare(volatile SOOL_HX711 *hx_ptr, uint8_t samples) {
+
+	SOOL_Array_Int32 measurements = SOOL_Memory_Array_Int32_Init(samples);
+	int64_t sum = 0;
+
+	for ( uint8_t i = 0; i < samples; i++ ) {
+		while ( !SOOL_HX711_IsDataReady(hx_ptr) );
+		measurements.Add(&measurements, SOOL_HX711_GetData(hx_ptr));
+		sum += SOOL_HX711_GetData(hx_ptr);
+	}
+
+	hx_ptr->_state.offset = sum / samples;
+	return (1);
+
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -155,16 +176,18 @@ static uint8_t SOOL_HX711_TimerInterruptHandler(volatile SOOL_HX711 *hx_ptr) {
 	}
 
 	/* Read */
-	hx_ptr->_state.data_temp |= SOOL_HX711_ReadBit(hx_ptr);
-	hx_ptr->_state.data_temp <<= 1;
+	if ( !finished ) {
 
-	/* Process whole `word` */
-	if ( finished ) {
+		hx_ptr->_state.data_temp |= SOOL_HX711_ReadBit(hx_ptr);
+		hx_ptr->_state.data_temp <<= 1;
 
+	} else {
+
+		/* Process whole `word` */
 		hx_ptr->_state.data_temp ^= 0x800000;
 
 		// convert raw value to appropriate units
-		hx_ptr->_state.data_last = (hx_ptr->_state.data_temp + hx_ptr->_state.offset) / hx_ptr->_state.inc_per_unit;
+		hx_ptr->_state.data_last = (hx_ptr->_state.data_temp - hx_ptr->_state.offset) / hx_ptr->_state.inc_per_unit;
 
 		// update state
 		hx_ptr->_state.flag_data_ready = 1;

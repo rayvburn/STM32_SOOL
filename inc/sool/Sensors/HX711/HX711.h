@@ -42,6 +42,7 @@ struct _SOOL_HX711Struct {
 	// ----------- derived class section
 	struct _SOOL_HX711StateStruct 	_state;
 
+	uint8_t		(*Tare)(volatile SOOL_HX711 *hx_ptr, uint8_t samples);
 	uint8_t		(*IsDataReady)(volatile SOOL_HX711 *hx_ptr);
 	int32_t		(*GetData)(volatile SOOL_HX711 *hx_ptr);
 
