@@ -375,7 +375,7 @@ static volatile SOOL_Sonar Sonar_InitializeClassHW(
 									TIM_OCIdleState_Reset, TIM_OCPolarity_High, TIM_OutputState_Enable);
 
 		/* TimerOnePulse initialization */
-		volatile SOOL_TimerOnePulse timer_op = SOOL_Periph_TIM_TimerOnePulse_Init(timer_oc, 0, ENABLE);
+		volatile SOOL_TimerOnePulse timer_op = SOOL_Periph_TIM_TimerOnePulse_Init(timer_oc, 0, ENABLE, DISABLE);
 		timer_op_fcn = timer_op;
 
 	}
