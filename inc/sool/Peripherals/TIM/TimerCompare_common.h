@@ -29,4 +29,15 @@ extern void SOOL_Periph_TIMCompare_SetCCR(TIM_TypeDef* TIMx, uint16_t channel, u
 extern void SOOL_Periph_TIMCompare_EnableChannel(TIM_TypeDef* TIMx, uint16_t channel);
 extern void SOOL_Periph_TIMCompare_DisableChannel(TIM_TypeDef* TIMx, uint16_t channel);
 
+extern void SOOL_Periph_TIMCompare_ForceOutput(TIM_TypeDef* TIMx, uint16_t channel, FunctionalState state);
+
+/**
+ * @brief (OC mode) Generates an interrupt if the corresponding interrupt mask is set (CCXIE bit in the
+		  TIMx_DIER register).
+ * @param TIMx
+ * @param channel
+ * @param state
+ */
+extern void SOOL_Periph_TIMCompare_SetInterruptMask(TIM_TypeDef* TIMx, uint16_t channel, FunctionalState state);
+
 #endif /* INC_SOOL_PERIPHERALS_TIM_TIMERCOMPARE_COMMON_H_ */

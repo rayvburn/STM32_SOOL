@@ -168,3 +168,84 @@ void SOOL_Periph_TIMCompare_DisableChannel(TIM_TypeDef* TIMx, uint16_t channel) 
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+void SOOL_Periph_TIMCompare_ForceOutput(TIM_TypeDef* TIMx, uint16_t channel, FunctionalState state) {
+
+	uint16_t forced_action = 0x00;
+
+	switch (state) {
+
+	case(0):
+		forced_action = TIM_ForcedAction_InActive;
+		break;
+	case(1):
+		forced_action = TIM_ForcedAction_Active;
+		break;
+
+	}
+
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+	switch (channel) {
+
+	case(TIM_Channel_1):
+		TIM_ForcedOC1Config(TIMx, forced_action);
+		break;
+
+	case(TIM_Channel_2):
+		TIM_ForcedOC2Config(TIMx, forced_action);
+		break;
+
+	case(TIM_Channel_3):
+		TIM_ForcedOC3Config(TIMx, forced_action);
+		break;
+
+	case(TIM_Channel_4):
+		TIM_ForcedOC4Config(TIMx, forced_action);
+		break;
+
+	}
+
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+void SOOL_Periph_TIMCompare_SetInterruptMask(TIM_TypeDef* TIMx, uint16_t channel, FunctionalState state) {
+
+	switch (channel) {
+
+	case(TIM_Channel_1):
+		if ( state == DISABLE ) {
+			TIMx->DIER &= (uint16_t)~((uint16_t)TIM_DIER_CC1IE);
+		} else {
+			TIMx->DIER |= (uint16_t)TIM_DIER_CC1IE;
+		}
+		break;
+
+	case(TIM_Channel_2):
+		if ( state == DISABLE ) {
+			TIMx->DIER &= (uint16_t)~((uint16_t)TIM_DIER_CC2IE);
+		} else {
+			TIMx->DIER |= (uint16_t)TIM_DIER_CC2IE;
+		}
+		break;
+
+	case(TIM_Channel_3):
+		if ( state == DISABLE ) {
+			TIMx->DIER &= (uint16_t)~((uint16_t)TIM_DIER_CC3IE);
+		} else {
+			TIMx->DIER |= (uint16_t)TIM_DIER_CC3IE;
+		}
+		break;
+
+	case(TIM_Channel_4):
+		if ( state == DISABLE ) {
+			TIMx->DIER &= (uint16_t)~((uint16_t)TIM_DIER_CC4IE);
+		} else {
+			TIMx->DIER |= (uint16_t)TIM_DIER_CC4IE;
+		}
+		break;
+
+	}
+
+}
