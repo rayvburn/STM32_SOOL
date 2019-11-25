@@ -94,6 +94,7 @@ struct _SOOL_TimerOutputCompareStruct {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+// polarity: This bit selects whether ICx is used for trigger or capture operations.
 extern volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_InitFull(volatile SOOL_TimerBasic tim_basic,
 		uint16_t channel, uint16_t oc_mode, uint16_t pulse,	FunctionalState enable_int_cc,// OC 'common'
 		uint16_t idle_state, uint16_t polarity, uint16_t output_state,					// OC 'positive'
