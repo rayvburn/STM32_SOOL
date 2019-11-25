@@ -26,6 +26,7 @@ struct _SOOL_TimerOnePulseSetupStruct {
 
 	uint16_t delay_time;
 	uint8_t trig_immediately;
+	uint16_t interrupt_source;
 
 };
 
@@ -106,21 +107,26 @@ struct _SOOL_TimerOnePulseStruct {
  * @param timer_oc
  * @param delay_time
  * @param trig_immediately
+ * @param repeated_mode: whether a repetition counter will be used for n-pulses generation (another interrupt source must be used then because the TIM_Update_IT is generated after the RepCnter reaches 0 - this will never occur because in SinglePulse mode the counter stops after reaching the Period value)
  * @return
  * @note Configuration tips could be found in the Reference Manual @ 15.3.10 One-pulse mode,
  * Figure 132. Example of one-pulse mode
  * @note `timer_oc` constructor's PULSE argument is a pulse length expressed in timer counts
  * (considering the prescaler value chosen for SOOL_TimerBasic instance)
  * @note Not all channels can support OutputCompare mode (thus OnePulse mode is not supported too)
+ * @note OnePulse timer extends the OutputCompare timer Interrupt Handler (so OC's one checking
+ *  	 in the global IRQHandler is not needed)
  * @details Configuration notes:
  * IMPORTANT: this equation must be fulfilled:
  * 		period = pulse + delay + 1
  * 		50% duty cycle is ensured when (pulse = delay + 1)
+ * @note In repeated mode user must manually set the RepetitionCounter register, for example:
+ * 		tim_basic._setup.TIMx->RCR = 5;
  */
 extern volatile SOOL_TimerOnePulse SOOL_Periph_TIM_TimerOnePulse_Init(volatile SOOL_TimerOutputCompare timer_oc,
-		uint16_t delay_time, FunctionalState trig_immediately);
+		uint16_t delay_time, FunctionalState trig_immediately, FunctionalState repeated_mode);
 extern volatile SOOL_TimerOnePulse SOOL_Periph_TIM_TimerOnePulse_InitSlave(volatile SOOL_TimerOutputCompare timer_oc,
-		uint16_t delay_time, FunctionalState trig_immediately, uint16_t slave_mode, uint16_t input_trigger);
+		uint16_t delay_time, FunctionalState trig_immediately, uint16_t slave_mode, uint16_t input_trigger, FunctionalState repeated_mode);
 // @note Example of use can be found in:
 // https://gitlab.com/frb-pow/002tubewaterflowmcu/tree/95d4a7088479d5eaf308737cf9bd9ee105dfd60f
 #endif /* INC_SOOL_PERIPHERALS_TIM_TIMERONEPULSE_H_ */

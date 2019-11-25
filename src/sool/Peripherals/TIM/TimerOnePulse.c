@@ -24,7 +24,8 @@ static uint8_t SOOL_TimerOP_InterruptHandler(volatile SOOL_TimerOnePulse *timer_
 // helper
 static volatile SOOL_TimerOnePulse SOOL_TimerOP_InitiatizeClass(volatile SOOL_TimerOutputCompare timer_oc,
 		uint16_t delay_time, FunctionalState trig_immediately,
-		FunctionalState enable_slave_mode, uint16_t slave_mode, uint16_t input_trigger);
+		FunctionalState enable_slave_mode, uint16_t slave_mode, uint16_t input_trigger,
+		FunctionalState repeated_mode);
 
 // DEPRECATED helper, may be useful when very fast output change must be generated (without tDELAY),
 //			  but needs manual state change (toggle) on UPDT interrupt
@@ -41,6 +42,7 @@ static volatile SOOL_TimerOnePulse SOOL_TimerOP_InitiatizeClass(volatile SOOL_Ti
  * @param delay_time - additional delay (makes pulse a little longer), value incremented internally (by 1)
  * @param trig_immediately - when true counter is set to (FullCounterCYCLE - tPULSE - tDELAY - 2) before each pulse;
  *                           when false one will wait for a full timer cycle from 0 to overflow until pulse generation
+ * @param repeated_mode - explained in the main header file
  * @return SOOL_TimerOnePulse instance
  *
  * @note In datasheet they say that there is some limitation related to tDELAY (peripheral's inability to generate pulse
@@ -52,11 +54,11 @@ static volatile SOOL_TimerOnePulse SOOL_TimerOP_InitiatizeClass(volatile SOOL_Ti
  * 		 which is symbolically equal to (TIM_Period - TIM_Pulse)
  */
 volatile SOOL_TimerOnePulse SOOL_Periph_TIM_TimerOnePulse_Init(volatile SOOL_TimerOutputCompare timer_oc,
-		uint16_t delay_time, FunctionalState trig_immediately) {
+		uint16_t delay_time, FunctionalState trig_immediately, FunctionalState repeated_mode) {
 
 	/* Instance of OnePulse `class` */
 	volatile SOOL_TimerOnePulse timer = SOOL_TimerOP_InitiatizeClass(timer_oc, delay_time,
-										trig_immediately, DISABLE, 0, 0);
+										trig_immediately, DISABLE, 0, 0, repeated_mode);
 
 	return (timer);
 
@@ -73,15 +75,16 @@ volatile SOOL_TimerOnePulse SOOL_Periph_TIM_TimerOnePulse_Init(volatile SOOL_Tim
  * @param trig_immediately
  * @param slave_mode
  * @param input_trigger
+ * @param repeated_mode
  * @return
  */
 volatile SOOL_TimerOnePulse SOOL_Periph_TIM_TimerOnePulse_InitSlave(volatile SOOL_TimerOutputCompare timer_oc,
 		uint16_t delay_time, FunctionalState trig_immediately,
-		uint16_t slave_mode, uint16_t input_trigger) {
+		uint16_t slave_mode, uint16_t input_trigger, FunctionalState repeated_mode) {
 
 	/* Instance of OnePulse `class` */
 	volatile SOOL_TimerOnePulse timer = SOOL_TimerOP_InitiatizeClass(timer_oc, delay_time,
-										trig_immediately, ENABLE, slave_mode, input_trigger);
+										trig_immediately, ENABLE, slave_mode, input_trigger, repeated_mode);
 
 	return (timer);
 
@@ -211,9 +214,16 @@ static void SOOL_TimerOP_DisableOPMode(volatile SOOL_TimerOnePulse *timer_op_ptr
 static uint8_t SOOL_TimerOP_InterruptHandler(volatile SOOL_TimerOnePulse *timer_op_ptr) {
 
 	/* Check if update interrupt flag of the timer is set */
-	if ( TIM_GetITStatus(timer_op_ptr->base.base._setup.TIMx, TIM_IT_Update) == RESET) {
+	if ( TIM_GetITStatus(timer_op_ptr->base.base._setup.TIMx, timer_op_ptr->_setup.interrupt_source) == RESET) {
 		// not this timer overflowed (different IRQn)
 		return (0);
+	}
+
+	/* Check if a selected channel is enabled (only if interrupt source is CCx, Break etc. are not supported) */
+	if ( timer_op_ptr->_setup.interrupt_source != TIM_IT_Update ) {
+		if ( !SOOL_Periph_TIMCompare_IsCaptureCompareChannelEnabled(timer_op_ptr->base.base._setup.TIMx, timer_op_ptr->base._setup.TIM_Channel_x) ) {
+			return (0);
+		}
 	}
 
 	/* Check if OnePulse mode is selected */
@@ -222,7 +232,7 @@ static uint8_t SOOL_TimerOP_InterruptHandler(volatile SOOL_TimerOnePulse *timer_
 	}
 
 	/* Clear IT pending bit */
-	timer_op_ptr->base.base._setup.TIMx->SR = (uint16_t)~TIM_IT_Update; // TIM_ClearITPendingBit(timer->_TIMx, TIM_IT_Update);
+	timer_op_ptr->base.base._setup.TIMx->SR = (uint16_t)~timer_op_ptr->_setup.interrupt_source;
 	return (1);
 
 }
@@ -231,7 +241,8 @@ static uint8_t SOOL_TimerOP_InterruptHandler(volatile SOOL_TimerOnePulse *timer_
 
 static volatile SOOL_TimerOnePulse SOOL_TimerOP_InitiatizeClass(volatile SOOL_TimerOutputCompare timer_oc,
 		uint16_t delay_time, FunctionalState trig_immediately,
-		FunctionalState enable_slave_mode, uint16_t slave_mode, uint16_t input_trigger)
+		FunctionalState enable_slave_mode, uint16_t slave_mode, uint16_t input_trigger,
+		FunctionalState repeated_mode)
 
 {
 
@@ -246,6 +257,34 @@ static volatile SOOL_TimerOnePulse SOOL_TimerOP_InitiatizeClass(volatile SOOL_Ti
 	{
 		// timer not configured properly, hopefully will throw some error
 		return (timer);
+	}
+
+	/* Evaluate mode of operation */
+	if ( repeated_mode ) {
+
+		// choose a proper channel interrupt source
+		switch (timer_oc._setup.TIM_Channel_x) {
+
+		case (TIM_Channel_1):
+			timer._setup.interrupt_source = TIM_IT_CC1;
+			break;
+		case(TIM_Channel_2):
+			timer._setup.interrupt_source = TIM_IT_CC2;
+			break;
+		case(TIM_Channel_3):
+			timer._setup.interrupt_source = TIM_IT_CC3;
+			break;
+		case(TIM_Channel_4):
+			timer._setup.interrupt_source = TIM_IT_CC4;
+			break;
+
+		}
+
+	} else {
+
+		// interrupt source known in advance
+		timer._setup.interrupt_source = TIM_IT_Update;
+
 	}
 
 	/* Copy Timer running in Output Compare Mode (base `class`) */
