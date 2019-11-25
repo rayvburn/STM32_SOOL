@@ -17,6 +17,7 @@ static uint8_t SOOL_HX711Procedural_Tare(volatile SOOL_HX711_Procedural *hx_ptr,
 static uint8_t SOOL_HX711Procedural_IsDataReady(volatile SOOL_HX711_Procedural *hx_ptr);
 static int32_t SOOL_HX711Procedural_Read(volatile SOOL_HX711_Procedural *hx_ptr);
 //static uint8_t SOOL_HX711Procedural_CompensateDrift(volatile SOOL_HX711_Procedural *hx_ptr, int32_t *reading_ptr);
+static void    SOOL_HX711Procedural_PowerSwitch(volatile SOOL_HX711_Procedural *hx_ptr, FunctionalState state);
 static uint8_t SOOL_HX711Procedural_ExtiInterruptHandler(volatile SOOL_HX711_Procedural *hx_ptr);
 
 // helper
@@ -71,6 +72,7 @@ volatile SOOL_HX711_Procedural SOOL_Sensor_HX711_InitProcedural(GPIO_TypeDef* do
 
 	/* Assign methods */
 //	load_cell.CompensateDrift = SOOL_HX711Procedural_CompensateDrift;
+	load_cell.PowerSwitch = SOOL_HX711Procedural_PowerSwitch;
 	load_cell.IsDataReady = SOOL_HX711Procedural_IsDataReady;
 	load_cell.Read = SOOL_HX711Procedural_Read;
 	load_cell.Tare = SOOL_HX711Procedural_Tare;
@@ -176,6 +178,26 @@ static int32_t SOOL_HX711Procedural_ReadFull(volatile SOOL_HX711_Procedural *hx_
 //static uint8_t SOOL_HX711Procedural_CompensateDrift(volatile SOOL_HX711_Procedural *hx_ptr, int32_t *reading_ptr) {
 //	return ();
 //}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static void SOOL_HX711Procedural_PowerSwitch(volatile SOOL_HX711_Procedural *hx_ptr, FunctionalState state) {
+
+	switch (state) {
+
+		case(ENABLE):
+			SOOL_Periph_GPIO_ResetBits(hx_ptr->base_sck.gpio.port, hx_ptr->base_sck.gpio.pin);
+			hx_ptr->base_dout.EnableEXTI(&hx_ptr->base_dout);
+			break;
+
+		case(DISABLE):
+			hx_ptr->base_dout.DisableEXTI(&hx_ptr->base_dout);
+			SOOL_Periph_GPIO_SetBits(hx_ptr->base_sck.gpio.port, hx_ptr->base_sck.gpio.pin);
+			break;
+
+	}
+
+}
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 

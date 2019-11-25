@@ -53,8 +53,10 @@ struct _SOOL_HX711ProceduralStruct {
 	/// @return a measured value
 	int32_t		(*Read)(volatile SOOL_HX711_Procedural *hx_ptr);
 
-//	/// @brief Compensates the load cell drift according to the thresold
-//	uint8_t		(*CompensateDrift)(volatile SOOL_HX711_Procedural *hx_ptr, int32_t *reading_ptr);
+	/// @brief Powers up/down the sensor by setting SCK line properly
+	/// @note To restart the sensor operation, one must call PowerSwitch
+	/// with ENABLE argument
+	void 		(*PowerSwitch)(volatile SOOL_HX711_Procedural *hx_ptr, FunctionalState state);
 
 	/// @brief A routine fired in a proper ISR (if the incoming interrupt has been triggered
 	/// on the sensor EXTI line)
