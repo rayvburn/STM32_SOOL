@@ -23,10 +23,6 @@ static void 	SOOL_HX711_PowerSwitch(volatile SOOL_HX711 *hx_ptr, FunctionalState
 // helper
 static uint8_t SOOL_HX711_ReadBit(volatile SOOL_HX711 *hx_ptr) ;
 
-// temp
-static void SOOL_HX711_SetHelperPinTIM(FunctionalState state);
-static void SOOL_HX711_SetHelperPinEXTI(FunctionalState state);
-
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 volatile SOOL_HX711 SOOL_Sensor_HX711_Init(GPIO_TypeDef* dout_port, uint16_t dout_pin,
