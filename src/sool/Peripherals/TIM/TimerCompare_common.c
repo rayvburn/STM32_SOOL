@@ -210,6 +210,11 @@ void SOOL_Periph_TIMCompare_ForceOutput(TIM_TypeDef* TIMx, uint16_t channel, Fun
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+/**
+ * @param TIMx
+ * @param channel
+ * @param state
+ */
 void SOOL_Periph_TIMCompare_SetInterruptMask(TIM_TypeDef* TIMx, uint16_t channel, FunctionalState state) {
 
 	switch (channel) {

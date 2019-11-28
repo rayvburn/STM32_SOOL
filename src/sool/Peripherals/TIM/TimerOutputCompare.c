@@ -197,11 +197,15 @@ static void SOOL_TimerOC_DisableOC(volatile SOOL_TimerOutputCompare *tim_oc_ptr)
 
 static void SOOL_TimerOC_EnableChannel(volatile SOOL_TimerOutputCompare *tim_oc_ptr) {
 	SOOL_Periph_TIMCompare_EnableChannel(tim_oc_ptr->base._setup.TIMx, tim_oc_ptr->_setup.TIM_Channel_x);
+	SOOL_Periph_TIMCompare_SetInterruptMask(tim_oc_ptr->base._setup.TIMx, tim_oc_ptr->_setup.TIM_Channel_x, ENABLE);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 static void SOOL_TimerOC_DisableChannel(volatile SOOL_TimerOutputCompare *tim_oc_ptr) {
+	/* Order is important here, because some interrupt handlers clear the CCx flag
+	 * only if the channel is enabled. */
+	SOOL_Periph_TIMCompare_SetInterruptMask(tim_oc_ptr->base._setup.TIMx, tim_oc_ptr->_setup.TIM_Channel_x, DISABLE);
 	SOOL_Periph_TIMCompare_DisableChannel(tim_oc_ptr->base._setup.TIMx, tim_oc_ptr->_setup.TIM_Channel_x);
 }
 
