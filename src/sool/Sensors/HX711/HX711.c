@@ -23,6 +23,10 @@ static void 	SOOL_HX711_PowerSwitch(volatile SOOL_HX711 *hx_ptr, FunctionalState
 // helper
 static uint8_t SOOL_HX711_ReadBit(volatile SOOL_HX711 *hx_ptr) ;
 
+// temp
+static void SOOL_HX711_SetHelperPinTIM(FunctionalState state);
+static void SOOL_HX711_SetHelperPinEXTI(FunctionalState state);
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 volatile SOOL_HX711 SOOL_Sensor_HX711_Init(GPIO_TypeDef* dout_port, uint16_t dout_pin,
@@ -60,14 +64,14 @@ volatile SOOL_HX711 SOOL_Sensor_HX711_Init(GPIO_TypeDef* dout_port, uint16_t dou
 	// period of 18 us (for some reason 8-16 us periods don't work - no pulses are generated)
 	// whereas for values below 6 the SOFT does not keep up with the HARDWARE and interrupt
 	// routine takes too long and thus too many pulses are generated
-	uint16_t period = 18; // in microseconds
+	uint16_t period = 40; // 18; // in microseconds, must be an even number for 50% pulse width, bigger than 16 (DT sampling)
 	volatile SOOL_TimerBasic tim_basic = SOOL_Periph_TIM_TimerBasic_Init(TIMx, prescaler_us, period, DISABLE);
 
 	/* Create an instance of SOOL_TimerOnePulse (with a repetition counter) */
 	// OutputCompare
-	SOOL_TimerOutputCompare tim_oc = SOOL_Periph_TIM_TimerOutputCompare_Init(tim_basic, channel, TIM_OCMode_PWM2,
-												9, // NOTE: pulse must be in the range: [0 < PULSE < PERIOD]
-												ENABLE,// DISABLE, //
+	SOOL_TimerOutputCompare tim_oc = SOOL_Periph_TIM_TimerOutputCompare_Init(tim_basic, channel, TIM_OCMode_PWM1,
+												(period / 2) - 1, // 9, // NOTE: pulse must be in the range: [0 < PULSE < PERIOD]
+												ENABLE,
 												TIM_OCIdleState_Reset, TIM_OCPolarity_Low, TIM_OutputState_Enable);
 	// OnePulse
 	/* NOTE:
@@ -77,8 +81,12 @@ volatile SOOL_HX711 SOOL_Sensor_HX711_Init(GPIO_TypeDef* dout_port, uint16_t dou
 	 * Repetition Counter (RCR) value of the TIMx timer is zeroed at that moment (does not matter);
 	 * for more info see the TimeOnePulse documentation
 	 */
-	load_cell.base_tim_sck = SOOL_Periph_TIM_TimerOnePulse_Init(tim_oc, 8, DISABLE, ENABLE);
+	load_cell.base_tim_sck = SOOL_Periph_TIM_TimerOnePulse_Init(tim_oc,
+			(period / 2) - 1, /* delay / 0 a single pulse is not generated, 8 is the right value for 18 period */
+			ENABLE, // trig immediately
+			ENABLE); // repeated mode
 	tim_basic._setup.TIMx->RCR = 0;
+	load_cell.base_tim_sck.EnableOPMode(&load_cell.base_tim_sck);
 
 	// very very unlikely that the sensor offset will be 0 for any application
 	if ( offset != 0 ) {
@@ -194,19 +202,15 @@ static uint8_t SOOL_HX711_Tare(volatile SOOL_HX711 *hx_ptr, uint8_t samples) {
 
 static void SOOL_HX711_PowerSwitch(volatile SOOL_HX711 *hx_ptr, FunctionalState state) {
 
-	hx_ptr->_state.flag_read_started = 0;
-
 	// stop the counter for a moment
 	hx_ptr->base_tim_sck.base.Stop(&hx_ptr->base_tim_sck.base);
+
+	hx_ptr->_state.flag_read_started = 0;
+
 	switch (state) {
 
 		case(ENABLE):
-			//hx_ptr->base_tim_sck.base.EnableChannel(&hx_ptr->base_tim_sck.base);
-			//TODO: experimental - clear potential pending interrupt flag
-//			hx_ptr->base_tim_sck.base.
-
 			hx_ptr->base_tim_sck.base.EnableChannel(&hx_ptr->base_tim_sck.base);
-			SOOL_Periph_TIMCompare_SetInterruptMask(hx_ptr->base_tim_sck.base.base._setup.TIMx, hx_ptr->base_tim_sck.base._setup.TIM_Channel_x, ENABLE);
 			hx_ptr->base_dout.EnableEXTI(&hx_ptr->base_dout);
 			hx_ptr->_state.flag_power_off = 0;
 			break;
@@ -217,7 +221,6 @@ static void SOOL_HX711_PowerSwitch(volatile SOOL_HX711 *hx_ptr, FunctionalState 
 			 * TIMx_DIER register)".
 			 * So the CCxIE should be reset (TIMx_DIER register).
 			 */
-			SOOL_Periph_TIMCompare_SetInterruptMask(hx_ptr->base_tim_sck.base.base._setup.TIMx, hx_ptr->base_tim_sck.base._setup.TIM_Channel_x, DISABLE);
 			hx_ptr->base_tim_sck.base.DisableChannel(&hx_ptr->base_tim_sck.base);
 			hx_ptr->base_dout.DisableEXTI(&hx_ptr->base_dout);
 //			SOOL_Periph_TIMCompare_ForceOutput(hx_ptr->base_tim_sck.base.base._setup.TIMx, hx_ptr->base_tim_sck.base._setup.TIM_Channel_x, 1);
@@ -229,6 +232,7 @@ static void SOOL_HX711_PowerSwitch(volatile SOOL_HX711 *hx_ptr, FunctionalState 
 	// restart the counter
 	hx_ptr->base_tim_sck.base.Start(&hx_ptr->base_tim_sck.base);
 
+	//TODO: experimental - clear potential pending interrupt flag
 	// manually clear the interrupt flag (will be possibly pending before `enable` call)
 	hx_ptr->base_tim_sck.base.base._setup.TIMx->SR = (uint16_t)~hx_ptr->base_tim_sck.base._setup.TIM_IT_CCx;
 
@@ -243,8 +247,28 @@ static uint8_t SOOL_HX711_TimerInterruptHandler(volatile SOOL_HX711 *hx_ptr) {
 		return (0);
 	}
 
-	/* Restart counter (in OP Mode Update the event stops counter) */
-	hx_ptr->base_tim_sck.base.Start(&hx_ptr->base_tim_sck.base);
+//	/* Restart counter (in OP Mode Update the event stops counter) */
+//	hx_ptr->base_tim_sck.base.Start(&hx_ptr->base_tim_sck.base);
+
+	// V1
+	/* NOTE: at this point of time,
+	 * 		TIMx->CR1's OPM == 1 (OnePulseMode enabled)
+	 * 		TIMx->CR1's CEN == 0 (Counter disabled)
+	 * so the one pulse mode must be disabled, counter must be restarted
+	 * and then OPM must be enabled again
+	 */
+
+//	/* Disable OnePulse Mode (it seems that counter could not be enabled with OPMode enabled) */
+//	hx_ptr->base_tim_sck.DisableOPMode(&hx_ptr->base_tim_sck);
+//	/* Stop the counter */
+//	hx_ptr->base_tim_sck.base.Stop(&hx_ptr->base_tim_sck.base);
+//	/* Start the counter */
+//	hx_ptr->base_tim_sck.base.Start(&hx_ptr->base_tim_sck.base);
+//	/* Enable OnePulse Mode */
+//	hx_ptr->base_tim_sck.EnableOPMode(&hx_ptr->base_tim_sck);
+	//
+	hx_ptr->base_tim_sck.GeneratePulse(&hx_ptr->base_tim_sck);
+	//
 
 	/* To prevent unnecessary pulse generation */
 	uint8_t finished = 0;
@@ -329,8 +353,9 @@ static uint8_t SOOL_HX711_ExtiInterruptHandler(volatile SOOL_HX711 *hx_ptr) {
 
 		// OnePulse timer - generate a sequence of pulses
 		hx_ptr->base_tim_sck.base.base._setup.TIMx->RCR = 24 + hx_ptr->_state.gain + 1;
-		hx_ptr->base_tim_sck.base.EnableChannel(&hx_ptr->base_tim_sck.base);
+
 		hx_ptr->base_tim_sck.GeneratePulse(&hx_ptr->base_tim_sck); // sets counter, among others
+		hx_ptr->base_tim_sck.base.EnableChannel(&hx_ptr->base_tim_sck.base);
 
 		// reset buffer
 		hx_ptr->_state.data_temp = 0;
