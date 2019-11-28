@@ -84,6 +84,8 @@ struct _SOOL_HX711ProceduralStruct {
  * a @ref reading_ptr argument
  * @param drift_threshold: has no effect if @ref enable_drift_compensation is `0` (false)
  * @return
+ * @note Passing hard-coded offset value is not recommended, it may produce problems in drift
+ * compensation procedure.
  */
 extern volatile SOOL_HX711_Procedural SOOL_Sensor_HX711_InitProcedural(GPIO_TypeDef* dout_port, uint16_t dout_pin,
 		  GPIO_TypeDef* sck_port, uint16_t sck_pin,

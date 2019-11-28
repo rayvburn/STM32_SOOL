@@ -67,8 +67,7 @@ volatile SOOL_HX711_Procedural SOOL_Sensor_HX711_InitProcedural(GPIO_TypeDef* do
 	/* Drift */
 	load_cell._state.enable_drift_comp = enable_drift_compensation;
 	load_cell._drift.drift_threshold = drift_threshold;
-	load_cell._drift.offset_neg = 0;
-	load_cell._drift.offset_pos = 0;
+	load_cell._drift.samples = SOOL_Memory_Array_Int16_Init(6);
 
 	/* Assign methods */
 //	load_cell.CompensateDrift = SOOL_HX711Procedural_CompensateDrift;

@@ -9,11 +9,12 @@
 #define INC_SOOL_SENSORS_HX711_HX711_COMMON_H_
 
 #include "stdint.h"
+#include "sool/Memory/Array/ArrayInt16.h"
+#include "sool/Maths/Average/AverageInt16.h"
 
 struct _SOOL_HX711DriftStruct {
-	uint8_t drift_threshold;
-	uint8_t offset_neg;
-	uint8_t offset_pos;
+	SOOL_Array_Int16	samples;
+	uint8_t 			drift_threshold;
 };
 
 extern uint8_t SOOL_Sensors_HX711_DriftCompensation(int32_t *reading_ptr, struct _SOOL_HX711DriftStruct *drift_ptr);
