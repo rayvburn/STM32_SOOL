@@ -13,19 +13,25 @@
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 struct _SOOL_I2C_DMA_SetupStruct {
+
 	I2C_TypeDef   *	I2Cx;
-	uint8_t 		IRQn;
-	uint8_t			size_of;	// size of data element
+
+	// TODO / FIXME
+	uint8_t 		IRQn_EV;
+	uint8_t 		IRQn_ER;
+
 };
 
 struct _SOOL_I2C_DMA_StateStruct {
 };
 
 struct _SOOL_I2C_DMA_StateTxStruct {
+	uint8_t 		finished;
 };
 
 // with DMA associating data with reading request is tricky (with non-blocking behavior)
 struct _SOOL_I2C_DMA_StateRxStruct {
+	uint8_t 		finished;
 };
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -63,31 +69,14 @@ struct _SOOL_I2C_DMA_Struct {
 	uint8_t (*IsBusy)(volatile SOOL_I2C_DMA*);
 
 	/**
-	 * TODO: verify
-	 * @brief Sends data pointed by mem_addr_tx. Data type is known (deducted from the SPI initializer),
-	 * number of data to send (buffer length) is set via `length` parameter.
-	 * @note Both buffers (RX and TX) must have the same length. All received data will be saved
-	 * in the RX buffer. After finished reading one must select meaningful data (i.e. those which
-	 * are equal to device's buffer content) and discard those which device sends during Mater transmission.
-	 * @param spi_ptr
-	 * @param mem_addr_rx
-	 * @param mem_addr_tx
-	 * @param length
-	 * @return
-	 */
-	uint8_t (*SendReceive)(volatile SOOL_I2C_DMA*, uint32_t, uint32_t, uint32_t);
-
-
-	uint8_t (*Transmit)(volatile SOOL_I2C_DMA *i2c_ptr);
-	uint8_t (*Receive);
-
-
-	/**
 	 * @brief Checks whether a new (full) set of data arrived
 	 * @param SOOL_I2C_DMA instance
 	 * @return
 	 */
 	uint8_t (*IsNewData)(volatile SOOL_I2C_DMA*);
+
+	// TODO
+	uint8_t (*SendReceive)(volatile SOOL_I2C_DMA *i2c_ptr, uint8_t slave_address, uint32_t buf_tx_addr, uint32_t length, uint32_t buf_rx_addr);
 
 	// interrupt service routines
 	uint8_t (*_DmaRxIrqHandler)(volatile SOOL_I2C_DMA*);
@@ -95,6 +84,14 @@ struct _SOOL_I2C_DMA_Struct {
 
 };
 
-extern volatile SOOL_I2C_DMA SOOL_Periph_I2C_DMA_Init();
+/**
+ *
+ * @return
+ * @note I2C uses channels 4 and 5 OR 6 and 7 of DMA controller. Check Table 78. of RM0008 to verify
+ * if there is no collision among peripherals (I2C1 with DMA cannot be used along with USART2,
+ * whereas I2C2 cannot be used along with USART1).
+ */
+extern volatile SOOL_I2C_DMA SOOL_Periph_I2C_DMA_Init(I2C_TypeDef* I2Cx, uint16_t I2C_Ack,
+		uint16_t I2C_AcknowledgedAddress, uint32_t I2C_ClockSpeed, uint16_t I2C_OwnAddress1);
 
 #endif /* INC_SOOL_PERIPHERALS_I2C_I2C_DMA_H_ */
