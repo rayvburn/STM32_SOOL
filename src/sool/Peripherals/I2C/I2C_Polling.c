@@ -9,17 +9,13 @@
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t SOOL_I2C_Transmit(SOOL_I2C_Polling *i2c_ptr, uint8_t slave_address, uint32_t length, uint8_t* buf_tx);
-static uint8_t SOOL_I2C_Receive(SOOL_I2C_Polling *i2c_ptr, uint8_t slave_address, uint32_t length, uint8_t* buf_rx);
+static uint8_t SOOL_I2C_Transmit(SOOL_I2C_Polling *i2c_ptr, uint8_t slave_address, uint8_t* buf_tx, uint32_t length);
+static uint8_t SOOL_I2C_Receive(SOOL_I2C_Polling *i2c_ptr, uint8_t slave_address, uint8_t* buf_rx, uint32_t length);
 
 // helpers
 static uint8_t SOOL_I2C_Receive1Byte(I2C_TypeDef* I2Cx, uint8_t SlaveAddress, uint8_t* pBuffer);
 static uint8_t SOOL_I2C_Receive2Bytes(I2C_TypeDef* I2Cx, uint8_t SlaveAddress, uint8_t* pBuffer);
 static uint8_t SOOL_I2C_ReceiveMoreThan2Bytes(I2C_TypeDef* I2Cx, uint8_t SlaveAddress, uint8_t* pBuffer, uint32_t NumByteToRead);
-
-typedef enum {
-	I2C_POLLING_ERROR = 256u
-};
 
 /* I2C START mask */
 #define CR1_START_Set           ((uint16_t)0x0100)
@@ -42,11 +38,8 @@ typedef enum {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-SOOL_I2C_Polling SOOL_Periph_I2C_Polling_Init(	I2C_TypeDef*	I2Cx,
-		uint16_t 		I2C_Ack,
-		uint16_t		I2C_AcknowledgedAddress,
-		uint32_t 		I2C_ClockSpeed /* <= 400 kHz */,
-		uint16_t 		I2C_OwnAddress1)
+extern SOOL_I2C_Polling SOOL_Periph_I2C_Polling_Init(I2C_TypeDef* I2Cx, uint16_t I2C_Ack,
+		uint16_t I2C_AcknowledgedAddress, uint32_t I2C_ClockSpeed, uint16_t I2C_OwnAddress1)
 {
 
 	/* New instance */
@@ -72,26 +65,74 @@ SOOL_I2C_Polling SOOL_Periph_I2C_Polling_Init(	I2C_TypeDef*	I2Cx,
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
-static uint8_t SOOL_I2C_Transmit(SOOL_I2C_Polling *i2c_ptr, uint8_t slave_address, uint32_t length, uint8_t* buf_tx) {
+static uint8_t SOOL_I2C_Transmit(SOOL_I2C_Polling *i2c_ptr, uint8_t slave_address, uint8_t* buf_tx, uint32_t length) {
 
-	I2C_GenerateSTART(i2c_ptr->_setup.I2Cx, ENABLE);
-	while (!I2C_GetFlagStatus(i2c_ptr->_setup.I2Cx, I2C_FLAG_SB));							// wait for EV5
+	uint32_t Timeout = 0xFFFF;
+	uint8_t Address = 0x00;
+	uint32_t temp = 0;
 
-	I2C_Send7bitAddress(i2c_ptr->_setup.I2Cx, slave_address, I2C_Direction_Transmitter);
-	while (!I2C_GetFlagStatus(i2c_ptr->_setup.I2Cx, I2C_FLAG_ADDR));						// wait for EV6
-	uint16_t sr1 = i2c_ptr->_setup.I2Cx->SR1;
-	uint16_t sr2 = i2c_ptr->_setup.I2Cx->SR2;
-	// ADDR=1, cleared by reading SR1 register followed by reading SR2
+	I2C_TypeDef* I2Cx = i2c_ptr->_setup.I2Cx;
+	uint8_t SlaveAddress = slave_address;
+	uint32_t NumByteToWrite = length;
+	uint8_t* pBuffer = buf_tx;
 
+	// - - - - - - - - - - - - - - - - - - - - -
 
-	// DMA should take care of this part
-	while (!I2C_GetFlagStatus(i2c_ptr->_setup.I2Cx, I2C_FLAG_TXE));							// wait for EV8(_1)
-	I2C_SendData(i2c_ptr->_setup.I2Cx, 0x01);
-	while (!I2C_GetFlagStatus(i2c_ptr->_setup.I2Cx, I2C_FLAG_TXE));							// wait for EV8
-	I2C_SendData(i2c_ptr->_setup.I2Cx, 0x04);
-	while (!(I2C_GetFlagStatus(i2c_ptr->_setup.I2Cx, I2C_FLAG_TXE) &&
-			 I2C_GetFlagStatus(i2c_ptr->_setup.I2Cx, I2C_FLAG_BTF)));						// wait for EV8_2
-	I2C_GenerateSTOP(i2c_ptr->_setup.I2Cx, ENABLE);
+	/* Enable Error IT (used in all modes: DMA, Polling and Interrupts */
+	I2Cx->CR2 |= I2C_IT_ERR;
+
+	// - - - - - - - - - - - - - - - - - - - - -
+
+	/* I2Cx Master Transmission using Polling */
+	Timeout = 0xFFFF;
+	/* Send START condition */
+	I2Cx->CR1 |= CR1_START_Set;
+	/* Wait until SB flag is set: EV5 */
+	while ((I2Cx->SR1&0x0001) != 0x0001)
+	{
+		if (Timeout-- == 0)
+			return (0);
+	}
+
+	/* Send slave address */
+	/* Reset the address bit0 for write*/
+	SlaveAddress &= OAR1_ADD0_Reset;
+	Address = SlaveAddress;
+	/* Send the slave address */
+	I2Cx->DR = Address;
+	Timeout = 0xFFFF;
+	/* Wait until ADDR is set: EV6 */
+	while ((I2Cx->SR1 &0x0002) != 0x0002)
+	{
+		if (Timeout-- == 0)
+			return (0);
+	}
+
+	/* Clear ADDR flag by reading SR2 register */
+	temp = I2Cx->SR2;
+	/* Write the first data in DR register (EV8_1) */
+	I2Cx->DR = *pBuffer;
+	/* Increment */
+	pBuffer++;
+	/* Decrement the number of bytes to be written */
+	NumByteToWrite--;
+	/* While there is data to be written */
+	while (NumByteToWrite--)
+	{
+		/* Poll on BTF to receive data because in polling mode we can not guarantee the
+		  EV8 software sequence is managed before the current byte transfer completes */
+		while ((I2Cx->SR1 & 0x00004) != 0x000004);
+		/* Send the current byte */
+		I2Cx->DR = *pBuffer;
+		/* Point to the next byte to be written */
+		pBuffer++;
+	}
+	/* EV8_2: Wait until BTF is set before programming the STOP */
+	while ((I2Cx->SR1 & 0x00004) != 0x000004);
+	/* Send STOP condition */
+	I2Cx->CR1 |= CR1_STOP_Set;
+	/* Make sure that the STOP bit is cleared by Hardware */
+	while ((I2Cx->CR1&0x200) == 0x200);
 
 	return (1);
 
@@ -99,7 +140,7 @@ static uint8_t SOOL_I2C_Transmit(SOOL_I2C_Polling *i2c_ptr, uint8_t slave_addres
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t SOOL_I2C_Receive(SOOL_I2C_Polling *i2c_ptr, uint8_t slave_address, uint32_t length, uint8_t* buf_rx) {
+static uint8_t SOOL_I2C_Receive(SOOL_I2C_Polling *i2c_ptr, uint8_t slave_address, uint8_t* buf_rx, uint32_t length) {
 
 	/* I2Cx Master Reception using Polling */
 	// Taken from ST's I2C optimized examples
@@ -127,12 +168,14 @@ static uint8_t SOOL_I2C_ReceiveMoreThan2Bytes(I2C_TypeDef* I2Cx, uint8_t SlaveAd
 	uint8_t Address = 0x00;
 	uint32_t temp = 0;
 
+	// - - - - - - - - - - - - - - - - - - - - -
+
     /* Send START condition */
     I2Cx->CR1 |= CR1_START_Set;
     /* Wait until SB flag is set: EV5 */
     while ((I2Cx->SR1&0x0001) != 0x0001) {
         if (Timeout-- == 0) {
-            return (I2C_POLLING_ERROR);
+            return (0);
         }
     }
 
@@ -147,7 +190,7 @@ static uint8_t SOOL_I2C_ReceiveMoreThan2Bytes(I2C_TypeDef* I2Cx, uint8_t SlaveAd
     while ((I2Cx->SR1&0x0002) != 0x0002)
     {
         if (Timeout-- == 0)
-        	return (I2C_POLLING_ERROR);
+        	return (0);
     }
     /* Clear ADDR by reading SR2 status register */
     temp = I2Cx->SR2;
@@ -217,6 +260,8 @@ static uint8_t SOOL_I2C_Receive2Bytes(I2C_TypeDef* I2Cx, uint8_t SlaveAddress, u
 	uint8_t Address = 0x00;
 	uint32_t temp = 0;
 
+	// - - - - - - - - - - - - - - - - - - - - -
+
 	/* Set POS bit */
 	I2Cx->CR1 |= CR1_POS_Set;
 	Timeout = 0xFFFF;
@@ -226,7 +271,7 @@ static uint8_t SOOL_I2C_Receive2Bytes(I2C_TypeDef* I2Cx, uint8_t SlaveAddress, u
 	while ((I2Cx->SR1&0x0001) != 0x0001)
 	{
 		if (Timeout-- == 0)
-			return (I2C_POLLING_ERROR);
+			return (0);
 	}
 	Timeout = 0xFFFF;
 	/* Send slave address */
@@ -239,7 +284,7 @@ static uint8_t SOOL_I2C_Receive2Bytes(I2C_TypeDef* I2Cx, uint8_t SlaveAddress, u
 	while ((I2Cx->SR1&0x0002) != 0x0002)
 	{
 		if (Timeout-- == 0)
-			return (I2C_POLLING_ERROR);
+			return (0);
 	}
 	/* EV6_1: The acknowledge disable should be done just after EV6,
 	that is after ADDR is cleared, so disable all active IRQs around ADDR clearing and
@@ -284,6 +329,8 @@ static uint8_t SOOL_I2C_Receive1Byte(I2C_TypeDef* I2Cx, uint8_t SlaveAddress, ui
 	uint8_t Address = 0x00;
 	uint32_t temp = 0;
 
+	// - - - - - - - - - - - - - - - - - - - - -
+
 	Timeout = 0xFFFF;
 	/* Send START condition */
 	I2Cx->CR1 |= CR1_START_Set;
@@ -291,7 +338,7 @@ static uint8_t SOOL_I2C_Receive1Byte(I2C_TypeDef* I2Cx, uint8_t SlaveAddress, ui
 	while ((I2Cx->SR1&0x0001) != 0x0001)
 	{
 		if (Timeout-- == 0)
-			return (I2C_POLLING_ERROR);
+			return (0);
 	}
 	/* Send slave address */
 	/* Reset the address bit0 for read */
@@ -307,7 +354,7 @@ static uint8_t SOOL_I2C_Receive1Byte(I2C_TypeDef* I2Cx, uint8_t SlaveAddress, ui
 	while ((I2Cx->SR1&0x0002) != 0x0002)
 	{
 		if (Timeout-- == 0)
-			return (I2C_POLLING_ERROR);
+			return (0);
 	}
 	/* Clear ACK bit */
 	I2Cx->CR1 &= CR1_ACK_Reset;
