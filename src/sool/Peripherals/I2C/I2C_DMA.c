@@ -27,6 +27,11 @@ static uint8_t SOOL_I2C_DMA_DmaRxIrqHandler(volatile SOOL_I2C_DMA *i2c_ptr);
 static uint8_t SOOL_I2C_DMA_Send(volatile SOOL_I2C_DMA *i2c_ptr, uint32_t addr_tx, uint32_t length, uint32_t addr_rx);
 static uint8_t SOOL_I2C_DMA_RequestData();
 
+static uint8_t SOOL_I2C_DMA_MasterTransmitter(volatile SOOL_I2C_DMA *i2c_ptr, uint8_t slave_address,
+										      uint32_t buf_tx_addr, uint32_t length, uint32_t buf_rx_addr);
+static uint8_t SOOL_I2C_DMA_MasterReceiver(volatile SOOL_I2C_DMA *i2c_ptr, uint8_t slave_address,
+										   uint32_t buf_tx_addr, uint32_t length, uint32_t buf_rx_addr);
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 volatile SOOL_I2C_DMA SOOL_Periph_I2C_DMA_Init(
@@ -103,23 +108,24 @@ volatile SOOL_I2C_DMA SOOL_Periph_I2C_DMA_Init(
 	SOOL_DMA dma_tx = SOOL_Periph_DMA_Init(dma_periph, dma_channel_tx, DMA_DIR_PeripheralSRC, DMA_PeripheralInc_Disable,
 			DMA_MemoryInc_Enable, DMA_PeripheralDataSize_Byte, DMA_MemoryDataSize_Byte, DMA_Mode_Normal, DMA_Priority_VeryHigh,
 			DMA_M2M_Disable,
-			ENABLE,		// transfer completed interrupt
-			DISABLE, 	// half transfer completed interrupt
-			ENABLE);	// error interrupt
+			DISABLE,	// transfer completed interrupt 		FIXME
+			DISABLE, 	// half transfer completed interrupt 	FIXME
+			DISABLE);	// error interrupt 						FIXME
 
 	// RX
 	SOOL_DMA dma_rx = SOOL_Periph_DMA_Init(dma_periph, dma_channel_rx, DMA_DIR_PeripheralDST, DMA_PeripheralInc_Disable,
 			DMA_MemoryInc_Enable, DMA_PeripheralDataSize_Byte, DMA_MemoryDataSize_Byte, DMA_Mode_Normal, DMA_Priority_VeryHigh,
 			DMA_M2M_Disable,
-			ENABLE,		// transfer completed interrupt
+			DISABLE,	// transfer completed interrupt			FIXME
 			DISABLE, 	// half transfer completed interrupt
-			ENABLE);	// error interrupt
+			DISABLE);	// error interrupt						FIXME
 
 //	/* Enable the SPI RX & TX DMA requests */
 //	I2C_DMACmd(I2Cx, ENABLE);
 
-	/* Enable I2Cx peripheral */
-	I2C_Cmd(I2Cx, ENABLE);
+	/* Enable I2Cx peripheral
+	 * clock cannot be set then? TODO */
+//	I2C_Cmd(I2Cx, ENABLE);
 
 	/* TODO: Software reset
 	 * @ref https://community.st.com/s/question/0D50X00009XkiPQSAZ/stm32f407-i2c-error-addr-bit-not-set-after-the-7bit-address-is-sent
@@ -146,6 +152,9 @@ volatile SOOL_I2C_DMA SOOL_Periph_I2C_DMA_Init(
 	i2c.I2C_ClockSpeed = I2C_ClockSpeed;
 	i2c.I2C_OwnAddress1 = I2C_OwnAddress1;
 	I2C_Init(I2Cx, &i2c);
+
+	/* Enable I2Cx peripheral TODO */
+	I2C_Cmd(I2Cx, ENABLE);
 
 	/* Initialize I2C NVIC */
 	NVIC_InitTypeDef nvic;
@@ -183,6 +192,10 @@ volatile SOOL_I2C_DMA SOOL_Periph_I2C_DMA_Init(
 	i2c_dma.SendReceive = SOOL_I2C_DMA_SendProcedural;
 	i2c_dma._DmaRxIrqHandler = SOOL_I2C_DMA_DmaRxIrqHandler;
 	i2c_dma._DmaTxIrqHandler = SOOL_I2C_DMA_DmaTxIrqHandler;
+
+	// FIXME:
+	i2c_dma.MasterTransmitter = SOOL_I2C_DMA_MasterTransmitter;
+	i2c_dma.MasterReceiver = SOOL_I2C_DMA_MasterReceiver;
 
 	/* Check if the bus is busy */
 	while ( I2C1->SR2 & I2C_FLAG_BUSY );
@@ -225,33 +238,6 @@ static uint8_t SOOL_I2C_DMA_IsNewData(volatile SOOL_I2C_DMA *i2c_ptr) {
 
 static uint8_t SOOL_I2C_DMA_SendProcedural(volatile SOOL_I2C_DMA *i2c_ptr, uint8_t slave_address, uint32_t buf_tx_addr, uint32_t length, uint32_t buf_rx_addr) {
 
-	// according to the ST's example (I2C_RAM)
-	// V1
-//	I2C_DMACmd(i2c_ptr->_setup.I2Cx, DISABLE);
-	I2C_DMACmd(i2c_ptr->_setup.I2Cx, ENABLE);
-
-	/* Configure DMA TX */
-	i2c_ptr->base_dma_tx.SetBufferSize(&i2c_ptr->base_dma_tx, length);
-	i2c_ptr->base_dma_tx.SetMemoryBaseAddr(&i2c_ptr->base_dma_tx, buf_tx_addr);
-	i2c_ptr->base_dma_tx.SetPeriphBaseAddr(&i2c_ptr->base_dma_tx, (uint32_t)&i2c_ptr->_setup.I2Cx->DR);
-
-	/* Configure DMA RX */
-	i2c_ptr->base_dma_rx.SetBufferSize(&i2c_ptr->base_dma_rx, length);
-	i2c_ptr->base_dma_rx.SetMemoryBaseAddr(&i2c_ptr->base_dma_rx, buf_rx_addr);
-	i2c_ptr->base_dma_rx.SetPeriphBaseAddr(&i2c_ptr->base_dma_rx, (uint32_t)&i2c_ptr->_setup.I2Cx->DR);
-
-	/* Set buffers length, for RX and TX channels it is the same */
-	if ( length > 1 ) {
-		i2c_ptr->base_dma_rx.SetMemoryInc(&i2c_ptr->base_dma_rx, ENABLE);
-		i2c_ptr->base_dma_tx.SetMemoryInc(&i2c_ptr->base_dma_tx, ENABLE);
-	} else {
-		i2c_ptr->base_dma_rx.SetMemoryInc(&i2c_ptr->base_dma_rx, DISABLE);
-		i2c_ptr->base_dma_tx.SetMemoryInc(&i2c_ptr->base_dma_tx, DISABLE);
-	}
-
-	/* Enable DMA */
-	i2c_ptr->base_dma_tx.Start(&i2c_ptr->base_dma_tx);
-
 //	//	V1
 //	/*----- Transmission Phase -----*/
 //	/* Send I2C1 START condition */
@@ -283,6 +269,8 @@ static uint8_t SOOL_I2C_DMA_SendProcedural(volatile SOOL_I2C_DMA *i2c_ptr, uint8
 	uint16_t sr2 = i2c_ptr->_setup.I2Cx->SR2;
 	// ADDR=1, cleared by reading SR1 register followed by reading SR2
 
+
+	// DMA should take care of this part
 	while (!I2C_GetFlagStatus(i2c_ptr->_setup.I2Cx, I2C_FLAG_TXE));							// wait for EV8(_1)
 	I2C_SendData(i2c_ptr->_setup.I2Cx, 0x01);
 	while (!I2C_GetFlagStatus(i2c_ptr->_setup.I2Cx, I2C_FLAG_TXE));							// wait for EV8
@@ -291,7 +279,140 @@ static uint8_t SOOL_I2C_DMA_SendProcedural(volatile SOOL_I2C_DMA *i2c_ptr, uint8
 			 I2C_GetFlagStatus(i2c_ptr->_setup.I2Cx, I2C_FLAG_BTF)));						// wait for EV8_2
 	I2C_GenerateSTOP(i2c_ptr->_setup.I2Cx, ENABLE);
 
-//	I2C_CheckEvent(i2c_ptr->_setup.I2Cx, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED);
+	i2c_ptr->base_dma_tx.Start(&i2c_ptr->base_dma_tx);
+
+	return (1);
+
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static uint8_t SOOL_I2C_DMA_MasterReceiver(volatile SOOL_I2C_DMA *i2c_ptr, uint8_t slave_address,
+										   uint32_t buf_tx_addr, uint32_t length, uint32_t buf_rx_addr)
+
+{
+
+	// 1a - Configure the I2C DMA channel for reception
+	/* Configure DMA TX */
+	i2c_ptr->base_dma_tx.SetBufferSize(&i2c_ptr->base_dma_tx, (uint32_t)length);
+	i2c_ptr->base_dma_tx.SetMemoryBaseAddr(&i2c_ptr->base_dma_tx, (uint32_t)buf_tx_addr);
+	i2c_ptr->base_dma_tx.SetPeriphBaseAddr(&i2c_ptr->base_dma_tx, (uint32_t)&i2c_ptr->_setup.I2Cx->DR);
+
+	/* Configure DMA RX */
+	i2c_ptr->base_dma_rx.SetBufferSize(&i2c_ptr->base_dma_rx, (uint32_t)length);
+	i2c_ptr->base_dma_rx.SetMemoryBaseAddr(&i2c_ptr->base_dma_rx, (uint32_t)buf_rx_addr);
+	i2c_ptr->base_dma_rx.SetPeriphBaseAddr(&i2c_ptr->base_dma_rx, (uint32_t)&i2c_ptr->_setup.I2Cx->DR);
+
+	/* Set buffers length, for RX and TX channels it is the same */
+	if ( length > 1 ) {
+		i2c_ptr->base_dma_rx.SetMemoryInc(&i2c_ptr->base_dma_rx, ENABLE);
+		i2c_ptr->base_dma_tx.SetMemoryInc(&i2c_ptr->base_dma_tx, ENABLE);
+	} else {
+		i2c_ptr->base_dma_rx.SetMemoryInc(&i2c_ptr->base_dma_rx, DISABLE);
+		i2c_ptr->base_dma_tx.SetMemoryInc(&i2c_ptr->base_dma_tx, DISABLE);
+	}
+
+	// 1b - Enable the I2C channel for reception
+	i2c_ptr->base_dma_rx.Start(&i2c_ptr->base_dma_rx); /* Enable DMA */
+
+	// 2a - Set DMAEN bit
+	I2C_DMACmd(i2c_ptr->_setup.I2Cx, ENABLE);
+	// 2b - Set LAST bit (used to generate a NACK automatically on the last received byte.)
+	i2c_ptr->_setup.I2Cx->CR2 |= I2C_CR2_LAST;
+
+	// 3a - Send a START condition
+	I2C_GenerateSTART(i2c_ptr->_setup.I2Cx, ENABLE);
+	// 3b - Wait until SB is set and clear it (cleared by a read of CR1 and writing DR)
+	while (!I2C_GetFlagStatus(i2c_ptr->_setup.I2Cx, I2C_FLAG_SB));
+
+	// 4a - Send slave address
+	I2C_Send7bitAddress(i2c_ptr->_setup.I2Cx, slave_address, I2C_Direction_Receiver);
+	// 4b - Wait until ADDR is set and clear it
+	while (!I2C_GetFlagStatus(i2c_ptr->_setup.I2Cx, I2C_FLAG_ADDR));						// wait for EV6
+	uint16_t sr1 = i2c_ptr->_setup.I2Cx->SR1;
+	uint16_t sr2 = i2c_ptr->_setup.I2Cx->SR2;
+
+	// 5a - Wait until the DMA end of transfer
+	while (!DMA_GetFlagStatus(i2c_ptr->base_dma_rx._setup.int_flags.COMPLETE_FLAG));
+	// 5b - Disable the DMA channel
+	i2c_ptr->base_dma_rx.Stop(&i2c_ptr->base_dma_rx);
+	// 5c - Clear the DMA transfer complete flag
+	DMA_ClearFlag(i2c_ptr->base_dma_rx._setup.int_flags.COMPLETE_FLAG);
+
+	// 6b - Program the STOP
+	I2C_GenerateSTOP(i2c_ptr->_setup.I2Cx, ENABLE);
+	// 6c - Wait until STOP bit is cleared by hardware
+	while (i2c_ptr->_setup.I2Cx->CR1 & I2C_CR1_STOP);
+
+	return (1);
+
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static uint8_t SOOL_I2C_DMA_MasterTransmitter(volatile SOOL_I2C_DMA *i2c_ptr, uint8_t slave_address,
+										      uint32_t buf_tx_addr, uint32_t length, uint32_t buf_rx_addr)
+{
+
+	// according to the ST's AN2824
+	// -----------------------------------------------------------------------------------------------
+
+	// 1a - Configure the I2C DMA channel for transmission
+	/* Configure DMA TX */
+	i2c_ptr->base_dma_tx.SetBufferSize(&i2c_ptr->base_dma_tx, (uint32_t)length);
+	i2c_ptr->base_dma_tx.SetMemoryBaseAddr(&i2c_ptr->base_dma_tx, (uint32_t)buf_tx_addr);
+	i2c_ptr->base_dma_tx.SetPeriphBaseAddr(&i2c_ptr->base_dma_tx, (uint32_t)&i2c_ptr->_setup.I2Cx->DR);
+
+	/* Configure DMA RX */
+	i2c_ptr->base_dma_rx.SetBufferSize(&i2c_ptr->base_dma_rx, (uint32_t)length);
+	i2c_ptr->base_dma_rx.SetMemoryBaseAddr(&i2c_ptr->base_dma_rx, (uint32_t)buf_rx_addr);
+	i2c_ptr->base_dma_rx.SetPeriphBaseAddr(&i2c_ptr->base_dma_rx, (uint32_t)&i2c_ptr->_setup.I2Cx->DR);
+
+	/* Set buffers length, for RX and TX channels it is the same */
+	if ( length > 1 ) {
+		i2c_ptr->base_dma_rx.SetMemoryInc(&i2c_ptr->base_dma_rx, ENABLE);
+		i2c_ptr->base_dma_tx.SetMemoryInc(&i2c_ptr->base_dma_tx, ENABLE);
+	} else {
+		i2c_ptr->base_dma_rx.SetMemoryInc(&i2c_ptr->base_dma_rx, DISABLE);
+		i2c_ptr->base_dma_tx.SetMemoryInc(&i2c_ptr->base_dma_tx, DISABLE);
+	}
+
+	// 1b - Enable the I2C DMA channel for transmission
+	/* Enable DMA Channel */
+	i2c_ptr->base_dma_tx.Start(&i2c_ptr->base_dma_tx);
+
+	// 2 - Set DMAEN bit
+	I2C_DMACmd(i2c_ptr->_setup.I2Cx, ENABLE);
+
+	// 3a - Send a START condition
+	I2C_GenerateSTART(i2c_ptr->_setup.I2Cx, ENABLE);
+	// 3b - Wait until SB is set and clear it (cleared by a read of CR1 and writing DR)
+	while (!I2C_GetFlagStatus(i2c_ptr->_setup.I2Cx, I2C_FLAG_SB));							// wait for EV5
+
+	// 4a - Send slave address
+	I2C_Send7bitAddress(i2c_ptr->_setup.I2Cx, slave_address, I2C_Direction_Transmitter);
+	// 4b - Wait until ADDR is set and clear it
+	while (!I2C_GetFlagStatus(i2c_ptr->_setup.I2Cx, I2C_FLAG_ADDR));						// wait for EV6
+	uint16_t sr1 = i2c_ptr->_setup.I2Cx->SR1;
+	uint16_t sr2 = i2c_ptr->_setup.I2Cx->SR2;
+
+
+	// ------ DMA transfer starts right here ------
+
+
+	// 5a - Wait until the DMA end of transfer
+	while (!DMA_GetFlagStatus(i2c_ptr->base_dma_tx._setup.int_flags.COMPLETE_FLAG));
+	// 5b - Disable the DMA channel
+	i2c_ptr->base_dma_tx.Stop(&i2c_ptr->base_dma_tx);
+	// 5c - Clear the DMA transfer complete flag
+	DMA_ClearFlag(i2c_ptr->base_dma_tx._setup.int_flags.COMPLETE_FLAG);
+
+	// 6a - Wait until BTF = 1
+	while (!I2C_GetFlagStatus(i2c_ptr->_setup.I2Cx, I2C_FLAG_BTF));
+	// 6b - Program the STOP
+	I2C_GenerateSTOP(i2c_ptr->_setup.I2Cx, ENABLE);
+	// 6c - Wait until STOP bit is cleared by hardware
+	while (i2c_ptr->_setup.I2Cx->CR1 & I2C_CR1_STOP);
 
 	return (1);
 
@@ -303,7 +424,7 @@ static uint8_t SOOL_I2C_DMA_DmaTxIrqHandler(volatile SOOL_I2C_DMA *i2c_ptr) {
 
 	i2c_ptr->_state_tx.finished = 1;
 
-	while (!I2C_GetFlagStatus(i2c_ptr->_setup.I2Cx, I2C_FLAG_BTF));
+//	while (!I2C_GetFlagStatus(i2c_ptr->_setup.I2Cx, I2C_FLAG_BTF));
 	I2C_GenerateSTOP(i2c_ptr->_setup.I2Cx, ENABLE);
 
 	return (1);

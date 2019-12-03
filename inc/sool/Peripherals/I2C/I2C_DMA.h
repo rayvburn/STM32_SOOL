@@ -75,8 +75,14 @@ struct _SOOL_I2C_DMA_Struct {
 	 */
 	uint8_t (*IsNewData)(volatile SOOL_I2C_DMA*);
 
+	// POLLING
+	uint8_t (*Transfer)(volatile SOOL_I2C_DMA*, uint8_t I2C_Direction, uint8_t slave_address, uint32_t buf_tx_addr, uint32_t length, uint32_t buf_rx_addr);
+
 	// TODO
 	uint8_t (*SendReceive)(volatile SOOL_I2C_DMA *i2c_ptr, uint8_t slave_address, uint32_t buf_tx_addr, uint32_t length, uint32_t buf_rx_addr);
+
+	uint8_t (*MasterTransmitter)(volatile SOOL_I2C_DMA *i2c_ptr, uint8_t slave_address, uint32_t buf_tx_addr, uint32_t length, uint32_t buf_rx_addr);
+	uint8_t (*MasterReceiver)(volatile SOOL_I2C_DMA *i2c_ptr, uint8_t slave_address, uint32_t buf_tx_addr, uint32_t length, uint32_t buf_rx_addr);
 
 	// interrupt service routines
 	uint8_t (*_DmaRxIrqHandler)(volatile SOOL_I2C_DMA*);
