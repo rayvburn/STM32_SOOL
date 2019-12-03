@@ -17,25 +17,6 @@ static uint8_t SOOL_I2C_Receive1Byte(I2C_TypeDef* I2Cx, uint8_t SlaveAddress, ui
 static uint8_t SOOL_I2C_Receive2Bytes(I2C_TypeDef* I2Cx, uint8_t SlaveAddress, uint8_t* pBuffer);
 static uint8_t SOOL_I2C_ReceiveMoreThan2Bytes(I2C_TypeDef* I2Cx, uint8_t SlaveAddress, uint8_t* pBuffer, uint32_t NumByteToRead);
 
-/* I2C START mask */
-#define CR1_START_Set           ((uint16_t)0x0100)
-#define CR1_START_Reset         ((uint16_t)0xFEFF)
-
-#define CR1_POS_Set           ((uint16_t)0x0800)
-#define CR1_POS_Reset         ((uint16_t)0xF7FF)
-
-/* I2C ADD0 mask */
-#define OAR1_ADD0_Set           ((uint16_t)0x0001)
-#define OAR1_ADD0_Reset         ((uint16_t)0xFFFE)
-
-/* I2C ACK mask */
-#define CR1_ACK_Set             ((uint16_t)0x0400)
-#define CR1_ACK_Reset           ((uint16_t)0xFBFF)
-
-/* I2C STOP mask */
-#define CR1_STOP_Set            ((uint16_t)0x0200)
-#define CR1_STOP_Reset          ((uint16_t)0xFDFF)
-
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 extern SOOL_I2C_Polling SOOL_Periph_I2C_Polling_Init(I2C_TypeDef* I2Cx, uint16_t I2C_Ack,
@@ -86,7 +67,7 @@ static uint8_t SOOL_I2C_Transmit(SOOL_I2C_Polling *i2c_ptr, uint8_t slave_addres
 	/* I2Cx Master Transmission using Polling */
 	Timeout = 0xFFFF;
 	/* Send START condition */
-	I2Cx->CR1 |= CR1_START_Set;
+	I2Cx->CR1 |= I2C_CR1_START; // CR1_START_Set;
 	/* Wait until SB flag is set: EV5 */
 	while ((I2Cx->SR1&0x0001) != 0x0001)
 	{
@@ -96,7 +77,7 @@ static uint8_t SOOL_I2C_Transmit(SOOL_I2C_Polling *i2c_ptr, uint8_t slave_addres
 
 	/* Send slave address */
 	/* Reset the address bit0 for write*/
-	SlaveAddress &= OAR1_ADD0_Reset;
+	SlaveAddress &= (uint16_t)(~(uint16_t)I2C_OAR1_ADD0); // OAR1_ADD0_Reset;
 	Address = SlaveAddress;
 	/* Send the slave address */
 	I2Cx->DR = Address;
@@ -130,7 +111,7 @@ static uint8_t SOOL_I2C_Transmit(SOOL_I2C_Polling *i2c_ptr, uint8_t slave_addres
 	/* EV8_2: Wait until BTF is set before programming the STOP */
 	while ((I2Cx->SR1 & 0x00004) != 0x000004);
 	/* Send STOP condition */
-	I2Cx->CR1 |= CR1_STOP_Set;
+	I2Cx->CR1 |= I2C_CR1_STOP; // CR1_STOP_Set;
 	/* Make sure that the STOP bit is cleared by Hardware */
 	while ((I2Cx->CR1&0x200) == 0x200);
 
@@ -171,7 +152,7 @@ static uint8_t SOOL_I2C_ReceiveMoreThan2Bytes(I2C_TypeDef* I2Cx, uint8_t SlaveAd
 	// - - - - - - - - - - - - - - - - - - - - -
 
     /* Send START condition */
-    I2Cx->CR1 |= CR1_START_Set;
+    I2Cx->CR1 |= I2C_CR1_START; // CR1_START_Set;
     /* Wait until SB flag is set: EV5 */
     while ((I2Cx->SR1&0x0001) != 0x0001) {
         if (Timeout-- == 0) {
@@ -182,7 +163,7 @@ static uint8_t SOOL_I2C_ReceiveMoreThan2Bytes(I2C_TypeDef* I2Cx, uint8_t SlaveAd
     Timeout = 0xFFFF;
     /* Send slave address */
     /* Reset the address bit0 for write */
-    SlaveAddress |= OAR1_ADD0_Set;;
+    SlaveAddress |= I2C_OAR1_ADD0; // OAR1_ADD0_Set;;
     Address = SlaveAddress;
     /* Send the slave address */
     I2Cx->DR = Address;
@@ -218,7 +199,7 @@ static uint8_t SOOL_I2C_ReceiveMoreThan2Bytes(I2C_TypeDef* I2Cx, uint8_t SlaveAd
             /* Wait until BTF is set: Data N-2 in DR and data N -1 in shift register */
             while ((I2Cx->SR1 & 0x00004) != 0x000004);
             /* Clear ACK */
-            I2Cx->CR1 &= CR1_ACK_Reset;
+            I2Cx->CR1 &= (uint16_t)(~(uint16_t)I2C_CR1_ACK); // CR1_ACK_Reset;
 
             /* Disable IRQs around data reading and STOP programming because of the
             limitation ? */
@@ -228,7 +209,7 @@ static uint8_t SOOL_I2C_ReceiveMoreThan2Bytes(I2C_TypeDef* I2Cx, uint8_t SlaveAd
             /* Increment */
             pBuffer++;
             /* Program the STOP */
-            I2Cx->CR1 |= CR1_STOP_Set;
+            I2Cx->CR1 |= I2C_CR1_STOP; // CR1_STOP_Set;
             /* Read DataN-1 */
             *pBuffer = I2Cx->DR;
             /* Re-enable IRQs */
@@ -247,7 +228,7 @@ static uint8_t SOOL_I2C_ReceiveMoreThan2Bytes(I2C_TypeDef* I2Cx, uint8_t SlaveAd
     /* Make sure that the STOP bit is cleared by Hardware before CR1 write access */
     while ((I2Cx->CR1&0x200) == 0x200);
     /* Enable Acknowledgement to be ready for another reception */
-    I2Cx->CR1 |= CR1_ACK_Set;
+    I2Cx->CR1 |= I2C_CR1_ACK; // CR1_ACK_Set;
 
     return (1);
 }
@@ -263,10 +244,10 @@ static uint8_t SOOL_I2C_Receive2Bytes(I2C_TypeDef* I2Cx, uint8_t SlaveAddress, u
 	// - - - - - - - - - - - - - - - - - - - - -
 
 	/* Set POS bit */
-	I2Cx->CR1 |= CR1_POS_Set;
+	I2Cx->CR1 |= I2C_CR1_POS; // CR1_POS_Set;
 	Timeout = 0xFFFF;
 	/* Send START condition */
-	I2Cx->CR1 |= CR1_START_Set;
+	I2Cx->CR1 |= I2C_CR1_START; // CR1_START_Set;
 	/* Wait until SB flag is set: EV5 */
 	while ((I2Cx->SR1&0x0001) != 0x0001)
 	{
@@ -276,7 +257,7 @@ static uint8_t SOOL_I2C_Receive2Bytes(I2C_TypeDef* I2Cx, uint8_t SlaveAddress, u
 	Timeout = 0xFFFF;
 	/* Send slave address */
 	/* Set the address bit0 for read */
-	SlaveAddress |= OAR1_ADD0_Set;
+	SlaveAddress |= I2C_OAR1_ADD0; // OAR1_ADD0_Set;
 	Address = SlaveAddress;
 	/* Send the slave address */
 	I2Cx->DR = Address;
@@ -293,7 +274,7 @@ static uint8_t SOOL_I2C_Receive2Bytes(I2C_TypeDef* I2Cx, uint8_t SlaveAddress, u
 	/* Clear ADDR by reading SR2 register  */
 	temp = I2Cx->SR2;
 	/* Clear ACK */
-	I2Cx->CR1 &= CR1_ACK_Reset;
+	I2Cx->CR1 &= (uint16_t)(~(uint16_t)I2C_CR1_ACK); // CR1_ACK_Reset;
 	/*Re-enable IRQs */
 	__enable_irq();
 	/* Wait until BTF is set */
@@ -313,9 +294,9 @@ static uint8_t SOOL_I2C_Receive2Bytes(I2C_TypeDef* I2Cx, uint8_t SlaveAddress, u
 	/* Make sure that the STOP bit is cleared by Hardware before CR1 write access */
 	while ((I2Cx->CR1&0x200) == 0x200);
 	/* Enable Acknowledgement to be ready for another reception */
-	I2Cx->CR1  |= CR1_ACK_Set;
+	I2Cx->CR1  |= I2C_CR1_ACK; // CR1_ACK_Set;
 	/* Clear POS bit */
-	I2Cx->CR1  &= CR1_POS_Reset;
+	I2Cx->CR1  &= (uint16_t)(~(uint16_t)I2C_CR1_POS); // CR1_POS_Reset;
 
 	return (1);
 
@@ -333,7 +314,7 @@ static uint8_t SOOL_I2C_Receive1Byte(I2C_TypeDef* I2Cx, uint8_t SlaveAddress, ui
 
 	Timeout = 0xFFFF;
 	/* Send START condition */
-	I2Cx->CR1 |= CR1_START_Set;
+	I2Cx->CR1 |= I2C_CR1_START; // CR1_START_Set;
 	/* Wait until SB flag is set: EV5  */
 	while ((I2Cx->SR1&0x0001) != 0x0001)
 	{
@@ -342,7 +323,7 @@ static uint8_t SOOL_I2C_Receive1Byte(I2C_TypeDef* I2Cx, uint8_t SlaveAddress, ui
 	}
 	/* Send slave address */
 	/* Reset the address bit0 for read */
-	SlaveAddress |= OAR1_ADD0_Set;
+	SlaveAddress |= I2C_OAR1_ADD0; // OAR1_ADD0_Set;
 	Address = SlaveAddress;
 	/* Send the slave address */
 	I2Cx->DR = Address;
@@ -357,14 +338,14 @@ static uint8_t SOOL_I2C_Receive1Byte(I2C_TypeDef* I2Cx, uint8_t SlaveAddress, ui
 			return (0);
 	}
 	/* Clear ACK bit */
-	I2Cx->CR1 &= CR1_ACK_Reset;
+	I2Cx->CR1 &= (uint16_t)(~(uint16_t)I2C_CR1_ACK); // CR1_ACK_Reset;
 	/* Disable all active IRQs around ADDR clearing and STOP programming because the EV6_3
 	software sequence must complete before the current byte end of transfer */
 	__disable_irq();
 	/* Clear ADDR flag */
 	temp = I2Cx->SR2;
 	/* Program the STOP */
-	I2Cx->CR1 |= CR1_STOP_Set;
+	I2Cx->CR1 |= I2C_CR1_STOP; // CR1_STOP_Set;
 	/* Re-enable IRQs */
 	__enable_irq();
 	/* Wait until a data is received in DR register (RXNE = 1) EV7 */
@@ -374,7 +355,7 @@ static uint8_t SOOL_I2C_Receive1Byte(I2C_TypeDef* I2Cx, uint8_t SlaveAddress, ui
 	/* Make sure that the STOP bit is cleared by Hardware before CR1 write access */
 	while ((I2Cx->CR1&0x200) == 0x200);
 	/* Enable Acknowledgement to be ready for another reception */
-	I2Cx->CR1 |= CR1_ACK_Set;
+	I2Cx->CR1 |= I2C_CR1_ACK; // CR1_ACK_Set;
 
 	return (1);
 
