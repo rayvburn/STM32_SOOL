@@ -6,8 +6,7 @@
  */
 
 #include "sool/Peripherals/I2C/I2C_DMA.h"
-#include "sool/Peripherals/GPIO/PinConfig_AltFunction.h"
-#include "stm32f10x_i2c.h"
+
 #include "sool/Peripherals/NVIC/NVIC.h"
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -46,14 +45,8 @@ volatile SOOL_I2C_DMA SOOL_Periph_I2C_DMA_Init(
 	/* New instance */
 	volatile SOOL_I2C_DMA i2c_dma;
 
-	/* Enable peripheral clock */
-	if ( I2Cx == I2C1 ) {
-		RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, ENABLE);
-	} else if ( I2Cx == I2C2 ) {
-		RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C2, ENABLE);
-	} else {
-		return (i2c_dma);
-	}
+	/* GPIO and I2C peripheral init */
+	SOOL_Periph_I2C_InitBasic(I2Cx, I2C_Ack, I2C_AcknowledgedAddress, I2C_ClockSpeed, I2C_OwnAddress1);
 
 	/* DMA configuration */
 	DMA_TypeDef* dma_periph;
@@ -76,15 +69,6 @@ volatile SOOL_I2C_DMA SOOL_Periph_I2C_DMA_Init(
 		irqn_ev = I2C1_EV_IRQn;
 		irqn_er = I2C1_ER_IRQn;
 
-		/* Check remapping */
-		if ( AFIO->MAPR & AFIO_MAPR_I2C1_REMAP ) { // Reference manual 0008 -> 9.3.9
-			SOOL_Periph_GPIO_PinConfig_Initialize_AltFunction(GPIOB, GPIO_Pin_8, GPIO_Mode_AF_OD); 	// SCL
-			SOOL_Periph_GPIO_PinConfig_Initialize_AltFunction(GPIOB, GPIO_Pin_9, GPIO_Mode_AF_OD); 	// SDA
-		} else {
-			SOOL_Periph_GPIO_PinConfig_Initialize_AltFunction(GPIOB, GPIO_Pin_6, GPIO_Mode_AF_OD); 	// SCL
-			SOOL_Periph_GPIO_PinConfig_Initialize_AltFunction(GPIOB, GPIO_Pin_7, GPIO_Mode_AF_OD); 	// SDA
-		}
-
 	} else if ( I2Cx == I2C2 ) {
 
 		/* DMA setup */
@@ -96,14 +80,9 @@ volatile SOOL_I2C_DMA SOOL_Periph_I2C_DMA_Init(
 		irqn_ev = I2C2_EV_IRQn;
 		irqn_er = I2C2_ER_IRQn;
 
-		/* Pin configuration */
-		SOOL_Periph_GPIO_PinConfig_Initialize_AltFunction(GPIOB, GPIO_Pin_10, GPIO_Mode_AF_OD); 	// SCL
-		SOOL_Periph_GPIO_PinConfig_Initialize_AltFunction(GPIOB, GPIO_Pin_11, GPIO_Mode_AF_OD); 	// SDA
-
 	}
 
 	/* Initialize DMA */
-
 	// TX
 	SOOL_DMA dma_tx = SOOL_Periph_DMA_Init(dma_periph, dma_channel_tx, DMA_DIR_PeripheralSRC, DMA_PeripheralInc_Disable,
 			DMA_MemoryInc_Enable, DMA_PeripheralDataSize_Byte, DMA_MemoryDataSize_Byte, DMA_Mode_Normal, DMA_Priority_VeryHigh,
@@ -120,41 +99,9 @@ volatile SOOL_I2C_DMA SOOL_Periph_I2C_DMA_Init(
 			DISABLE, 	// half transfer completed interrupt
 			DISABLE);	// error interrupt						FIXME
 
-//	/* Enable the SPI RX & TX DMA requests */
+	/* Enable the SPI RX & TX DMA requests
+	 * executed during transfer preparation */
 //	I2C_DMACmd(I2Cx, ENABLE);
-
-	/* Enable I2Cx peripheral
-	 * clock cannot be set then? TODO */
-//	I2C_Cmd(I2Cx, ENABLE);
-
-	/* TODO: Software reset
-	 * @ref https://community.st.com/s/question/0D50X00009XkiPQSAZ/stm32f407-i2c-error-addr-bit-not-set-after-the-7bit-address-is-sent
-	 */
-//	I2C_SoftwareResetCmd(I2Cx, ENABLE);
-
-	/* Leftovers from non-object-oriented version */
-	// software reset - prevents the bus being stuck
-	// I2C_SoftwareResetLight(I2C_PERIPH_ID);	// !
-
-//	/* Enable the selected I2C Clock stretching */
-//	I2C_StretchClockCmd(I2Cx, ENABLE);
-
-//	/* Reset the I2C interface */
-//	I2C_DeInit(I2Cx);
-
-	/* Initialize I2Cx peripheral */
-	I2C_InitTypeDef i2c;
-	I2C_StructInit(&i2c);
-	i2c.I2C_Mode = I2C_Mode_I2C;
-	i2c.I2C_DutyCycle = I2C_DutyCycle_2;
-	i2c.I2C_Ack = I2C_Ack;
-	i2c.I2C_AcknowledgedAddress = I2C_AcknowledgedAddress; 	// 7-bit / 10-bit addressing mode
-	i2c.I2C_ClockSpeed = I2C_ClockSpeed;
-	i2c.I2C_OwnAddress1 = I2C_OwnAddress1;
-	I2C_Init(I2Cx, &i2c);
-
-	/* Enable I2Cx peripheral TODO */
-	I2C_Cmd(I2Cx, ENABLE);
 
 	/* Initialize I2C NVIC */
 	NVIC_InitTypeDef nvic;
@@ -232,57 +179,6 @@ static uint8_t SOOL_I2C_DMA_IsBusy(volatile SOOL_I2C_DMA *i2c_ptr) {
 
 static uint8_t SOOL_I2C_DMA_IsNewData(volatile SOOL_I2C_DMA *i2c_ptr) {
 	return (i2c_ptr->_state_rx.finished);
-}
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-static uint8_t SOOL_I2C_DMA_SendProcedural(volatile SOOL_I2C_DMA *i2c_ptr, uint8_t slave_address, uint32_t buf_tx_addr, uint32_t length, uint32_t buf_rx_addr) {
-
-//	//	V1
-//	/*----- Transmission Phase -----*/
-//	/* Send I2C1 START condition */
-//	I2C_GenerateSTART(i2c_ptr->_setup.I2Cx, ENABLE);
-//	/* Test on I2C1 EV5 and clear it */
-//	while(!I2C_CheckEvent(i2c_ptr->_setup.I2Cx, I2C_EVENT_MASTER_MODE_SELECT));
-//	/* Send slave Address for write */
-//	I2C_Send7bitAddress(i2c_ptr->_setup.I2Cx, slave_address, I2C_Direction_Transmitter);
-//	/* Test on I2C1 EV6 and clear it */
-//	while(!I2C_CheckEvent(i2c_ptr->_setup.I2Cx, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED));
-//
-//	I2C_DMACmd(i2c_ptr->_setup.I2Cx, ENABLE);
-//
-//	/* Enable DMA */
-// //	i2c_ptr->base_dma_tx.Start(&i2c_ptr->base_dma_tx);
-//	i2c_ptr->base_dma_rx.Start(&i2c_ptr->base_dma_rx);
-
-	// V2
-
-	// FIXME
-	i2c_ptr->base_dma_tx.Stop(&i2c_ptr->base_dma_tx);
-
-	I2C_GenerateSTART(i2c_ptr->_setup.I2Cx, ENABLE);
-	while (!I2C_GetFlagStatus(i2c_ptr->_setup.I2Cx, I2C_FLAG_SB));							// wait for EV5
-
-	I2C_Send7bitAddress(i2c_ptr->_setup.I2Cx, slave_address, I2C_Direction_Transmitter);
-	while (!I2C_GetFlagStatus(i2c_ptr->_setup.I2Cx, I2C_FLAG_ADDR));						// wait for EV6
-	uint16_t sr1 = i2c_ptr->_setup.I2Cx->SR1;
-	uint16_t sr2 = i2c_ptr->_setup.I2Cx->SR2;
-	// ADDR=1, cleared by reading SR1 register followed by reading SR2
-
-
-	// DMA should take care of this part
-	while (!I2C_GetFlagStatus(i2c_ptr->_setup.I2Cx, I2C_FLAG_TXE));							// wait for EV8(_1)
-	I2C_SendData(i2c_ptr->_setup.I2Cx, 0x01);
-	while (!I2C_GetFlagStatus(i2c_ptr->_setup.I2Cx, I2C_FLAG_TXE));							// wait for EV8
-	I2C_SendData(i2c_ptr->_setup.I2Cx, 0x02);
-	while (!(I2C_GetFlagStatus(i2c_ptr->_setup.I2Cx, I2C_FLAG_TXE) &&
-			 I2C_GetFlagStatus(i2c_ptr->_setup.I2Cx, I2C_FLAG_BTF)));						// wait for EV8_2
-	I2C_GenerateSTOP(i2c_ptr->_setup.I2Cx, ENABLE);
-
-	i2c_ptr->base_dma_tx.Start(&i2c_ptr->base_dma_tx);
-
-	return (1);
-
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

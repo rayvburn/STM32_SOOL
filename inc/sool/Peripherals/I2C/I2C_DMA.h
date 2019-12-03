@@ -9,6 +9,7 @@
 #define INC_SOOL_PERIPHERALS_I2C_I2C_DMA_H_
 
 #include "sool/Peripherals/DMA/DMA.h"
+#include "sool/Peripherals/I2C/I2C_common.h"
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
