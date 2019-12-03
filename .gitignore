@@ -5,3 +5,4 @@ Debug/
 Release/
 src/sool/Peripherals/SPI/SPI_007_Bckp.7z
 inc/sool/Sensors/HX711/hx711-logic.logicsettings
+inc/sool/Peripherals/I2C/AN2824 STM32F10xxx I2C optimized examples.pdf
