@@ -38,7 +38,7 @@ struct _SOOL_ADC_DMAStruct {
 	// ---------------------------------------
 
 	struct _SOOL_ADC_DMASetupStruct _setup;
-	SOOL_Vector_Uint16				_v;
+	SOOL_Vector_Uint16				_v;		// vector of values for the corresponding channels, uint16_t due to the ADC resolution (value range is 0-4095
 
 	/**
 	 * @brief Adds channel, extends vector of values where readings are stored
