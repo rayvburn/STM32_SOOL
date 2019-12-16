@@ -12,5 +12,5 @@ int32_t SOOL_Maths_Scale(int32_t value_digital, int32_t value_min_physical, int3
 {
 
 	//								 * physical range *                            * digital range *                * digital min *
-	return ( ((value_digital)*(value_max_physical - value_min_physical))/(value_max_digital - value_min_digital) + value_min_physical );
+	return ( (((value_digital)*(value_max_physical - value_min_physical))/(value_max_digital - value_min_digital)) + value_min_physical );
 }
