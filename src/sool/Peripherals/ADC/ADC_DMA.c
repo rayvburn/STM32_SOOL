@@ -136,6 +136,16 @@ volatile SOOL_ADC_DMA SOOL_Periph_ADC_DMA_Init(ADC_TypeDef* ADCx, uint32_t RCC_P
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+void SOOL_Periph_ADC_DMA_Startup(volatile SOOL_ADC_DMA* adc_dma_ptr) {
+
+	adc_dma_ptr->EnableNVIC(adc_dma_ptr);
+	adc_dma_ptr->base_dma.EnableNVIC(&adc_dma_ptr->base_dma);
+	adc_dma_ptr->Start(adc_dma_ptr);
+
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 static void SOOL_ADC_DMA_AddChannel(volatile SOOL_ADC_DMA *adc_dma_ptr, SOOL_ADC_Channel *channel_ptr) {
 
 	/* Set rank (value between 1 - 16) */

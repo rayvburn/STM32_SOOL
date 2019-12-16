@@ -80,6 +80,13 @@ struct _SOOL_ADC_DMAStruct {
  */
 extern volatile SOOL_ADC_DMA SOOL_Periph_ADC_DMA_Init(ADC_TypeDef* ADCx, uint32_t RCC_PCLK2_DivX);
 
+/**
+ * @brief Startup routine, must be invoked after copying the instances into interrupt handlers
+ * @param adc_dma_ptr
+ * @note SOOL_ADC_DMA is not interrupt driven so there is no need to put an interrupt handler into an ISR
+ */
+extern void SOOL_Periph_ADC_DMA_Startup(volatile SOOL_ADC_DMA* adc_dma_ptr);
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 #endif /* INC_SOOL_PERIPHERALS_ADC_ADC_DMA_H_ */
