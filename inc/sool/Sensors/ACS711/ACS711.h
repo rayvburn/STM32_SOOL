@@ -17,9 +17,8 @@
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 struct _SOOL_ACS711SetupStruct {
-	SOOL_ADC_DMA*			adc_dma_ptr;	// for convenient reading acquisition (no need to pass ADC_DMA to function)
-	int8_t					max_current;	// scaling factor
-	int8_t					min_current;
+	int32_t					max_current;	// scaling factor
+	int32_t					min_current;
 };
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -34,6 +33,7 @@ typedef struct _SOOL_ACS711Struct SOOL_ACS711;
 
 struct _SOOL_ACS711Struct {
 
+	SOOL_ADC_DMA*						base_adc_dma_ptr;	// for convenient reading acquisition (no need to pass ADC_DMA to function)
 	SOOL_ADC_Channel					base_adc_channel;
 	SOOL_Button							base_fault;
 	SOOL_PinSwitch 						base_reset;
@@ -50,10 +50,16 @@ struct _SOOL_ACS711Struct {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-// scale: defines a maximum current
+// current_maximum: defines a maximum current (physical value in amps/milliamps)
 		// raw ADC reading divider so the `GetCurrent` method returns human-readable data
-extern volatile SOOL_ACS711 SOOL_Sensors_ACS711_Init(uint8_t ADC_Channel, uint8_t ADC_SampleTime,
-		GPIO_TypeDef* fault_port, uint16_t fault_pin, GPIO_TypeDef* reset_port, uint16_t reset_pin, int32_t scale);
+// @note to reset the sensor the AOI403 P-MOSFET can be used
+extern volatile SOOL_ACS711 SOOL_Sensors_ACS711_Init(uint8_t ADC_Channel, uint8_t ADC_SampleTime, volatile SOOL_ADC_DMA *adc_dma_ptr,
+		GPIO_TypeDef* fault_port, uint16_t fault_pin, GPIO_TypeDef* reset_port, uint16_t reset_pin,
+		int32_t current_minimum, int32_t current_maximum);
+
+// remember to put interrupt handler (fault pin) into the proper EXTI interrupt handler
+// does not handle ADC startup
+extern void SOOL_Sensors_ACS711_Startup(volatile SOOL_ACS711* cs_ptr);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
