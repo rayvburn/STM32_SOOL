@@ -115,4 +115,6 @@ extern void SOOL_Sensors_ACS711_Startup(volatile SOOL_ACS711* cs_ptr);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+// Example: https://gitlab.com/frb-pow/010FallingBulletLifterMCU/blob/analog_basic_devel/src/main.c
+
 #endif /* INC_SOOL_SENSORS_ACS711_ACS711_H_ */

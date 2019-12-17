@@ -68,5 +68,6 @@ extern volatile SOOL_BTS7960_Simple SOOL_Effector_BTS7960_Simple_Init(volatile S
 extern void SOOL_Effector_BTS7960_Simple_Startup(volatile SOOL_BTS7960_Simple* driver_ptr);
 
 // EN pins must be connected to the controller Vcc
+// Example: https://gitlab.com/frb-pow/010FallingBulletLifterMCU/blob/bts7960_devel/src/main.c
 
 #endif /* INC_SOOL_EFFECTORS_BTS7960_BTS7960_SIMPLE_H_ */
