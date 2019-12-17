@@ -51,7 +51,18 @@ struct _SOOL_IrReceiverStruct {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 /** NOTE: uses SysTick configured as SOOL_SysTick_DefaultConfig() */
-volatile SOOL_IrReceiver SOOL_Sensor_IrReceiver_Init(SOOL_PinConfig_Int setup);
+extern volatile SOOL_IrReceiver SOOL_Sensor_IrReceiver_Init(SOOL_PinConfig_Int setup);
+
+/**
+ * @brief Startup routine
+ * @param ir_ptr
+ * @note It seems that this class requires `base.EnableEXTI` and `base.EnableNVIC` calls
+ * which does not seem to be present in the 007CrashTestIntegrationMCU project
+ * but everything has been working properly.
+ * TODO: NEEDS VERIFICATION (the reason is probably the mods in `SOOL_PinConfig_Int` ctor
+ * @note Remember to copy the object into proper IRQHandlers
+ */
+extern void SOOL_Sensor_IrReceiver_Startup(volatile SOOL_IrReceiver* ir_ptr);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 

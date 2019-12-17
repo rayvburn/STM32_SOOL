@@ -49,6 +49,23 @@ volatile SOOL_BTS7960 SOOL_Effector_BTS7960_Init(volatile SOOL_TimerBasic timer_
 
 // --------------------------------------------------------------------------------------------------
 
+void SOOL_Effector_BTS7960_Startup(volatile SOOL_BTS7960* driver_ptr) {
+
+	/* Make sure the motor is stopped */
+	driver_ptr->Stop(driver_ptr);
+
+	/* Motor up fault detector */
+	driver_ptr->base_fault_fwd.base.EnableEXTI(&driver_ptr->base_fault_fwd.base);
+	driver_ptr->base_fault_fwd.base.EnableNVIC(&driver_ptr->base_fault_fwd.base);
+
+	/* Motor down fault detector */
+	driver_ptr->base_fault_rev.base.EnableEXTI(&driver_ptr->base_fault_rev.base);
+	driver_ptr->base_fault_rev.base.EnableNVIC(&driver_ptr->base_fault_rev.base);
+
+}
+
+// --------------------------------------------------------------------------------------------------
+
 static uint8_t SOOL_BTS7960_Stop(volatile SOOL_BTS7960* driver_ptr) {
 	driver_ptr->base_en_fwd.SetLow(&driver_ptr->base_en_fwd);
 	driver_ptr->base_en_rev.SetLow(&driver_ptr->base_en_rev);

@@ -149,7 +149,14 @@ extern volatile SOOL_MAX7219 SOOL_IC_MAX7219_Initialize(SPI_TypeDef *SPIx, uint8
 /// @note Only full decode and no-decode modes are supported, yet 2 more modes are available.
 /// @param test_mode: if true, MAX7219 works in `Display-test mode`
 /// @return 1 if configuration was successful
-uint8_t SOOL_IC_MAX7219_Configure(volatile SOOL_MAX7219 *max7219_ptr, uint8_t bcd_decode, uint8_t test_mode);
+extern uint8_t SOOL_IC_MAX7219_Configure(volatile SOOL_MAX7219 *max7219_ptr, uint8_t bcd_decode, uint8_t test_mode);
+
+/**
+ * @brief MAX7219 startup routine
+ * @param max7219_ptr
+ * @note Remember to copy the object into proper IRQHandlers
+ */
+extern void SOOL_IC_MAX7219_Startup(volatile SOOL_MAX7219* max7219_ptr);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 

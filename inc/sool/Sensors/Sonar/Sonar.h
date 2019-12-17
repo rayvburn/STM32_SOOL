@@ -118,6 +118,15 @@ extern volatile SOOL_Sonar SOOL_Sensor_Sonar_InitTrigEcho(GPIO_TypeDef* trig_por
 		uint16_t trig_tim_channel, GPIO_TypeDef* echo_port, uint16_t echo_pin,
 		uint16_t echo_tim_channel, uint16_t range_max, volatile SOOL_TimerBasic timer_base);
 
+/**
+ * @brief Single sonar startup routine, consists of NVIC enabling and `StartMeasurement` method call.
+ * @param sonar_ptr
+ * @note If 2 sonars share single timer instance, only 1 NVIC enabling and 2 `StartMeasurement`
+ * calls are required
+ * @note Remember to copy the object into proper IRQHandlers
+ */
+extern void SOOL_Sensor_Sonar_Startup(volatile SOOL_Sonar* sonar_ptr);
+
 /* Example of use (2 sonars at once) can be found at:
  * https://gitlab.com/frb-pow/002tubewaterflowmcu/blob/63200cd02eac11177d323c57a406d01d8ad62d96/src/main.c#L60 */
 

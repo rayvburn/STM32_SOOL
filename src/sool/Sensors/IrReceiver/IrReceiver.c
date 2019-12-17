@@ -62,6 +62,13 @@ volatile SOOL_IrReceiver SOOL_Sensor_IrReceiver_Init(SOOL_PinConfig_Int setup) {
 
 // =============================================================================================
 
+void SOOL_Sensor_IrReceiver_Startup(volatile SOOL_IrReceiver* ir_ptr) {
+	ir_ptr->base.EnableEXTI(&ir_ptr->base);
+	ir_ptr->base.EnableNVIC(&ir_ptr->base);
+}
+
+// =============================================================================================
+
 static uint8_t IrReceiver_GetReceptionFlag(volatile SOOL_IrReceiver *ir_ptr) {
 	uint8_t temp = ir_ptr->_state.received_flag;
 	ir_ptr->_state.received_flag = 0;

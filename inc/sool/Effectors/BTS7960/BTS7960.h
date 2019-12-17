@@ -65,4 +65,10 @@ extern volatile SOOL_BTS7960 SOOL_Effector_BTS7960_Init(volatile SOOL_TimerBasic
 														volatile SOOL_Button fault_fwd,
 														volatile SOOL_Button fault_rev);
 
+/**
+ * @brief Startup routine
+ * @param driver_ptr
+ */
+extern void SOOL_Effector_BTS7960_Startup(volatile SOOL_BTS7960* driver_ptr);
+
 #endif /* INC_SOOL_EFFECTORS_BTS7960_BTS7960_H_ */

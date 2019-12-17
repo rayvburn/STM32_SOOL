@@ -358,6 +358,14 @@ volatile SOOL_USART_DMA SOOL_Periph_USART_DMA_Init(USART_TypeDef* USARTx, uint32
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+void SOOL_Periph_USART_DMA_Startup(volatile SOOL_USART_DMA* usart_ptr) {
+	usart_ptr->EnableNVIC(usart_ptr);
+	usart_ptr->base_dma_tx.EnableNVIC(&usart_ptr->base_dma_tx);
+	usart_ptr->base_dma_rx.EnableNVIC(&usart_ptr->base_dma_rx);
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 //static void SOOL_Periph_USART_DMA_Copy(volatile SOOL_USART_DMA *usart, const struct _SOOL_DMA_SetupStruct *rx_settings,
 //		const struct _SOOL_DMA_SetupStruct *tx_settings) {
 //

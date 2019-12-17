@@ -55,6 +55,12 @@ struct _SOOL_ButtonTimingStruct {
  */
 extern volatile SOOL_ButtonTiming SOOL_Sensor_ButtonTiming_Init(SOOL_PinConfig_Int setup, uint8_t active_state, SOOL_TimerBasic *timer_ptr);
 
+/**
+ * @brief ButtonTiming instance startup routine
+ * @param button_ptr
+ */
+extern void SOOL_Sensor_ButtonTiming_Startup(SOOL_ButtonTiming* button_ptr);
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 

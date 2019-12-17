@@ -146,6 +146,13 @@ volatile SOOL_Sonar SOOL_Sensor_Sonar_InitTrigEcho(GPIO_TypeDef* trig_port, uint
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+void SOOL_Sensor_Sonar_Startup(volatile SOOL_Sonar* sonar_ptr) {
+	sonar_ptr->base_tim_in.base.EnableNVIC(&sonar_ptr->base_tim_in.base);
+	sonar_ptr->StartMeasurement(sonar_ptr);
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 static uint8_t Sonar_StartMeasurement(volatile SOOL_Sonar *sonar_ptr) {
 
 	if ( sonar_ptr->_state.started && !sonar_ptr->_state.finished ) {

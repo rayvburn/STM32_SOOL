@@ -187,6 +187,14 @@ uint8_t SOOL_IC_MAX7219_Configure(volatile SOOL_MAX7219 *max7219_ptr, uint8_t bc
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+void SOOL_IC_MAX7219_Startup(volatile SOOL_MAX7219* max7219_ptr) {
+	max7219_ptr->base_spi.base_dma_tx.EnableNVIC(&max7219_ptr->base_spi.base_dma_tx);
+	max7219_ptr->base_spi.base_dma_rx.EnableNVIC(&max7219_ptr->base_spi.base_dma_rx);
+	max7219_ptr->base_spi.EnableNVIC(&max7219_ptr->base_spi);
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 static uint8_t MAX7219_AddDotDisplay(volatile SOOL_MAX7219 *max7219_ptr, uint8_t dot_disp_num) {
 
 	if ( dot_disp_num <= max7219_ptr->_setup.disp_num ) {

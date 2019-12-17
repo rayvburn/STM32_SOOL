@@ -120,7 +120,14 @@ struct _SOOL_USART_DMA_Struct {
 // - - - - - - - - - - - - - - - -
 
 // NVICs of USART, DMA_RX, DMA_TX must be enabled separately
-volatile SOOL_USART_DMA SOOL_Periph_USART_DMA_Init(USART_TypeDef* USARTx, uint32_t baud, size_t buf_size);
+extern volatile SOOL_USART_DMA SOOL_Periph_USART_DMA_Init(USART_TypeDef* USARTx, uint32_t baud, size_t buf_size);
+
+/**
+ * @brief USART_DMA startup routine
+ * @param usart_ptr
+ * @note Remember to copy the object into proper IRQHandlers
+ */
+extern void SOOL_Periph_USART_DMA_Startup(volatile SOOL_USART_DMA* usart_ptr);
 
 // - - - - - - - - - - - - - - - -
 

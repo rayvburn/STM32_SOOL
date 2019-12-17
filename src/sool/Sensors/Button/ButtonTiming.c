@@ -52,6 +52,13 @@ volatile SOOL_ButtonTiming SOOL_Sensor_ButtonTiming_Init(SOOL_PinConfig_Int setu
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+void SOOL_Sensor_ButtonTiming_Startup(SOOL_ButtonTiming* button_ptr) {
+	button_ptr->base_pin.EnableEXTI(button_ptr->base_pin);
+	button_ptr->base_timer_ptr->EnableNVIC(button_ptr->base_timer_ptr);
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 static uint8_t SOOL_ButtonTiming_GetCurrentState(volatile SOOL_ButtonTiming *button_tim_ptr) {
 	return (SOOL_Periph_GPIO_ReadInputDataBit(button_tim_ptr->base_pin._gpio.port, button_tim_ptr->base_pin._gpio.pin));
 }
