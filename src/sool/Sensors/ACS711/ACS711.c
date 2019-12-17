@@ -9,9 +9,11 @@
 #include <sool/Common/Delay.h>
 #include <sool/Maths/Scaler.h>
 #include <sool/Peripherals/ADC/ADC_common.h>
+#include <sool/Peripherals/TIM/SystickTimer.h>
 
-static void		SOOL_ACS711_Reset(volatile SOOL_ACS711 *cs_ptr);
 static uint8_t	SOOL_ACS711_DidFault(volatile SOOL_ACS711 *cs_ptr);
+static void		SOOL_ACS711_Reset(volatile SOOL_ACS711 *cs_ptr, FunctionalState state);
+static uint8_t	SOOL_ACS711_DidPowerOff(volatile SOOL_ACS711 *cs_ptr);
 static int32_t	SOOL_ACS711_GetCurrent(volatile SOOL_ACS711 *cs_ptr);
 static uint8_t 	SOOL_ACS711_InterruptHandler(volatile SOOL_ACS711 *cs_ptr);
 
@@ -45,12 +47,14 @@ volatile SOOL_ACS711 SOOL_Sensors_ACS711_Init(uint8_t ADC_Channel, uint8_t ADC_S
 
 	/* State structure configuration */
 	current_sensor._state.overcurrent_occurred = 0;
+	current_sensor._state.reset_started = 0;
 
 	/* Setup structure configuration */
 	current_sensor._setup.min_current = current_minimum;
 	current_sensor._setup.max_current = current_maximum;
 
 	/* Pointers */
+	current_sensor.DidPowerOff = SOOL_ACS711_DidPowerOff;
 	current_sensor.DidFault = SOOL_ACS711_DidFault;
 	current_sensor.GetCurrent = SOOL_ACS711_GetCurrent;
 	current_sensor.Reset = SOOL_ACS711_Reset;
@@ -69,19 +73,36 @@ void SOOL_Sensors_ACS711_Startup(volatile SOOL_ACS711* cs_ptr) {
 	cs_ptr->base_fault.base.EnableNVIC(&cs_ptr->base_fault.base);
 
 }
-
-// ------------------------------------------------------------------------
-
-static void SOOL_ACS711_Reset(volatile SOOL_ACS711 *cs_ptr) {
-	cs_ptr->base_reset.SetLow(&cs_ptr->base_reset);
-	SOOL_Common_DelayUs(100, SystemCoreClock); 											// FIXME: adjust the threshold
-	cs_ptr->base_reset.SetHigh(&cs_ptr->base_reset);
-}
 // ------------------------------------------------------------------------
 static uint8_t SOOL_ACS711_DidFault(volatile SOOL_ACS711 *cs_ptr) {
 	uint8_t temp = cs_ptr->_state.overcurrent_occurred;
 	cs_ptr->_state.overcurrent_occurred = 0;
 	return (temp);
+}
+// ------------------------------------------------------------------------
+static uint8_t SOOL_ACS711_DidPowerOff(volatile SOOL_ACS711 *cs_ptr) {
+
+	if ( (SOOL_Periph_TIM_SysTick_GetMillis() - cs_ptr->_state.reset_start_time) >= 250 ) {
+		return (1);
+	}
+	return (0);
+
+}
+// ------------------------------------------------------------------------
+static void SOOL_ACS711_Reset(volatile SOOL_ACS711 *cs_ptr, FunctionalState state) {
+
+	switch (state) {
+		case(ENABLE):
+			cs_ptr->base_reset.SetHigh(&cs_ptr->base_reset);
+			cs_ptr->_state.reset_started = 0;
+			break;
+		case(DISABLE):
+			cs_ptr->base_reset.SetLow(&cs_ptr->base_reset);
+			cs_ptr->_state.reset_started = 1;
+			cs_ptr->_state.reset_start_time = SOOL_Periph_TIM_SysTick_GetMillis();
+			break;
+	}
+
 }
 // ------------------------------------------------------------------------
 static int32_t SOOL_ACS711_GetCurrent(volatile SOOL_ACS711 *cs_ptr) {

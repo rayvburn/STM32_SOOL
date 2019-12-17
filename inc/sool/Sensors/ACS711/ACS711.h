@@ -25,6 +25,8 @@ struct _SOOL_ACS711SetupStruct {
 
 struct _SOOL_ACS711StateStruct {
 	uint8_t 				overcurrent_occurred;
+	uint8_t					reset_started;
+	uint32_t				reset_start_time;
 };
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -41,24 +43,74 @@ struct _SOOL_ACS711Struct {
 	struct _SOOL_ACS711SetupStruct		_setup;
 	struct _SOOL_ACS711StateStruct		_state;
 
-	void		(*Reset)(volatile SOOL_ACS711 *cs_ptr);
+	/**
+	 * @brief Evaluates the overcurrent flag
+	 * @param cs_ptr
+	 * @return
+	 */
 	uint8_t		(*DidFault)(volatile SOOL_ACS711 *cs_ptr);
+
+	/**
+	 * @brief Resets the sensor
+	 * @param cs_ptr
+	 * @param state: ENABLE (power on again) or DISABLE (switch off the sensor)
+	 */
+	void		(*Reset)(volatile SOOL_ACS711 *cs_ptr, FunctionalState state);
+
+	/**
+	 * @brief Evaluates if the time required for sensor power
+	 * to be cut off has elapsed. If true the sensor
+	 * can be re-enabled @ref Reset(ENABLE)
+	 * @param cs_ptr
+	 * @return
+	 */
+	uint8_t		(*DidPowerOff)(volatile SOOL_ACS711 *cs_ptr);
+
+	/**
+	 * @brief Retrieves the ADC reading and scales it so the output is expressed
+	 * in human-readable units (the same unit as the current range passed to the
+	 * constructor)
+	 * @param cs_ptr
+	 * @return
+	 */
 	int32_t		(*GetCurrent)(volatile SOOL_ACS711 *cs_ptr);
+
+	/**
+	 * @brief Ran in the proper ISR
+	 * @param cs_ptr
+	 * @return
+	 */
 	uint8_t 	(*_InterruptHandler)(volatile SOOL_ACS711 *cs_ptr);
 
 };
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-// current_maximum: defines a maximum current (physical value in amps/milliamps)
-		// raw ADC reading divider so the `GetCurrent` method returns human-readable data
-// @note to reset the sensor the AOI403 P-MOSFET can be used
+/**
+ * @brief ACS711 current sensor controller
+ * @param ADC_Channel
+ * @param ADC_SampleTime
+ * @param adc_dma_ptr
+ * @param fault_port
+ * @param fault_pin
+ * @param reset_port
+ * @param reset_pin
+ * @param current_minimum
+ * @param current_maximum: defines a maximum current (physical value in amps/milliamps)
+ * @return
+ * @note To reset the sensor the AOI403 P-MOSFET can be used
+ * @note Requires SysTick timer (SOOL) to be enabled
+ */
 extern volatile SOOL_ACS711 SOOL_Sensors_ACS711_Init(uint8_t ADC_Channel, uint8_t ADC_SampleTime, volatile SOOL_ADC_DMA *adc_dma_ptr,
 		GPIO_TypeDef* fault_port, uint16_t fault_pin, GPIO_TypeDef* reset_port, uint16_t reset_pin,
 		int32_t current_minimum, int32_t current_maximum);
 
-// remember to put interrupt handler (fault pin) into the proper EXTI interrupt handler
-// does not handle ADC startup
+/**
+ * @brief Startup routine
+ * @note Does not handle ADC startup
+ * @note Remember to put interrupt handler (fault pin) into the proper EXTI interrupt handler
+ * @param cs_ptr
+ */
 extern void SOOL_Sensors_ACS711_Startup(volatile SOOL_ACS711* cs_ptr);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
