@@ -94,19 +94,42 @@ struct _SOOL_TimerOutputCompareStruct {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-// polarity: This bit selects whether ICx is used for trigger or capture operations.
+/**
+ * @brief OutputCompare pin initializer
+ * @param tim_basic
+ * @param channel
+ * @param oc_mode
+ * @param pulse: must be smaller than the `period` of the TimerBasic, controls pulses width
+ * @param enable_int_cc
+ * @param idle_state
+ * @param polarity: This bit selects whether ICx is used for trigger or capture operations.
+ * @param output_state
+ * @param idle_state_n
+ * @param polarity_n
+ * @param output_state_n
+ * @return
+ * @note Remember to initialize the proper PORT/PIN configuration according to the wiring,
+ * use the @ref SOOL_Periph_GPIO_PinConfig_Initialize_AltFunction . Otherwise the PWM signal
+ * will never be generated.
+ */
 extern volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_InitFull(volatile SOOL_TimerBasic tim_basic,
 		uint16_t channel, uint16_t oc_mode, uint16_t pulse,	FunctionalState enable_int_cc,// OC 'common'
 		uint16_t idle_state, uint16_t polarity, uint16_t output_state,					// OC 'positive'
 		uint16_t idle_state_n, uint16_t polarity_n, uint16_t output_state_n);
 
+/** @ref SOOL_Periph_TIM_TimerOutputCompare_InitFull */
 extern volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_Init(volatile SOOL_TimerBasic tim_basic,
 		uint16_t channel, uint16_t oc_mode, uint16_t pulse, FunctionalState enable_int_cc,
 		uint16_t idle_state, uint16_t polarity, uint16_t output_state);
 
+/** @ref SOOL_Periph_TIM_TimerOutputCompare_InitFull */
 extern volatile SOOL_TimerOutputCompare SOOL_Periph_TIM_TimerOutputCompare_InitComplementary(volatile SOOL_TimerBasic tim_basic,
 		uint16_t channel, uint16_t oc_mode, uint16_t pulse, FunctionalState enable_int_cc,
 		uint16_t idle_state_n, uint16_t polarity_n, uint16_t output_state_n);
+
+// =======================================================================================
+
 // @note Example of use can be found in:
 // https://gitlab.com/frb-pow/002tubewaterflowmcu/tree/95d4a7088479d5eaf308737cf9bd9ee105dfd60f
+
 #endif /* INC_SOOL_PERIPHERALS_TIM_TIMEROUTPUTCOMPARE_H_ */
