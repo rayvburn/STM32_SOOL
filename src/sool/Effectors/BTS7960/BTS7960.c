@@ -62,6 +62,10 @@ void SOOL_Effector_BTS7960_Startup(volatile SOOL_BTS7960* driver_ptr) {
 	driver_ptr->base_fault_rev.base.EnableEXTI(&driver_ptr->base_fault_rev.base);
 	driver_ptr->base_fault_rev.base.EnableNVIC(&driver_ptr->base_fault_rev.base);
 
+	/* Start the timer - assuming that FWD and REV PWM channels
+	 * are using the same timer instance */
+	driver_ptr->base_pwm_fwd.Start(&driver_ptr->base_pwm_fwd); // does not matter which TimerOC instance's `Start` will be called
+
 }
 
 // --------------------------------------------------------------------------------------------------

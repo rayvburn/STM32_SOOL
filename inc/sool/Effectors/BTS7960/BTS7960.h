@@ -12,11 +12,7 @@
 #include "sool/Peripherals/TIM/TimerOutputCompare.h"
 #include "sool/Effectors/PinSwitch/PinSwitch.h"
 #include "sool/Sensors/Button/Button.h"
-
-typedef enum {
-	BTS7960_FORWARD = 0u,
-	BTS7960_REVERSE
-} SOOL_BTS7960_Direction;
+#include "sool/Effectors/BTS7960/BTS7960_common.h"
 
 /* Forward declaration */
 typedef struct _SOOL_BTS7960_Struct SOOL_BTS7960;
