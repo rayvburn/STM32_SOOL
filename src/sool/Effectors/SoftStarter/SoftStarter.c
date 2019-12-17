@@ -9,8 +9,9 @@
 #include <sool/Peripherals/TIM/SystickTimer.h>
 
 static void SoftStarter_Start(SOOL_SoftStarter* ss_ptr);
-static uint16_t SoftStarter_Process(SOOL_SoftStarter* ss_ptr);
+static uint8_t SoftStarter_Process(SOOL_SoftStarter* ss_ptr);
 static uint8_t SoftStarter_IsFinished(const SOOL_SoftStarter* ss_ptr);
+static uint16_t SoftStarter_Get(SOOL_SoftStarter* ss_ptr);
 
 // --------------------------------------------------------------
 
@@ -83,6 +84,7 @@ SOOL_SoftStarter SOOL_Effector_SoftStarter_Initialize(uint16_t pulse_start, uint
 	ss._config.pulse_start = pulse_start;
 
 	/* Method pointers */
+	ss.Get = SoftStarter_Get;
 	ss.IsFinished = SoftStarter_IsFinished;
 	ss.Process = SoftStarter_Process;
 	ss.Start = SoftStarter_Start;
@@ -101,22 +103,23 @@ static void SoftStarter_Start(SOOL_SoftStarter* ss_ptr) {
 
 // --------------------------------------------------------------
 
-static uint16_t SoftStarter_Process(SOOL_SoftStarter* ss_ptr) {
+static uint8_t SoftStarter_Process(SOOL_SoftStarter* ss_ptr) {
 
 	if ( (SOOL_Periph_TIM_SysTick_GetMillis() - ss_ptr->_state.time_last_pulse_change) >= ss_ptr->_setup.time_change_gap ) {
 
 		/* Check if finished */
 		if ( ss_ptr->_state.changes_left == 0 ) {
-			return (ss_ptr->_state.pulse_last);
+			return (0);
 		}
 
 		/* Update timestamp */
 		ss_ptr->_state.time_last_pulse_change = SOOL_Periph_TIM_SysTick_GetMillis();
 		ss_ptr->_state.changes_left--;
 		ss_ptr->_state.pulse_last += ss_ptr->_setup.pulse_change;
+		return (1);
 
 	}
-	return (ss_ptr->_state.pulse_last);
+	return (0);
 
 }
 
@@ -129,6 +132,12 @@ static uint8_t SoftStarter_IsFinished(const SOOL_SoftStarter* ss_ptr) {
 	}
 	return (0);
 
+}
+
+// --------------------------------------------------------------
+
+static uint16_t SoftStarter_Get(SOOL_SoftStarter* ss_ptr) {
+	return (ss_ptr->_state.pulse_last);
 }
 
 // --------------------------------------------------------------

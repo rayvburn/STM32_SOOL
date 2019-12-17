@@ -51,9 +51,9 @@ struct _SOOL_SoftStarterStruct {
 	/**
 	 * @brief Processes the possible change of the pulse value (according to the timestamp)
 	 * @param ss_ptr
-	 * @return Returns the previous, valid `pulse` value or the newly calculated one
+	 * @return 1 if pulse was updated
 	 */
-	uint16_t (*Process)(SOOL_SoftStarter* ss_ptr);
+	uint8_t (*Process)(SOOL_SoftStarter* ss_ptr);
 
 	/**
 	 * @brief Evaluates whether the soft start procedure has finished
@@ -62,6 +62,14 @@ struct _SOOL_SoftStarterStruct {
 	 * @note The internal state flag `finished` is not cleared after this call (stays until the next `Start` call).
 	 */
 	uint8_t (*IsFinished)(const SOOL_SoftStarter* ss_ptr);
+
+	/**
+	 * @brief Retrieves the last pulse value
+	 * @param ss_ptr
+	 * @return Returns the newly calculated `pulse` value (or the last valid
+	 * one if the method is called after `Process` returns 0)
+	 */
+	uint16_t (*Get)(SOOL_SoftStarter* ss_ptr);
 
 };
 
