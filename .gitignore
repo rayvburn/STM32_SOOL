@@ -9,3 +9,5 @@ inc/sool/Peripherals/I2C/AN2824 STM32F10xxx I2C optimized examples.pdf
 inc/sool/Peripherals/I2C/12 MHz, 24 M Samples [14].logicdata
 src/sool/Sensors/AnalogBasic/AnalogBasic.c
 inc/sool/Sensors/AnalogBasic/AnalogBasic.h
+inc/sool/Effectors/BTS7960/bts7960.logicsettings
+inc/sool/Peripherals/I2C/12 MHz, 24 M Samples [14].logicdata
