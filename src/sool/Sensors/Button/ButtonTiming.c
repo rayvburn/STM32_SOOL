@@ -53,7 +53,7 @@ volatile SOOL_ButtonTiming SOOL_Sensor_ButtonTiming_Init(SOOL_PinConfig_Int setu
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 void SOOL_Sensor_ButtonTiming_Startup(SOOL_ButtonTiming* button_ptr) {
-	button_ptr->base_pin.EnableEXTI(button_ptr->base_pin);
+	button_ptr->base_pin.EnableEXTI(&button_ptr->base_pin);
 	button_ptr->base_timer_ptr->EnableNVIC(button_ptr->base_timer_ptr);
 }
 
