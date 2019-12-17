@@ -79,13 +79,23 @@ static uint8_t SOOL_BTS7960_SetDirection(volatile SOOL_BTS7960* driver_ptr, SOOL
 	switch (dir) {
 
 	case (BTS7960_FORWARD):
-		driver_ptr->base_en_rev.SetLow(&driver_ptr->base_en_rev);
+		/*
+		driver_ptr->base_en_rev.SetHigh(&driver_ptr->base_en_rev);
+//		driver_ptr->base_en_rev.SetLow(&driver_ptr->base_en_rev);
+		driver_ptr->base_en_fwd.SetHigh(&driver_ptr->base_en_fwd);
+		*/
+		driver_ptr->base_en_rev.SetHigh(&driver_ptr->base_en_rev);
 		driver_ptr->base_en_fwd.SetHigh(&driver_ptr->base_en_fwd);
 		return (1);
 		break;
 
 	case(BTS7960_REVERSE):
-		driver_ptr->base_en_fwd.SetLow(&driver_ptr->base_en_fwd);
+		/*
+		driver_ptr->base_en_fwd.SetHigh(&driver_ptr->base_en_fwd);
+//		driver_ptr->base_en_fwd.SetLow(&driver_ptr->base_en_fwd);
+		driver_ptr->base_en_rev.SetHigh(&driver_ptr->base_en_rev);
+		*/
+		driver_ptr->base_en_fwd.SetHigh(&driver_ptr->base_en_fwd);
 		driver_ptr->base_en_rev.SetHigh(&driver_ptr->base_en_rev);
 		return (1);
 		break;

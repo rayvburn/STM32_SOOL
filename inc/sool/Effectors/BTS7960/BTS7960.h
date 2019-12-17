@@ -35,6 +35,13 @@ struct _SOOL_BTS7960_Struct {
 	// -----------------
 
 	uint8_t (*Stop)(volatile SOOL_BTS7960* driver_ptr);
+
+	/**
+	 * @brief Acts as a starter in the selected direction
+	 * @param driver_ptr
+	 * @param dir
+	 * @return
+	 */
 	uint8_t (*SetDirection)(volatile SOOL_BTS7960* driver_ptr, SOOL_BTS7960_Direction dir);
 	uint8_t (*SetSpeed)(volatile SOOL_BTS7960* driver_ptr, SOOL_BTS7960_Direction dir, uint16_t speed);
 	uint16_t (*GetSpeed)(volatile SOOL_BTS7960* driver_ptr, SOOL_BTS7960_Direction dir);
@@ -70,5 +77,9 @@ extern volatile SOOL_BTS7960 SOOL_Effector_BTS7960_Init(volatile SOOL_TimerBasic
  * @param driver_ptr
  */
 extern void SOOL_Effector_BTS7960_Startup(volatile SOOL_BTS7960* driver_ptr);
+
+// ---------------------------------------------------------------------------
+
+/** @ref Datasheet: https://www.handsontec.com/dataspecs/module/BTS7960%20Motor%20Driver.pdf */
 
 #endif /* INC_SOOL_EFFECTORS_BTS7960_BTS7960_H_ */
