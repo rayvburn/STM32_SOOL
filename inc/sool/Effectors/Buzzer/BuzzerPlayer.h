@@ -43,20 +43,24 @@ struct _SOOL_Buzzer_Struct {
 	/// by `Play` method.
 	/// @param buzz_ptr
 	/// @param mode
-	/// @param millis
 	/// @return
-	uint8_t (*SetMode)(SOOL_Buzzer *buzz_ptr, SOOL_Buzzer_Mode mode, uint32_t millis);
+	uint8_t (*SetMode)(SOOL_Buzzer *buzz_ptr, SOOL_Buzzer_Mode mode);
 
 	/// @brief Play should follow the `SetMode` call.
 	/// @param buzz_ptr
-	/// @param millis
 	/// @return 1 if currently playing or 0 if finished
-	uint8_t (*Play)(SOOL_Buzzer *buzz_ptr, uint32_t millis);
+	uint8_t (*Play)(SOOL_Buzzer *buzz_ptr);
 
 };
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+/**
+ * @brief A `class` providing a few melodies to be played via a standard buzzer.
+ * @note It requires SysTick timer to be configured as default @ref SOOL_Periph_TIM_SysTick_DefaultConfig
+ * @param setup
+ * @return
+ */
 extern SOOL_Buzzer SOOL_Effector_Buzzer_Init(SOOL_PinConfig_NoInt setup);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -69,10 +73,10 @@ extern SOOL_Buzzer SOOL_Effector_Buzzer_Init(SOOL_PinConfig_NoInt setup);
 	// Buzzer
 	SOOL_Buzzer buzzer = SOOL_Effector_Buzzer_Init(SOOL_Periph_GPIO_PinConfig_Initialize_NoInt(GPIOB, GPIO_Pin_10, GPIO_Mode_Out_PP));
 
-	buzzer.SetMode(&buzzer, SOOL_BUZZER_MODE_WARNING, SOOL_Periph_TIM_SysTick_GetMillis());
+	buzzer.SetMode(&buzzer, SOOL_BUZZER_MODE_WARNING);
 
 	while (1) {
-		buzzer.Play(&buzzer, SOOL_Periph_TIM_SysTick_GetMillis());
+		buzzer.Play(&buzzer);
 	}
 
  */

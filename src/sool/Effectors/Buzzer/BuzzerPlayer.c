@@ -6,14 +6,15 @@
  */
 
 #include "sool/Effectors/Buzzer/BuzzerPlayer.h"
+#include <sool/Peripherals/TIM/SystickTimer.h>
 
-static uint8_t SOOL_Buzzer_SetMode(SOOL_Buzzer *buzz_ptr, SOOL_Buzzer_Mode mode, uint32_t millis);
-static uint8_t SOOL_Buzzer_Play(SOOL_Buzzer *buzz_ptr, uint32_t millis);
+static uint8_t SOOL_Buzzer_SetMode(SOOL_Buzzer *buzz_ptr, SOOL_Buzzer_Mode mode);
+static uint8_t SOOL_Buzzer_Play(SOOL_Buzzer *buzz_ptr);
 
 // private
-static uint8_t SOOL_Buzzer_Single(SOOL_Buzzer *buzz_ptr, uint32_t millis);
-static uint8_t SOOL_Buzzer_Double(SOOL_Buzzer *buzz_ptr, uint32_t millis);
-static uint8_t SOOL_Buzzer_Warning(SOOL_Buzzer *buzz_ptr, uint32_t millis);
+static uint8_t SOOL_Buzzer_Single(SOOL_Buzzer *buzz_ptr, uint32_t duration);
+static uint8_t SOOL_Buzzer_Double(SOOL_Buzzer *buzz_ptr, uint32_t duration);
+static uint8_t SOOL_Buzzer_Warning(SOOL_Buzzer *buzz_ptr, uint32_t duration);
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -42,9 +43,10 @@ SOOL_Buzzer SOOL_Effector_Buzzer_Init(SOOL_PinConfig_NoInt setup) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t SOOL_Buzzer_SetMode(SOOL_Buzzer *buzz_ptr, SOOL_Buzzer_Mode mode, uint32_t millis) {
+static uint8_t SOOL_Buzzer_SetMode(SOOL_Buzzer *buzz_ptr, SOOL_Buzzer_Mode mode) {
 
 	buzz_ptr->_setup.mode = (uint8_t)mode;
+	uint32_t millis = SOOL_Periph_TIM_SysTick_GetMillis();
 
 	switch (mode) {
 
@@ -73,7 +75,9 @@ static uint8_t SOOL_Buzzer_SetMode(SOOL_Buzzer *buzz_ptr, SOOL_Buzzer_Mode mode,
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t SOOL_Buzzer_Play(SOOL_Buzzer *buzz_ptr, uint32_t millis) {
+static uint8_t SOOL_Buzzer_Play(SOOL_Buzzer *buzz_ptr) {
+
+	uint32_t millis = SOOL_Periph_TIM_SysTick_GetMillis();
 
 	// play only when status is 1
 	if ( buzz_ptr->_setup.status == 1 ) {
