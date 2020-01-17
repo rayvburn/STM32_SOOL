@@ -31,6 +31,7 @@ static void 	USART_DMA_DeactivateReading(volatile SOOL_USART_DMA *usart);
 static uint8_t 	USART_DMA_IsDataReceived(volatile SOOL_USART_DMA *usart);
 static const volatile SOOL_String* USART_DMA_GetRxData(volatile SOOL_USART_DMA *usart);
 static void		USART_DMA_ClearRxBuffer(volatile SOOL_USART_DMA *usart);
+static uint8_t 	USART_DMA_ConfirmReception(volatile SOOL_USART_DMA* usart);
 
 // TX
 static uint8_t 	USART_DMA_IsTxQueueEmpty(volatile SOOL_USART_DMA *usart); // FIXME: MOVED TO `HELPER` section
@@ -45,7 +46,7 @@ static uint8_t 	USART_DMA_TxInterruptHandler(volatile SOOL_USART_DMA *usart);
 static uint8_t 	USART_DMA_IdleInterruptHandler(volatile SOOL_USART_DMA *usart);
 
 // General
-static uint8_t	USART_DMA_RestoreBuffersInitialSize(volatile SOOL_USART_DMA *usart);
+static uint8_t	USART_DMA_RestoreBuffersInitialSize(volatile SOOL_USART_DMA *usart, uint8_t mode);
 static void		USART_DMA_Destroy(volatile SOOL_USART_DMA *usart);
 
 // private class functions
@@ -349,6 +350,7 @@ volatile SOOL_USART_DMA SOOL_Periph_USART_DMA_Init(USART_TypeDef* USARTx, uint32
 
 	usart_obj._IdleLineIrqHandler = USART_DMA_IdleInterruptHandler;
 	usart_obj.RestoreBuffersInitialSize = USART_DMA_RestoreBuffersInitialSize;
+	usart_obj.ConfirmReception = USART_DMA_ConfirmReception;
 	usart_obj.Destroy = USART_DMA_Destroy;
 
 //	SOOL_Periph_USART_DMA_Copy(&usart_obj, &dma_rx, &dma_tx);
@@ -483,10 +485,6 @@ static uint8_t USART_DMA_IsDataReceived(volatile SOOL_USART_DMA *usart) {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 static const volatile SOOL_String* USART_DMA_GetRxData(volatile SOOL_USART_DMA *usart) {
-
-	/* update Array_String info */
-	usart->_rx.buffer._info.total = USART_DMA_GetMaxNonEmptyItemIndex(&usart->_rx.buffer) + 1;
-	usart->_rx.buffer._info.add_index = usart->_rx.buffer._info.total;
 	usart->_rx.new_data_flag = 0;
 	return (&usart->_rx.buffer);
 }
@@ -496,13 +494,18 @@ static const volatile SOOL_String* USART_DMA_GetRxData(volatile SOOL_USART_DMA *
 static uint16_t USART_DMA_GetMaxNonEmptyItemIndex(volatile SOOL_String *arr) {
 
 	/* Array is filled with 0-s by default, find non-zero value with the biggest index;
-	 * it could not be done on the fly because of use of DMA */
-	for ( size_t i = (arr->_info.capacity - 1); i >= 0; i-- ) {
-		if ( arr->_data[i] != 0 ) {
-			return (i);
+	 * it could not be done on the fly because of use of DMA;
+	 * Do not do this when capacity is \le 1, as the returned value
+	 * will be approx. 65k (makes non sense) */
+	if ( arr->_info.capacity > 1 ) {
+		for ( size_t i = (arr->_info.capacity - 1); i >= 0; i-- ) {
+			if ( arr->_data[i] != 0 ) {
+				return (i);
+			}
 		}
 	}
 	return (0);
+
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -510,6 +513,22 @@ static uint16_t USART_DMA_GetMaxNonEmptyItemIndex(volatile SOOL_String *arr) {
 static void	USART_DMA_ClearRxBuffer(volatile SOOL_USART_DMA *usart) {
 	usart->_rx.buffer.Clear(&usart->_rx.buffer);
 	usart->_rx.new_data_flag = 0;
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static uint8_t USART_DMA_ConfirmReception(volatile SOOL_USART_DMA* usart) {
+
+	USART_DMA_ClearRxBuffer(usart);
+	if ( !USART_DMA_RestoreBuffersInitialSize(usart, 0) ) {
+		return (0);
+	}
+
+	/* Configure and start DMA RX Channel */
+	USART_DMA_SetupAndStartDmaReading(usart, 0, (size_t)usart->_rx.buffer._info.capacity);
+
+	return (1);
+
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -567,10 +586,16 @@ static uint8_t USART_DMA_IdleInterruptHandler(volatile SOOL_USART_DMA *usart) {
 
 //		if ( usart->_setup.dma_rx.DMAy_Channelx->CCR & DMA_CCR1_EN ) {
 		if ( usart->base_dma_rx.IsRunning(&usart->base_dma_rx) ) {
+
+			/* update Array_String info */
+			usart->_rx.buffer._info.total = USART_DMA_GetMaxNonEmptyItemIndex(&usart->_rx.buffer) + 1;
+			usart->_rx.buffer._info.add_index = usart->_rx.buffer._info.total;
+
 			/* reading is active and Idle Line detected */
 			/* EN bit check is used to avoid the first interrupt of an Idle Line issue
 			 * (triggers just after enabling the IT_IDLE) */
 			usart->_rx.new_data_flag = 1;
+
 		}
 		return (1);
 
@@ -748,20 +773,24 @@ static uint8_t USART_DMA_SendFull(volatile SOOL_USART_DMA *usart, const char *to
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static uint8_t USART_DMA_RestoreBuffersInitialSize(volatile SOOL_USART_DMA *usart) {
+static uint8_t USART_DMA_RestoreBuffersInitialSize(volatile SOOL_USART_DMA *usart, uint8_t mode) {
 
-	/* `Resize` method discards USART's volatile qualifier - not crucial here */
-	if ( usart->_rx.buffer._info.capacity > usart->_setup.BUF_INIT_SIZE) {
-		/* Check whether buffer's capacity increased */
-		if ( !usart->_rx.buffer.Resize(&usart->_rx.buffer, (size_t)usart->_setup.BUF_INIT_SIZE) ) {
-			return (0);
+	if ( mode == 0 || mode == 2 ) {
+		/* `Resize` method discards USART's volatile qualifier - not crucial here */
+		if ( usart->_rx.buffer._info.capacity > usart->_setup.BUF_INIT_SIZE) {
+			/* Check whether buffer's capacity increased */
+			if ( !usart->_rx.buffer.Resize(&usart->_rx.buffer, (size_t)usart->_setup.BUF_INIT_SIZE) ) {
+				return (0);
+			}
 		}
 	}
 
-	if ( usart->_tx.buffer._info.capacity > usart->_setup.BUF_INIT_SIZE) {
-		/* Check whether buffer's capacity increased */
-		if ( !usart->_tx.buffer.Resize(&usart->_tx.buffer, (size_t)usart->_setup.BUF_INIT_SIZE) ) {
-			return (0);
+	if ( mode == 1 || mode == 2 ) {
+		if ( usart->_tx.buffer._info.capacity > usart->_setup.BUF_INIT_SIZE) {
+			/* Check whether buffer's capacity increased */
+			if ( !usart->_tx.buffer.Resize(&usart->_tx.buffer, (size_t)usart->_setup.BUF_INIT_SIZE) ) {
+				return (0);
+			}
 		}
 	}
 

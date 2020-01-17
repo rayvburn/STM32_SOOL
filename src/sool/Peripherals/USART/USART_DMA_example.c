@@ -85,7 +85,7 @@ int main(void)
 		}
 	}
 
-	usart_dbg.RestoreBuffersInitialSize(&usart_dbg);
+	usart_dbg.RestoreBuffersInitialSize(&usart_dbg, 2);
 	usart_dbg.ActivateReading(&usart_dbg);
 	SOOL_String str_test = SOOL_Memory_String_Init(15);
 	str_test.SetString(&str_test, "tyrueiwoqpowieu");
@@ -120,7 +120,7 @@ int main(void)
 	abc++;
 	abc++;
 
-	usart_dbg.RestoreBuffersInitialSize(&usart_dbg);
+	usart_dbg.RestoreBuffersInitialSize(&usart_dbg, 2);
 	abc++;
 	abc++;
 

@@ -91,6 +91,19 @@ struct _SOOL_USART_DMA_Struct {
 	uint8_t (*IsDataReceived)(volatile SOOL_USART_DMA*); 				// returns info whether data was received - based on USART Idle line detection
 	const volatile SOOL_String* (*GetRxData)(volatile SOOL_USART_DMA*); // returns a pointer to a buffer - IMPORTANT: use this method instead of raw ArrayString operations because some calculations are performed here (it is not possible to count number of bytes read from DMA on the fly)
 	void	(*ClearRxBuffer)(volatile SOOL_USART_DMA*); 				// clears whole buffer (NOTE: does not set incoming data pointer to the buffer's start)
+
+	/// \brief Manages buffer content so the next part (stage) of the `dataframe` will be
+	/// properly located in the internal RX buffer.
+	/// \param USART DMA instance
+	/// \return 1 if operation was successful
+	/// \details Clears RX buffer, restores its initial state,
+	/// reconfigures DMA RX Channel so the data will be written
+	/// to the proper memory addresses (considers the current
+	/// RX buffer start address).
+	/// This acts as a confirmation that the data received so far
+	/// were already processed and the app is ready to receive a new dataframe.
+	uint8_t (*ConfirmReception)(volatile SOOL_USART_DMA*);
+
 	/**
 	 * @brief Function invoked inside interrupt handler only when `Transfer Complete` flag is set
 	 * @param
@@ -112,7 +125,15 @@ struct _SOOL_USART_DMA_Struct {
 
 	/* General */
 	uint8_t (*_IdleLineIrqHandler)(volatile SOOL_USART_DMA*); 			// interrupt callback function which needs to be put into global USART IRQHandler
-	uint8_t	(*RestoreBuffersInitialSize)(volatile SOOL_USART_DMA*); 	// brings back the initial size of buffers by reallocating memory (only if buffer's length is actually bigger than initial size)
+
+	/// \brief Restores initial size of buffer(s)
+	/// \param USART DMA instance
+	/// \param 0 if RX buffer must be modified, 1 - if TX, 2 - if both of them
+	/// \return 0 if operation was not successful
+	/// \details Brings back the initial size of buffers by reallocating
+	/// memory (only if buffer's length is actually bigger than initial size)
+	uint8_t	(*RestoreBuffersInitialSize)(volatile SOOL_USART_DMA*, uint8_t);
+
 	void 	(*Destroy)(volatile SOOL_USART_DMA*);						// frees memory taken by buffers, stops USART and DMA (USART_DMA instance needs re-initialization then)
 
 };
