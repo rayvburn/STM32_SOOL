@@ -21,7 +21,7 @@ static uint8_t 	SOOL_ACS711_InterruptHandler(volatile SOOL_ACS711 *cs_ptr);
 
 volatile SOOL_ACS711 SOOL_Sensors_ACS711_Init(uint8_t ADC_Channel, uint8_t ADC_SampleTime, volatile SOOL_ADC_DMA *adc_dma_ptr,
 		GPIO_TypeDef* fault_port, uint16_t fault_pin, GPIO_TypeDef* reset_port, uint16_t reset_pin,
-		int32_t current_minimum, int32_t current_maximum)
+		int32_t current_minimum, int32_t current_maximum, int32_t offset)
 {
 
 	/* New instance */
@@ -50,6 +50,7 @@ volatile SOOL_ACS711 SOOL_Sensors_ACS711_Init(uint8_t ADC_Channel, uint8_t ADC_S
 	current_sensor._state.reset_started = 0;
 
 	/* Setup structure configuration */
+	current_sensor._setup.offset = offset;
 	current_sensor._setup.min_current = current_minimum;
 	current_sensor._setup.max_current = current_maximum;
 
@@ -82,9 +83,17 @@ static uint8_t SOOL_ACS711_DidFault(volatile SOOL_ACS711 *cs_ptr) {
 // ------------------------------------------------------------------------
 static uint8_t SOOL_ACS711_DidPowerOff(volatile SOOL_ACS711 *cs_ptr) {
 
+	// prevent from misread (that the device was powered off) while
+	// the device has been running correctly for a quite of time
+
+	if ( !cs_ptr->_state.reset_started ) {
+		return (0);
+	}
+
 	if ( (SOOL_Periph_TIM_SysTick_GetMillis() - cs_ptr->_state.reset_start_time) >= 250 ) {
 		return (1);
 	}
+
 	return (0);
 
 }
@@ -107,9 +116,10 @@ static void SOOL_ACS711_Reset(volatile SOOL_ACS711 *cs_ptr, FunctionalState stat
 // ------------------------------------------------------------------------
 static int32_t SOOL_ACS711_GetCurrent(volatile SOOL_ACS711 *cs_ptr) {
 	uint16_t reading = cs_ptr->base_adc_dma_ptr->GetReading(cs_ptr->base_adc_dma_ptr, cs_ptr->base_adc_channel);
-	return (SOOL_Maths_Scale(reading, 													/* ADC value */
+	int32_t scaled = SOOL_Maths_Scale(reading,											/* ADC value */
 							 cs_ptr->_setup.min_current, cs_ptr->_setup.max_current, 	/* physical sensor measurement range (expressed in AMPS) */
-							 0, 4095));													/* ADC range */
+							 0, 4095);													/* ADC range */
+	return (scaled - cs_ptr->_setup.offset);
 }
 // ------------------------------------------------------------------------
 static uint8_t SOOL_ACS711_InterruptHandler(volatile SOOL_ACS711 *cs_ptr) {
