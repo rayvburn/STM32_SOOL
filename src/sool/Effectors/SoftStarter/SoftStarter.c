@@ -8,6 +8,7 @@
 #include <sool/Effectors/SoftStarter/SoftStarter.h>
 #include <sool/Peripherals/TIM/SystickTimer.h>
 
+static uint8_t SoftStarter_Reconfigure(SOOL_SoftStarter* ss_ptr, uint16_t pulse_start, uint16_t pulse_end, uint32_t duration);
 static void SoftStarter_Start(SOOL_SoftStarter* ss_ptr);
 static uint8_t SoftStarter_Process(SOOL_SoftStarter* ss_ptr);
 static uint8_t SoftStarter_IsFinished(const SOOL_SoftStarter* ss_ptr);
@@ -20,22 +21,47 @@ SOOL_SoftStarter SOOL_Effector_SoftStarter_Initialize(uint16_t pulse_start, uint
 	/* Newly created instance */
 	SOOL_SoftStarter ss;
 
-	/* Evaluate correctness */
-	if ( pulse_end < 0 || pulse_start < 0 ) {
-		/* ERROR */
-		return (ss);
-	} else if ( pulse_end == pulse_start ) {
-		/* Does not make sense */
+	if ( !SoftStarter_Reconfigure(&ss, pulse_start, pulse_end, duration) ) {
 		return (ss);
 	}
 
+	/* Method pointers */
+	ss.Get = SoftStarter_Get;
+	ss.IsFinished = SoftStarter_IsFinished;
+	ss.Process = SoftStarter_Process;
+	ss.Reconfigure = SoftStarter_Reconfigure;
+	ss.Start = SoftStarter_Start;
+
+	return (ss);
+
+}
+
+// --------------------------------------------------------------
+
+static uint8_t SoftStarter_Reconfigure(SOOL_SoftStarter* ss_ptr, uint16_t pulse_start, uint16_t pulse_end, uint32_t duration) {
+
+	/* Evaluate correctness */
+	if ( pulse_end < 0 || pulse_start < 0 ) {
+		/* ERROR */
+		return (0);
+	} else if ( pulse_end == pulse_start ) {
+		/* Does not make sense - but sometimes Reconfigure is called when the motor is stopped */
+		// set `_config` to prevent any change (as required based on the `pulse_start` and `pulse_end`
+		ss_ptr->_config.increments = 0;
+		ss_ptr->_config.pulse_start = pulse_start;
+		// set `_state`
+		ss_ptr->_state.changes_left = 0;
+		ss_ptr->_state.pulse_last = pulse_end;
+		return (0);
+	}
+
 	/* Fill the state structure */
-	ss._state.pulse_last = pulse_start;
-	ss._state.changes_left = 0; // temporary
-	ss._state.time_last_pulse_change = 0; // does not matter at that moment
+	ss_ptr->_state.pulse_last = pulse_start;
+	ss_ptr->_state.changes_left = 0; // temporary
+	ss_ptr->_state.time_last_pulse_change = 0; // does not matter at that moment
 
 	/* Fill the setup structure */
-	ss._setup.pulse_change = +1;
+	ss_ptr->_setup.pulse_change = +1;
 
 	/* Check which pulse value is bigger to properly calculate the change of the pulse */
 	uint16_t pulse_bigger, pulse_smaller = 0;
@@ -52,44 +78,38 @@ SOOL_SoftStarter SOOL_Effector_SoftStarter_Initialize(uint16_t pulse_start, uint
 
 		/* Cannot make changes as fast as required, but can still process the soft-start
 		 * as fast as possible. The `pulse_change` will be adjusted properly */
-		ss._setup.time_change_gap = 1;
+		ss_ptr->_setup.time_change_gap = 1;
 
 		/* Calculate pulse change */
-		ss._setup.pulse_change = (pulse_bigger - pulse_smaller) / duration; // must be > 1
+		ss_ptr->_setup.pulse_change = (pulse_bigger - pulse_smaller) / duration; // must be > 1
 
 		/* Set the number of increments/decrements */
-		ss._state.changes_left = duration;
+		ss_ptr->_state.changes_left = duration;
 
 	} else {
 
 		/* (pulse_bigger - pulse_smaller) <= duration */
 
 		/* Normal operation - single increment of the `pulse` in each event. */
-		ss._setup.time_change_gap = duration / (pulse_bigger - pulse_smaller);
+		ss_ptr->_setup.time_change_gap = duration / (pulse_bigger - pulse_smaller);
 
 		/* Pulse change -> +1 or -1 */
 
 		/* Set the number of increments/decrements */
-		ss._state.changes_left = pulse_bigger - pulse_smaller;
+		ss_ptr->_state.changes_left = pulse_bigger - pulse_smaller;
 
 	}
 
 	/* Adjust the sign of the `pulse change` - if needed */
 	if ( pulse_end < pulse_start ) {
-		ss._setup.pulse_change = -ss._setup.pulse_change;
+		ss_ptr->_setup.pulse_change = -ss_ptr->_setup.pulse_change;
 	}
 
 	/* Fill the config structure */
-	ss._config.increments = ss._state.changes_left;
-	ss._config.pulse_start = pulse_start;
+	ss_ptr->_config.increments = ss_ptr->_state.changes_left;
+	ss_ptr->_config.pulse_start = pulse_start;
 
-	/* Method pointers */
-	ss.Get = SoftStarter_Get;
-	ss.IsFinished = SoftStarter_IsFinished;
-	ss.Process = SoftStarter_Process;
-	ss.Start = SoftStarter_Start;
-
-	return (ss);
+	return (1);
 
 }
 

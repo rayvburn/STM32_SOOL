@@ -39,8 +39,15 @@ struct _SOOL_SoftStarterStruct {
 	struct _SOOL_SoftStarterStateStruct  _state;
 	struct _SOOL_SoftStarterConfigStruct _config;
 
-	// DEPRECATED, call the constructor once again instead
-//	void (*Reconfigure)(SOOL_SoftStarter* ss_ptr, uint16_t pulse_min, uint16_t pulse_max, uint32_t duration);
+	/**
+	 * @brief Reconfigures internal parameters of the ramp
+	 * @param ss_ptr
+	 * @param pulse_start
+	 * @param pulse_end
+	 * @param duration
+	 * @return 0 if operation was NOT successful
+	 */
+	uint8_t (*Reconfigure)(SOOL_SoftStarter* ss_ptr, uint16_t pulse_start, uint16_t pulse_end, uint32_t duration);
 
 	/**
 	 * @brief Starts the soft starting procedure. Saves the timestamp (milliseconds) internally.
