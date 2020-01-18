@@ -44,11 +44,30 @@ struct _SOOL_ActionTimerResumableStruct {
 
 	/**
 	 * @brief Returns active flag which indicates that at least 1 start
-	 * time stamp has been added.
+	 * time stamp has been added and currently waiting for `end` timestamp
 	 * @param
 	 * @return
 	 */
 	uint8_t		(*IsActive)(SOOL_ActionTimerResumable*);
+
+	/**
+	 * @brief Computes duration of the newest interval (i.e. since the last AddStartTime call).
+	 * Requires the timer to be `active` (@ref IsActive)
+	 * @param
+	 * @param timestamp
+	 * @return
+	 */
+	uint32_t 	(*CalculateTimeDiff)(SOOL_ActionTimerResumable*, const uint32_t);
+
+	/**
+	 * @brief Computes the sum of durations (determined by `start` and `end` timestamps)
+	 * while the last pair is not complete - instead of the `end` timestamp the passed
+	 * argument is used as reference. Requires the timer to be `active`.
+	 * @param
+	 * @param current timestamp
+	 * @return
+	 */
+	uint32_t	(*CalculateTimeDiffTotalFly)(SOOL_ActionTimerResumable*, const uint32_t);
 
 	/**
 	 * @brief Computes time difference according to an internal set of start and end time stamps.
@@ -56,7 +75,7 @@ struct _SOOL_ActionTimerResumableStruct {
 	 * @return
 	 * @note This is not a `getter` type function.
 	 */
-	uint32_t 	(*CalculateTimeDiff)(SOOL_ActionTimerResumable*);
+	uint32_t 	(*CalculateTimeDiffTotal)(SOOL_ActionTimerResumable*);
 
 	/**
 	 * @brief Removes all time stamps stored in `start_v` and `end_v` vectors
