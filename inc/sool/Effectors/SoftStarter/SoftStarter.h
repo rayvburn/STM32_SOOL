@@ -8,28 +8,10 @@
 #ifndef INC_SOOL_EFFECTORS_SOFTSTARTER_SOFTSTARTER_H_
 #define INC_SOOL_EFFECTORS_SOFTSTARTER_SOFTSTARTER_H_
 
-#include <stdint.h>
+#include <sool/Effectors/SoftStarter/SoftStarter_common.h>
 
 struct _SOOL_SoftStarterStruct;
 typedef struct _SOOL_SoftStarterStruct SOOL_SoftStarter;
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-struct _SOOL_SoftStarterConfigStruct {
-	uint16_t pulse_start;
-	uint16_t increments;
-};
-
-struct _SOOL_SoftStarterSetupStruct {
-	int16_t  pulse_change;
-	uint32_t time_change_gap;
-};
-
-struct _SOOL_SoftStarterStateStruct {
-	uint16_t pulse_last;
-	uint16_t changes_left; // how many times the pulse will be incremented/decremented
-	uint32_t time_last_pulse_change;
-};
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -76,7 +58,7 @@ struct _SOOL_SoftStarterStruct {
 	 * @return Returns the newly calculated `pulse` value (or the last valid
 	 * one if the method is called after `Process` returns 0)
 	 */
-	uint16_t (*Get)(SOOL_SoftStarter* ss_ptr);
+	uint16_t (*Get)(const SOOL_SoftStarter* ss_ptr);
 
 };
 
@@ -84,8 +66,10 @@ struct _SOOL_SoftStarterStruct {
 
 /**
  * @brief Provides linear change of the pulse value (timer-specific) along the time given
- * by `duration` parameter. The ramp can be of a rising or falling tendency (adjustable
- * via pulse_start > pulse_end or pulse_start < pulse_end).
+ *   by `duration` parameter. The ramp can be of a rising or falling tendency (adjustable
+ *   via pulse_start > pulse_end or pulse_start < pulse_end).
+ * @note This version is time-based SoftStarter, the `Advanced` can use arbitrary units
+ * 	 instead of milliseconds
  * @param pulse_start
  * @param pulse_end
  * @param duration: how long the soft starting procedure should take [in milliseconds]
@@ -93,8 +77,8 @@ struct _SOOL_SoftStarterStruct {
  * @note This class requires SysTick timer to be configured by default, call
  * 		 @ref SOOL_Periph_TIM_SysTick_DefaultConfig at the startup of the MCU.
  * @note If there is an instance in the application which blocks the MCU operation
- * for more than 1 millisecond then SoftStart procedure will not work properly
- * (time resolution of the `pulse` increment is 1 ms).
+ *   for more than 1 millisecond then SoftStart procedure will not work properly
+ *   (time resolution of the `pulse` increment is 1 ms).
  */
 extern SOOL_SoftStarter SOOL_Effector_SoftStarter_Initialize(uint16_t pulse_start, uint16_t pulse_end, uint32_t duration);
 
