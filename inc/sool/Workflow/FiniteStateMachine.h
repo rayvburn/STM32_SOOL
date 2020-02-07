@@ -51,6 +51,7 @@ struct _SOOL_FSMStruct {
 	uint8_t (*SwitchToPreviousState)(SOOL_FSM *fsm);
 	void 	(*SetMinStateDuration)(SOOL_FSM *fsm, uint32_t ms);		/* useful when states are switched via push-buttons */
 	uint8_t (*GetCurrentState)(SOOL_FSM *fsm);						/* to be used in main's while(1) to choose proper handler */
+	uint8_t (*GetPreviousState)(SOOL_FSM *fsm);
 	uint32_t (*GetStateDuration)(SOOL_FSM *fsm);
 	uint8_t (*GetStateTransitionFlag)(SOOL_FSM *fsm); 				/* useful for handling events after state switch */
 	uint8_t (*IsTerminalConditionFulfilled)(SOOL_FSM *fsm, uint8_t predicate); /* this also check timing terminal condition which prevents calling `on-exit` action multiple times */

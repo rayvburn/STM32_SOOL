@@ -14,6 +14,7 @@ static uint8_t FSM_SwitchToState(SOOL_FSM *fsm, uint8_t state_id);
 static uint8_t FSM_SwitchToPreviousState(SOOL_FSM *fsm);
 static void FSM_SetMinStateDuration(SOOL_FSM *fsm, uint32_t ms);		/* useful when states are switched via push-buttons */
 static uint8_t FSM_GetCurrentState(SOOL_FSM *fsm);						/* to be used in main's while(1) to choose proper handler */
+static uint8_t FSM_GetPreviousState(SOOL_FSM *fsm);
 static uint32_t FSM_GetStateDuration(SOOL_FSM *fsm);
 static uint8_t FSM_GetStateTransitionFlag(SOOL_FSM *fsm); 				/* useful for handling events after state switch */
 static uint8_t FSM_IsTimingTerminalConditionFulfilled(SOOL_FSM *fsm);
@@ -35,6 +36,7 @@ SOOL_FSM SOOL_Workflow_FSM_Init(uint8_t init_state_id, FunctionalState execute_o
 
 	/* Set methods pointers */
 	fsm.GetCurrentState = FSM_GetCurrentState;
+	fsm.GetPreviousState = FSM_GetPreviousState;
 	fsm.GetStateDuration = FSM_GetStateDuration;
 	fsm.GetStateTransitionFlag = FSM_GetStateTransitionFlag;
 	fsm.IsTerminalConditionFulfilled = FSM_IsTerminalConditionFulfilled;
@@ -89,6 +91,12 @@ static void FSM_SetMinStateDuration(SOOL_FSM *fsm, uint32_t ms) {
 
 static uint8_t FSM_GetCurrentState(SOOL_FSM *fsm) {
 	return (fsm->_state.current);
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static uint8_t FSM_GetPreviousState(SOOL_FSM *fsm) {
+	return (fsm->_state.last);
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
