@@ -67,8 +67,13 @@ static uint8_t PositionController_ConfigMove(SOOL_PositionController* controller
 
 	if ( soft_start_end_pulse >= soft_stop_start_pulse ) {
 
+		// V1
 		// error, apply safe stop
-		controller_ptr->base.Reconfigure(&controller_ptr->base, controller_ptr->_config.pwm_start, 0, 100); // FIXME: arbitrarily chosen duration - can be problematic for hi-resolution encoders (immediate stop)
+		// controller_ptr->base.Reconfigure(&controller_ptr->base, controller_ptr->_config.pwm_start, 0, 100); // FIXME: arbitrarily chosen duration - can be problematic for hi-resolution encoders (immediate stop)
+
+		// V2
+		// complete failure - ignore request
+		return (0);
 
 	} else {
 
@@ -79,6 +84,7 @@ static uint8_t PositionController_ConfigMove(SOOL_PositionController* controller
 			// check the error cause
 			// 1st reason: equal PWM values - no SoftStarter operation needed (at least in the `acceleration` stage
 			if ( pwm_stable == pwm_start ) {
+
 				// NOTE: `pwm_start` will be the output during the `acceleration` stage
 				controller_ptr->base.Start(&controller_ptr->base, current_pos);
 				// jump straight into the stable speed `sub-state` and wait for the moment,
@@ -242,8 +248,8 @@ static uint8_t PositionController_HandleStableSpeed(SOOL_PositionController* con
 		if ( !controller_ptr->base.Reconfigure(&controller_ptr->base,
 			  controller_ptr->_config.pwm_stable, controller_ptr->_config.pwm_goal, duration) ) {
 
-			// safe stop on ERROR, assuming desired duration of the motion
-			controller_ptr->base.Reconfigure(&controller_ptr->base, controller_ptr->base.Get(&controller_ptr->base), 0, duration);
+			// safe slow-down on ERROR, assuming desired duration of the motion
+			// controller_ptr->base.Reconfigure(&controller_ptr->base, controller_ptr->base.Get(&controller_ptr->base), controller_ptr->_config.pwm_goal, duration);
 
 		}
 
