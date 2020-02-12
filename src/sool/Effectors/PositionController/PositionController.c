@@ -18,6 +18,10 @@ static uint16_t PositionController_GetOutput(SOOL_PositionController* controller
 // helpers
 static void PositionController_SelectNextState(SOOL_PositionController* controller_ptr);
 
+static uint8_t PositionController_HandleAcceleration(SOOL_PositionController* controller_ptr, int64_t current_pos);
+static uint8_t PositionController_HandleStableSpeed(SOOL_PositionController* controller_ptr, int64_t current_pos);
+static uint8_t PositionController_HandleDeceleration(SOOL_PositionController* controller_ptr, int64_t current_pos);
+static uint8_t PositionController_HandleFinished(SOOL_PositionController* controller_ptr, int64_t current_pos);
 
 // --------------------------------------------------------------
 
@@ -50,7 +54,7 @@ SOOL_PositionController SOOL_Effector_PositionController_Initialize() {
 
 
 static uint8_t PositionController_ConfigMove(SOOL_PositionController* controller_ptr, int64_t current_pos, int64_t goal_pos,
-			uint16_t pwm_start, uint16_t pwm_stable, uint16_t pwm_goal, uint32_t soft_start_pulses, uint32_t soft_stop_pulses)
+			uint16_t pwm_start, uint16_t pwm_stable, uint16_t pwm_goal, uint32_t soft_start_end_pulse, uint32_t soft_stop_start_pulse)
 {
 
 	// update internal configuration structure
@@ -59,16 +63,37 @@ static uint8_t PositionController_ConfigMove(SOOL_PositionController* controller
 	controller_ptr->_config.pwm_stable = pwm_stable;
 	controller_ptr->_config.pwm_start  = pwm_start;
 //	controller_ptr->_config.soft_start_end_pulse = soft_start_pulses;
-	controller_ptr->_config.soft_stop_start_pulse  = soft_stop_pulses;
+	controller_ptr->_config.soft_stop_start_pulse  = soft_stop_start_pulse;
 
-	// arrange acceleration according to the given set of parameters
-	if ( !controller_ptr->base.Reconfigure(&controller_ptr->base,
-									 	    controller_ptr->_config.pwm_start, controller_ptr->_config.pwm_stable,
-											soft_start_pulses) )
-	{
-		return (0);
+	if ( soft_start_end_pulse >= soft_stop_start_pulse ) {
+
+		// error, apply safe stop
+		controller_ptr->base.Reconfigure(&controller_ptr->base, controller_ptr->_config.pwm_start, 0, 100); // FIXME: arbitrarily chosen duration - can be problematic for hi-resolution encoders (immediate stop)
+
+	} else {
+
+		// arrange acceleration according to the given set of parameters
+		if ( !controller_ptr->base.Reconfigure(&controller_ptr->base, controller_ptr->_config.pwm_start,
+			  controller_ptr->_config.pwm_stable, soft_start_end_pulse) )
+		{
+			// check the error cause
+			// 1st reason: equal PWM values - no SoftStarter operation needed (at least in the `acceleration` stage
+			if ( pwm_stable == pwm_start ) {
+				// NOTE: `pwm_start` will be the output during the `acceleration` stage
+				controller_ptr->base.Start(&controller_ptr->base, current_pos);
+				// jump straight into the stable speed `sub-state` and wait for the moment,
+				// when deceleration should be triggered;
+				// starting with ACCELERATION with these initial conditions will fail -
+				// Process will never return 1
+				controller_ptr->_state.stage_active = (uint8_t)SOOL_POSITION_CONTROLLER_STABLE;
+				return (1);
+			} else {
+				// unhandled case(s)
+				return (0);
+			}
+		}
+
 	}
-
 	controller_ptr->base.Start(&controller_ptr->base, current_pos);
 	controller_ptr->_state.stage_active = (uint8_t)SOOL_POSITION_CONTROLLER_ACCELERATION;
 	return (1);
@@ -83,6 +108,7 @@ static void PositionController_Abort(SOOL_PositionController* controller_ptr, ui
 
 		case(1):
 			controller_ptr->_state.aborted = 1;
+			controller_ptr->_state.stage_active = 0; // finished
 			break;
 		case(0):
 			controller_ptr->_state.aborted = 0;
@@ -98,52 +124,36 @@ static void PositionController_Abort(SOOL_PositionController* controller_ptr, ui
 
 static uint8_t PositionController_Process(SOOL_PositionController* controller_ptr, int64_t current_pos) {
 
-	if ( controller_ptr->_state.aborted ) {
-		return (0);
+	// save the operation status
+	uint8_t status = 2;
+
+	// evaluate the current state of the internal FSM
+	switch ( controller_ptr->_state.stage_active ) {
+
+		case(SOOL_POSITION_CONTROLLER_ACCELERATION):
+			status = PositionController_HandleAcceleration(controller_ptr, current_pos);
+			break;
+
+		case(SOOL_POSITION_CONTROLLER_STABLE):
+			status = PositionController_HandleStableSpeed(controller_ptr, current_pos);
+			break;
+
+		case(SOOL_POSITION_CONTROLLER_DECELERATION):
+			status = PositionController_HandleDeceleration(controller_ptr, current_pos);
+			break;
+
+		case(SOOL_POSITION_CONTROLLER_FINISHED):
+			// in fact - `idling`
+			// lack of `SelectNextState` -> do not allow switch to `acceleration` after reaching the goal and waiting for the new one (` == 0 `))
+			status = PositionController_HandleFinished(controller_ptr, current_pos);
+			break;
+
+		default:
+			break;
+
 	}
 
-	if ( controller_ptr->base.Process(&controller_ptr->base, current_pos) ) {
-		if ( controller_ptr->base.IsFinished(&controller_ptr->base) ) {
-
-			// the stage which has just finished
-			switch ( controller_ptr->_state.stage_active ) {
-
-				case(SOOL_POSITION_CONTROLLER_ACCELERATION):
-					PositionController_SelectNextState(controller_ptr); // STABLE
-					// go further with the same speed
-					break;
-
-				case(SOOL_POSITION_CONTROLLER_STABLE):
-					// evaluate whether to start decelerating
-					if ( current_pos == controller_ptr->_config.soft_stop_start_pulse ) {
-
-						PositionController_SelectNextState(controller_ptr); // DECELERATION
-						// TODO: error handling
-						if ( !controller_ptr->base.Reconfigure(&controller_ptr->base,
-							  controller_ptr->_config.pwm_stable, controller_ptr->_config.pwm_goal,
-							  controller_ptr->_config.soft_stop_start_pulse) )
-						{
-							return (0);
-						}
-
-					}
-					break;
-
-				case(SOOL_POSITION_CONTROLLER_DECELERATION):
-					PositionController_SelectNextState(controller_ptr); // FINISHED
-					// motion finished
-					break;
-
-				case(SOOL_POSITION_CONTROLLER_FINISHED):
-					// lack of `SelectNextState` -> do not allow switch to `acceleration` after reaching the goal and waiting for the new one (` == 0 `))
-					break;
-
-			}
-
-		}
-		return (1);
-	}
-	return (0);
+	return (status);
 
 }
 
@@ -166,7 +176,124 @@ static uint8_t PositionController_GetMotionStatus(SOOL_PositionController* contr
 // --------------------------------------------------------------
 
 static uint16_t PositionController_GetOutput(SOOL_PositionController* controller_ptr) {
-	return (controller_ptr->base.Get(&controller_ptr->base));
+
+	if ( controller_ptr->_state.aborted ) {
+
+		// workaround
+		if ( controller_ptr->base.IsFinished(&controller_ptr->base) ) {
+			return ((uint16_t)SOOL_POSITION_CONTROLLER_FINISHED);
+		} else {
+			return ((uint16_t)SOOL_POSITION_CONTROLLER_ACCELERATION); // arbitrarily chosen, prevents the motion from being incorrectly interpreted (as finished)
+		}
+
+	} else {
+
+		return (controller_ptr->base.Get(&controller_ptr->base));
+
+	}
+
+}
+
+// --------------------------------------------------------------
+
+static uint8_t PositionController_HandleAcceleration(SOOL_PositionController* controller_ptr, int64_t current_pos) {
+
+	if ( controller_ptr->base.Process(&controller_ptr->base, current_pos) ) {
+
+		// check whether the internal FSM operation of the PositionController should be continued;
+		// `aborted` status still allows to change speed via Process calls but abandons
+		// acceleration-stable speed-deceleration-finished pattern
+		if ( controller_ptr->_state.aborted ) {
+			return (1);
+		}
+
+		if ( controller_ptr->base.IsFinished(&controller_ptr->base) ) {
+
+			PositionController_SelectNextState(controller_ptr); // go to STABLE
+			// go further with the same speed
+
+		}
+		return (1);
+
+	}
+	return (0);
+
+}
+
+// --------------------------------------------------------------
+
+static uint8_t PositionController_HandleStableSpeed(SOOL_PositionController* controller_ptr, int64_t current_pos) {
+
+	// check whether the internal FSM operation of the PositionController should be continued;
+	// `aborted` status still allows to change speed via Process calls but abandons
+	// acceleration-stable speed-deceleration-finished pattern
+	if ( controller_ptr->_state.aborted ) {
+		return (controller_ptr->base.Process(&controller_ptr->base, current_pos));
+	}
+
+	// evaluate whether to start decelerating
+	if ( current_pos == controller_ptr->_config.soft_stop_start_pulse ) {
+
+		// calculate how many `ticks` should deceleration take
+		// difference between current position and the goal position
+		int64_t duration = SOOL_Sensor_Encoder_PositionCalculator_ComputeDiff(current_pos, controller_ptr->_config.goal_pos, 1);
+
+		// desired action
+		if ( !controller_ptr->base.Reconfigure(&controller_ptr->base,
+			  controller_ptr->_config.pwm_stable, controller_ptr->_config.pwm_goal, duration) ) {
+
+			// safe stop on ERROR, assuming desired duration of the motion
+			controller_ptr->base.Reconfigure(&controller_ptr->base, controller_ptr->base.Get(&controller_ptr->base), 0, duration);
+
+		}
+
+		PositionController_SelectNextState(controller_ptr); // go to DECELERATION
+
+	}
+
+	return (0); // `pulse` value will never be changed
+
+}
+
+// --------------------------------------------------------------
+
+static uint8_t PositionController_HandleDeceleration(SOOL_PositionController* controller_ptr, int64_t current_pos) {
+
+	if ( controller_ptr->base.Process(&controller_ptr->base, current_pos) ) {
+
+		// check whether the internal FSM operation of the PositionController should be continued;
+		// `aborted` status still allows to change speed via Process calls but abandons
+		// acceleration-stable speed-deceleration-finished pattern
+		if ( controller_ptr->_state.aborted ) {
+			return (1);
+		}
+
+		if ( controller_ptr->base.IsFinished(&controller_ptr->base) ) {
+
+			PositionController_SelectNextState(controller_ptr); // FINISHED
+			// motion finished
+
+		}
+		return (1);
+
+	}
+	return (0);
+
+}
+
+// --------------------------------------------------------------
+
+static uint8_t PositionController_HandleFinished(SOOL_PositionController* controller_ptr, int64_t current_pos) {
+
+	// check whether the internal FSM operation of the PositionController should be continued;
+	// `aborted` status still allows to change speed via Process calls but abandons
+	// acceleration-stable speed-deceleration-finished pattern
+	if ( controller_ptr->_state.aborted ) {
+		return (controller_ptr->base.Process(&controller_ptr->base, current_pos));
+	}
+
+	return (0);
+
 }
 
 // --------------------------------------------------------------

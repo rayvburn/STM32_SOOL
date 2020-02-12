@@ -9,6 +9,7 @@
 #define INC_SOOL_EFFECTORS_POSITIONCONTROLLER_POSITIONCONTROLLER_H_
 
 #include <sool/Effectors/SoftStarter/SoftStarterCustom.h>
+#include <sool/Sensors/Encoder/PositionCalculator.h>
 
 // --------------------------------------------------------------
 
@@ -72,11 +73,14 @@ struct _SOOL_PositionControllerStruct {
 	// pwm_goal: TIM pulse value at the goal position
 	// soft_start_end_pulse: absolute pulse number where the acceleration should finish
 	// soft_stop_start_pulse: absolute pulse number where the deceleration should begin
+	// NOTE: for stop at the end of the motion one must consider the minimum PWM value
+	//     that allows the motor to keep rotating and then stop manually, immediately
+	//     after finished operation
 	uint8_t (*ConfigMove)(SOOL_PositionController* controller_ptr, int64_t current_pos, int64_t goal_pos,
 			uint16_t pwm_start, uint16_t pwm_stable, uint16_t pwm_goal, uint32_t soft_start_end_pulse,
 			uint32_t soft_stop_start_pulse);
 
-	// calculates pulse value
+	// calculates pulse value, returns 1 if the value was modified
 	uint8_t (*Process)(SOOL_PositionController* controller_ptr, int64_t current_pos);
 
 	// ????
