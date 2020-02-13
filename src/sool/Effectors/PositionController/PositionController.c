@@ -9,7 +9,8 @@
 
 static uint8_t 	PositionController_ConfigMove(SOOL_PositionController* controller_ptr, int64_t current_pos, int64_t goal_pos,
 											  uint16_t pwm_start, uint16_t pwm_stable, uint16_t pwm_goal,
-											  uint32_t soft_start_end_pulse, uint32_t soft_stop_start_pulse);
+											  uint32_t soft_start_end_pulse, uint32_t soft_stop_start_pulse,
+											  uint8_t upcounting);
 static void 	PositionController_Abort(SOOL_PositionController* controller_ptr, uint8_t state);
 static uint8_t 	PositionController_Process(SOOL_PositionController* controller_ptr, int64_t current_pos);
 static uint8_t 	PositionController_GetMotionStatus(SOOL_PositionController* controller_ptr);
@@ -22,6 +23,9 @@ static uint8_t PositionController_HandleAcceleration(SOOL_PositionController* co
 static uint8_t PositionController_HandleStableSpeed(SOOL_PositionController* controller_ptr, int64_t current_pos);
 static uint8_t PositionController_HandleDeceleration(SOOL_PositionController* controller_ptr, int64_t current_pos);
 static uint8_t PositionController_HandleFinished(SOOL_PositionController* controller_ptr, int64_t current_pos);
+
+static void PositionController_ShrinkRanges(int64_t current_pos, int64_t goal_pos,
+											uint32_t* soft_start_end_pulse_ptr, uint32_t* soft_stop_start_pulse_ptr);
 
 // --------------------------------------------------------------
 
@@ -54,52 +58,70 @@ SOOL_PositionController SOOL_Effector_PositionController_Initialize() {
 
 
 static uint8_t PositionController_ConfigMove(SOOL_PositionController* controller_ptr, int64_t current_pos, int64_t goal_pos,
-			uint16_t pwm_start, uint16_t pwm_stable, uint16_t pwm_goal, uint32_t soft_start_end_pulse, uint32_t soft_stop_start_pulse)
+			uint16_t pwm_start, uint16_t pwm_stable, uint16_t pwm_goal, uint32_t soft_start_end_pulse, uint32_t soft_stop_start_pulse,
+			uint8_t upcounting)
 {
+
+	// already at the goal position!
+	if ( current_pos == goal_pos ) {
+		return (0);
+	}
+
+	// useful for potential shrinking (DEPRECATED?)
+	uint32_t soft_start_end_pulse_mod = soft_start_end_pulse;
+	uint32_t soft_stop_start_pulse_mod = soft_stop_start_pulse;
+
+	// UP-COUNTING or DOWN-COUNTING - 2 possibilities available
+	// evaluate motion feasibility;
+	// shrink the soft-start and soft-stop ranges if necessary (DEPRECATED);
+	// APPLIES BOTH FOR no `overflow` and `overflow` cases;
+	// FIXME: separate variables for easier debugging
+	uint32_t stage1 = SOOL_Sensor_Encoder_PositionCalculator_ComputeDiff(current_pos, soft_start_end_pulse, upcounting);
+	uint32_t stage2 = SOOL_Sensor_Encoder_PositionCalculator_ComputeDiff(soft_stop_start_pulse, goal_pos, upcounting);
+	uint32_t stage_total = SOOL_Sensor_Encoder_PositionCalculator_ComputeDiff(current_pos, goal_pos, upcounting);
+	if ( (stage1 + stage2) > stage_total )
+//	if ( (SOOL_Sensor_Encoder_PositionCalculator_ComputeDiff(current_pos, soft_start_end_pulse, upcounting) +
+//		  SOOL_Sensor_Encoder_PositionCalculator_ComputeDiff(soft_stop_start_pulse, goal_pos, upcounting))  >
+//		 SOOL_Sensor_Encoder_PositionCalculator_ComputeDiff(current_pos, goal_pos, upcounting) )
+	{
+		// shrink?
+		// PositionController_ShrinkRanges(current_pos, goal_pos,
+		//								   &soft_start_end_pulse_mod, &soft_stop_start_pulse_mod);
+		return (0);
+	}
 
 	// update internal configuration structure
 	controller_ptr->_config.goal_pos = goal_pos;
 	controller_ptr->_config.pwm_goal = pwm_goal;
 	controller_ptr->_config.pwm_stable = pwm_stable;
 	controller_ptr->_config.pwm_start  = pwm_start;
-//	controller_ptr->_config.soft_start_end_pulse = soft_start_pulses;
-	controller_ptr->_config.soft_stop_start_pulse  = soft_stop_start_pulse;
+	controller_ptr->_config.soft_stop_start_pulse  = soft_stop_start_pulse_mod;
+	controller_ptr->_config.upcounting = upcounting;
 
-	if ( soft_start_end_pulse >= soft_stop_start_pulse ) {
+	// arrange soft-start according to the given set of parameters
+	if ( !controller_ptr->base.Reconfigure(&controller_ptr->base, controller_ptr->_config.pwm_start,
+		  controller_ptr->_config.pwm_stable,
+		  SOOL_Sensor_Encoder_PositionCalculator_ComputeDiff(current_pos, soft_start_end_pulse, upcounting)) ) // first stage (acceleration)
+	{
+		// check the error cause
+		// 1st reason: equal PWM values - no SoftStarter operation needed (at least in the `acceleration` stage
+		if ( pwm_stable == pwm_start ) {
 
-		// V1
-		// error, apply safe stop
-		// controller_ptr->base.Reconfigure(&controller_ptr->base, controller_ptr->_config.pwm_start, 0, 100); // FIXME: arbitrarily chosen duration - can be problematic for hi-resolution encoders (immediate stop)
-
-		// V2
-		// complete failure - ignore request
-		return (0);
-
-	} else {
-
-		// arrange acceleration according to the given set of parameters
-		if ( !controller_ptr->base.Reconfigure(&controller_ptr->base, controller_ptr->_config.pwm_start,
-			  controller_ptr->_config.pwm_stable, soft_start_end_pulse) )
-		{
-			// check the error cause
-			// 1st reason: equal PWM values - no SoftStarter operation needed (at least in the `acceleration` stage
-			if ( pwm_stable == pwm_start ) {
-
-				// NOTE: `pwm_start` will be the output during the `acceleration` stage
-				controller_ptr->base.Start(&controller_ptr->base, current_pos);
-				// jump straight into the stable speed `sub-state` and wait for the moment,
-				// when deceleration should be triggered;
-				// starting with ACCELERATION with these initial conditions will fail -
-				// Process will never return 1
-				controller_ptr->_state.stage_active = (uint8_t)SOOL_POSITION_CONTROLLER_STABLE;
-				return (1);
-			} else {
-				// unhandled case(s)
-				return (0);
-			}
+			// NOTE: `pwm_start` will be the output during the `acceleration` stage
+			controller_ptr->base.Start(&controller_ptr->base, current_pos);
+			// jump straight into the stable speed `sub-state` and wait for the moment,
+			// when deceleration should be triggered;
+			// starting with ACCELERATION with these initial conditions will fail -
+			// Process will never return 1
+			controller_ptr->_state.stage_active = (uint8_t)SOOL_POSITION_CONTROLLER_STABLE;
+			return (1);
+		} else {
+			// unhandled case(s)
+			return (0);
 		}
-
 	}
+
+	// initialize
 	controller_ptr->base.Start(&controller_ptr->base, current_pos);
 	controller_ptr->_state.stage_active = (uint8_t)SOOL_POSITION_CONTROLLER_ACCELERATION;
 	return (1);
@@ -176,12 +198,6 @@ static void PositionController_SelectNextState(SOOL_PositionController* controll
 // --------------------------------------------------------------
 
 static uint8_t PositionController_GetMotionStatus(SOOL_PositionController* controller_ptr) {
-	return ((uint8_t)controller_ptr->_state.stage_active);
-}
-
-// --------------------------------------------------------------
-
-static uint16_t PositionController_GetOutput(SOOL_PositionController* controller_ptr) {
 
 	if ( controller_ptr->_state.aborted ) {
 
@@ -192,12 +208,15 @@ static uint16_t PositionController_GetOutput(SOOL_PositionController* controller
 			return ((uint16_t)SOOL_POSITION_CONTROLLER_ACCELERATION); // arbitrarily chosen, prevents the motion from being incorrectly interpreted (as finished)
 		}
 
-	} else {
-
-		return (controller_ptr->base.Get(&controller_ptr->base));
-
 	}
+	return ((uint8_t)controller_ptr->_state.stage_active);
 
+}
+
+// --------------------------------------------------------------
+
+static uint16_t PositionController_GetOutput(SOOL_PositionController* controller_ptr) {
+	return (controller_ptr->base.Get(&controller_ptr->base));
 }
 
 // --------------------------------------------------------------
@@ -242,12 +261,13 @@ static uint8_t PositionController_HandleStableSpeed(SOOL_PositionController* con
 
 		// calculate how many `ticks` should deceleration take
 		// difference between current position and the goal position
-		int64_t duration = SOOL_Sensor_Encoder_PositionCalculator_ComputeDiff(current_pos, controller_ptr->_config.goal_pos, 1);
+		int64_t duration = SOOL_Sensor_Encoder_PositionCalculator_ComputeDiff(current_pos, controller_ptr->_config.goal_pos, controller_ptr->_config.upcounting);
 
 		// desired action
 		if ( !controller_ptr->base.Reconfigure(&controller_ptr->base,
 			  controller_ptr->_config.pwm_stable, controller_ptr->_config.pwm_goal, duration) ) {
 
+			// FIXME: error handling
 			// safe slow-down on ERROR, assuming desired duration of the motion
 			// controller_ptr->base.Reconfigure(&controller_ptr->base, controller_ptr->base.Get(&controller_ptr->base), controller_ptr->_config.pwm_goal, duration);
 
@@ -303,3 +323,11 @@ static uint8_t PositionController_HandleFinished(SOOL_PositionController* contro
 }
 
 // --------------------------------------------------------------
+
+static void PositionController_ShrinkRanges(int64_t current_pos, int64_t goal_pos,
+			uint32_t* soft_start_end_pulse_ptr, uint32_t* soft_stop_start_pulse_ptr)
+{
+
+
+
+}
