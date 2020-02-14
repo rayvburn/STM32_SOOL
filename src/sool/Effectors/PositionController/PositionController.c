@@ -24,8 +24,9 @@ static uint8_t PositionController_HandleStableSpeed(SOOL_PositionController* con
 static uint8_t PositionController_HandleDeceleration(SOOL_PositionController* controller_ptr, int64_t current_pos);
 static uint8_t PositionController_HandleFinished(SOOL_PositionController* controller_ptr, int64_t current_pos);
 
-static void PositionController_ShrinkRanges(int64_t current_pos, int64_t goal_pos,
-											uint32_t* soft_start_end_pulse_ptr, uint32_t* soft_stop_start_pulse_ptr);
+static uint8_t PositionController_ShrinkRanges(int64_t current_pos, int64_t goal_pos,
+				uint32_t* soft_start_end_pulse_ptr, uint32_t* soft_stop_start_pulse_ptr,
+				uint32_t stage1, uint32_t stage2, uint32_t stage_total, uint8_t upcounting);
 
 // --------------------------------------------------------------
 
@@ -56,7 +57,8 @@ SOOL_PositionController SOOL_Effector_PositionController_Initialize() {
 
 // --------------------------------------------------------------
 
-
+// FIXME: current_pos and soft_start... variables should be of the same type,
+// it does not make sense otherwise
 static uint8_t PositionController_ConfigMove(SOOL_PositionController* controller_ptr, int64_t current_pos, int64_t goal_pos,
 			uint16_t pwm_start, uint16_t pwm_stable, uint16_t pwm_goal, uint32_t soft_start_end_pulse, uint32_t soft_stop_start_pulse,
 			uint8_t upcounting)
@@ -84,10 +86,9 @@ static uint8_t PositionController_ConfigMove(SOOL_PositionController* controller
 //		  SOOL_Sensor_Encoder_PositionCalculator_ComputeDiff(soft_stop_start_pulse, goal_pos, upcounting))  >
 //		 SOOL_Sensor_Encoder_PositionCalculator_ComputeDiff(current_pos, goal_pos, upcounting) )
 	{
-		// shrink?
-		// PositionController_ShrinkRanges(current_pos, goal_pos,
-		//								   &soft_start_end_pulse_mod, &soft_stop_start_pulse_mod);
-		return (0);
+		// try to shrink
+		PositionController_ShrinkRanges(current_pos, goal_pos, &soft_start_end_pulse_mod, &soft_stop_start_pulse_mod,
+										stage1, stage2, stage_total, upcounting);
 	}
 
 	// update internal configuration structure
@@ -104,7 +105,7 @@ static uint8_t PositionController_ConfigMove(SOOL_PositionController* controller
 	// arrange soft-start according to the given set of parameters
 	if ( !controller_ptr->base.Reconfigure(&controller_ptr->base, controller_ptr->_config.pwm_start,
 		  controller_ptr->_config.pwm_stable,
-		  SOOL_Sensor_Encoder_PositionCalculator_ComputeDiff(current_pos, soft_start_end_pulse, upcounting)) ) // first stage (acceleration)
+		  SOOL_Sensor_Encoder_PositionCalculator_ComputeDiff(current_pos, soft_start_end_pulse_mod, upcounting)) ) // first stage (acceleration)
 	{
 		// check the error cause
 		// 1st reason: equal PWM values - no SoftStarter operation needed (at least in the `acceleration` stage
@@ -331,10 +332,57 @@ static uint8_t PositionController_HandleFinished(SOOL_PositionController* contro
 
 // --------------------------------------------------------------
 
-static void PositionController_ShrinkRanges(int64_t current_pos, int64_t goal_pos,
-			uint32_t* soft_start_end_pulse_ptr, uint32_t* soft_stop_start_pulse_ptr)
+static uint8_t PositionController_ShrinkRanges(int64_t current_pos, int64_t goal_pos,
+				uint32_t* soft_start_end_pulse_ptr, uint32_t* soft_stop_start_pulse_ptr,
+				uint32_t stage1, uint32_t stage2, uint32_t stage_total, uint8_t upcounting)
 {
 
+	// if a sum of ranges:
+	// 	1) from `start` to `soft_start_end` (stage1)
+	//	2) from `soft_stop_start` to `goal` (stage2)
+	// is bigger than a range from `start` to `goal` (stage_total)
+	// let's shift the `soft_start_end` and `soft_stop_start` equally
+	// so the `steady_speed` state will be omitted but the movement
+	// will be feasible;
+	// do not allow shifts which would increase the ramp both increment and decrement `lengths` triple
 
+	uint16_t soft_start_end = (uint16_t)*soft_start_end_pulse_ptr;
+	uint16_t soft_stop_beg = (uint16_t)*soft_stop_start_pulse_ptr;
+	int64_t diff = (stage1 + stage2) - stage_total;
+	// must be positive (`diff` counted-in twice here)
+	if ( diff <= 0 ) {
+		return (0);
+	}
+
+	// check whether the shrinkage is not too aggressive
+	if ( ((stage1 / 2) <= diff) || ((stage2 / 2) <= diff) ) {
+		return (0);
+	}
+
+	// counting direction
+	if ( upcounting ) {
+		// temporary
+		soft_start_end = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(soft_start_end, (int32_t)(-diff)) - 1; 	// - margin
+		soft_stop_beg = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(soft_stop_beg, (int32_t)(+diff))   + 1; 	// + margin
+	} else {
+		// temporary
+		soft_start_end = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(soft_start_end, (int32_t)(+diff)) + 1; 	// + margin
+		soft_stop_beg = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(soft_stop_beg, (int32_t)(-diff))   - 1; 	// - margin
+	}
+
+	// evaluate ranges once again now
+	uint32_t stage1_mod = SOOL_Sensor_Encoder_PositionCalculator_ComputeDiff(current_pos, soft_start_end, upcounting);
+	uint32_t stage2_mod = SOOL_Sensor_Encoder_PositionCalculator_ComputeDiff(soft_stop_beg, goal_pos, upcounting);
+
+	// check if ranges got shrunk enough
+	if ( stage1_mod + stage2_mod <= stage_total ) {
+		// found
+		*soft_start_end_pulse_ptr = soft_start_end;
+		*soft_stop_start_pulse_ptr = soft_stop_beg;
+		return (1);
+	}
+
+	// no luck
+	return (0);
 
 }
