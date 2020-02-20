@@ -90,6 +90,7 @@ struct _SOOL_USART_DMA_Struct {
 	void	(*DeactivateReading)(volatile SOOL_USART_DMA*); 			// disables DMA and USART idle interrupts
 	uint8_t (*IsDataReceived)(volatile SOOL_USART_DMA*); 				// returns info whether data was received - based on USART Idle line detection
 	const volatile SOOL_String* (*GetRxData)(volatile SOOL_USART_DMA*); // returns a pointer to a buffer - IMPORTANT: use this method instead of raw ArrayString operations because some calculations are performed here (it is not possible to count number of bytes read from DMA on the fly)
+	size_t 	(*GetRxDataLength)(volatile SOOL_USART_DMA*);			// how many valid characters are in the buffer (do not confuse with the buffer length); uses C's `strlen` function
 	void	(*ClearRxBuffer)(volatile SOOL_USART_DMA*); 				// clears whole buffer (NOTE: does not set incoming data pointer to the buffer's start)
 
 	/// \brief Manages buffer content so the next part (stage) of the `dataframe` will be

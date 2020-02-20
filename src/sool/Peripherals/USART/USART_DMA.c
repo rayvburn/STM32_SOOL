@@ -30,6 +30,7 @@ static void 	USART_DMA_ActivateReading(volatile SOOL_USART_DMA *usart);
 static void 	USART_DMA_DeactivateReading(volatile SOOL_USART_DMA *usart);
 static uint8_t 	USART_DMA_IsDataReceived(volatile SOOL_USART_DMA *usart);
 static const volatile SOOL_String* USART_DMA_GetRxData(volatile SOOL_USART_DMA *usart);
+static size_t 	USART_DMA_GetRxDataLength(volatile SOOL_USART_DMA *usart);
 static void		USART_DMA_ClearRxBuffer(volatile SOOL_USART_DMA *usart);
 static uint8_t 	USART_DMA_ConfirmReception(volatile SOOL_USART_DMA* usart);
 
@@ -339,6 +340,7 @@ volatile SOOL_USART_DMA SOOL_Periph_USART_DMA_Init(USART_TypeDef* USARTx, uint32
 	usart_obj.DeactivateReading = USART_DMA_DeactivateReading;
 	usart_obj.IsDataReceived = USART_DMA_IsDataReceived;
 	usart_obj.GetRxData = USART_DMA_GetRxData;
+	usart_obj.GetRxDataLength = USART_DMA_GetRxDataLength;
 	usart_obj.ClearRxBuffer = USART_DMA_ClearRxBuffer;
 	usart_obj._DmaRxIrqHandler = USART_DMA_RxInterruptHandler;
 
@@ -487,6 +489,19 @@ static uint8_t USART_DMA_IsDataReceived(volatile SOOL_USART_DMA *usart) {
 static const volatile SOOL_String* USART_DMA_GetRxData(volatile SOOL_USART_DMA *usart) {
 	usart->_rx.new_data_flag = 0;
 	return (&usart->_rx.buffer);
+}
+
+// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+static size_t USART_DMA_GetRxDataLength(volatile SOOL_USART_DMA *usart) {
+
+	uint8_t temp = usart->_rx.new_data_flag;
+	size_t len = strlen(usart->GetRxData(usart)->_data);
+
+	// restore `new_data` flag which is cleared by `GetRxData` call
+	usart->_rx.new_data_flag = temp;
+	return (len);
+
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
