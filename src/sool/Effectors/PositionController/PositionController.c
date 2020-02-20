@@ -288,6 +288,7 @@ static uint8_t PositionController_HandleStableSpeed(SOOL_PositionController* con
 		return (controller_ptr->base.Process(&controller_ptr->base, current_pos));
 	}
 
+	// TODO: safety in case of some `lag`? - consider `_config.upcounting` and `inequality`
 	// evaluate whether to start decelerating
 	if ( current_pos == controller_ptr->_config.soft_stop_start_pulse ) {
 
@@ -440,7 +441,7 @@ static uint8_t PositionController_ShrinkStages(int64_t current_pos, int64_t goal
 	// calculate maximum speed for shortened stages
 	int32_t pwm_stage1 = *pwm_stable_ptr;
 	int32_t pwm_stage2 = *pwm_stable_ptr;
-	uint16_t changes = 0;
+//	uint16_t changes = 0;
 
 	// calculate new duration of shortened stages
 	uint32_t duration_stage1 = stage1;
@@ -450,13 +451,23 @@ static uint8_t PositionController_ShrinkStages(int64_t current_pos, int64_t goal
 	uint16_t pwm_stable_mod = *pwm_stable_ptr;
 
 	// change until the `intersection point` is found;
-	// NOTE: the trapezoidal pattern of motion ( rotational speed(pulses) function )
-	// allows to assume that the `setup_start.pulse_change` is positive while
-	// `setup_stop.pulse_change` is negative
-	while ( pwm_stage1 >= pwm_stage2 ) {
+	while ( (duration_stage1 + duration_stage2) >= (stage_total - 2) ) { // `length` condition; `-2` is a margin
+		// NOTE: the trapezoidal pattern of motion ( rotational speed(pulses) function )
+		// allows to assume that the `setup_start.pulse_change` is positive while
+		// `setup_stop.pulse_change` is negative
 		pwm_stage1 -= setup_start.pulse_change;
 		pwm_stage2 += setup_stop.pulse_change;
-		changes++;
+//		changes++;
+
+		duration_stage1 -= setup_start.time_change_gap;
+		duration_stage2 -= setup_stop.time_change_gap;
+
+		// check whether it is safe to apply some margin
+		if ( duration_stage1 < 2 && duration_stage2 < 2 ) {
+			return (0);
+			break;
+		}
+
 	}
 
 	// set `pwm_stable` as the bigger `pwm_stageX`
@@ -466,17 +477,11 @@ static uint8_t PositionController_ShrinkStages(int64_t current_pos, int64_t goal
 		pwm_stable_mod = pwm_stage1;
 	}
 
-	// stages must be shortened
-	duration_stage1 = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(stage1, -setup_start.time_change_gap * changes);
-	duration_stage2 = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(stage2, -setup_stop.time_change_gap  * changes);
+	// NOTE: these are relative lengths!
+//	// stages must be shortened
+//	duration_stage1 = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(stage1, -setup_start.time_change_gap * changes);
+//	duration_stage2 = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(stage2, -setup_stop.time_change_gap  * changes);
 
-	// check whether it is safe to apply some margin
-	if ( duration_stage1 >= 2 && duration_stage2 >= 2 ) {
-		duration_stage1--;
-		duration_stage2--;
-	} else {
-		return (0);
-	}
 
 	// evaluate length of modified stages in regards to total motion `length`
 	if ( (duration_stage1 + duration_stage2) > stage_total ) {
@@ -492,6 +497,9 @@ static uint8_t PositionController_ShrinkStages(int64_t current_pos, int64_t goal
 		*soft_start_end_pulse_ptr  = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(current_pos, -duration_stage1);
 		*soft_stop_start_pulse_ptr = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(goal_pos, 	 +duration_stage2);
 	}
+
+	// `pwm stable` - update
+	*pwm_stable_ptr = pwm_stable_mod;
 
 	return (1);
 
