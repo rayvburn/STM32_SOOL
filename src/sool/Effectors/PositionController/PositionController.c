@@ -7,28 +7,28 @@
 
 #include <sool/Effectors/PositionController/PositionController.h>
 
-static uint8_t 	PositionController_ConfigMove(SOOL_PositionController* controller_ptr, int64_t current_pos, int64_t goal_pos,
-											  uint16_t pwm_start, uint16_t pwm_stable, uint16_t pwm_goal,
-											  uint32_t soft_start_end_pulse, uint32_t soft_stop_start_pulse,
-											  uint8_t upcounting);
+static uint8_t 	PositionController_ConfigMove(SOOL_PositionController* controller_ptr,
+		uint32_t current_pos, uint32_t goal_pos,
+		uint16_t pwm_start, uint16_t pwm_stable, uint16_t pwm_goal,
+		uint32_t soft_start_end_pulse, uint32_t soft_stop_start_pulse, uint8_t upcounting);
 static void 	PositionController_Abort(SOOL_PositionController* controller_ptr, uint8_t state);
-static uint8_t 	PositionController_Process(SOOL_PositionController* controller_ptr, int64_t current_pos);
+static uint8_t 	PositionController_Process(SOOL_PositionController* controller_ptr, uint32_t current_pos);
 static uint8_t 	PositionController_GetMotionStatus(SOOL_PositionController* controller_ptr);
 static uint16_t PositionController_GetOutput(SOOL_PositionController* controller_ptr);
 
 // helpers
 static void PositionController_SelectNextState(SOOL_PositionController* controller_ptr);
 
-static uint8_t PositionController_HandleAcceleration(SOOL_PositionController* controller_ptr, int64_t current_pos);
-static uint8_t PositionController_HandleStableSpeed(SOOL_PositionController* controller_ptr, int64_t current_pos);
-static uint8_t PositionController_HandleDeceleration(SOOL_PositionController* controller_ptr, int64_t current_pos);
-static uint8_t PositionController_HandleFinished(SOOL_PositionController* controller_ptr, int64_t current_pos);
+static uint8_t PositionController_HandleAcceleration(SOOL_PositionController* controller_ptr, uint32_t current_pos);
+static uint8_t PositionController_HandleStableSpeed(SOOL_PositionController* controller_ptr, uint32_t current_pos);
+static uint8_t PositionController_HandleDeceleration(SOOL_PositionController* controller_ptr, uint32_t current_pos);
+static uint8_t PositionController_HandleFinished(SOOL_PositionController* controller_ptr, uint32_t current_pos);
 
-static uint8_t PositionController_RearrangeStages(int64_t current_pos, int64_t goal_pos,
+static uint8_t PositionController_RearrangeStages(uint32_t current_pos, uint32_t goal_pos,
 				uint32_t* soft_start_end_pulse_ptr, uint32_t* soft_stop_start_pulse_ptr,
 				uint32_t stage1, uint32_t stage2, uint32_t stage_total, uint8_t upcounting);
 
-static uint8_t PositionController_ShrinkStages(int64_t current_pos, int64_t goal_pos,
+static uint8_t PositionController_ShrinkStages(uint32_t current_pos, uint32_t goal_pos,
 				uint32_t* soft_start_end_pulse_ptr, uint32_t* soft_stop_start_pulse_ptr,
 				uint32_t stage1, uint32_t stage2, uint32_t stage_total, uint8_t upcounting,
 				uint16_t pwm_start, uint16_t* pwm_stable_ptr, uint16_t pwm_end);
@@ -49,10 +49,9 @@ SOOL_PositionController SOOL_Effector_PositionController_Initialize() {
 	controller._config.pwm_goal = 0;
 	controller._config.pwm_stable = 0;
 	controller._config.pwm_start = 0;
-//	controller._config.soft_start_end_pulse = 0;
 	controller._config.soft_stop_start_pulse = 0;
 
-	controller.base = SOOL_Effector_SoftStarterCustom_Initialize(20, 90, 5000);
+	controller.base = SOOL_Effector_SoftStarterCustom_Initialize(20, 90, 5000); // arbitrary values
 	controller._state.aborted = 0;
 	controller._state.stage_active = SOOL_POSITION_CONTROLLER_FINISHED;
 
@@ -62,11 +61,10 @@ SOOL_PositionController SOOL_Effector_PositionController_Initialize() {
 
 // --------------------------------------------------------------
 
-// FIXME: current_pos and soft_start... variables should be of the same type,
-// it does not make sense otherwise
-static uint8_t PositionController_ConfigMove(SOOL_PositionController* controller_ptr, int64_t current_pos, int64_t goal_pos,
-			uint16_t pwm_start, uint16_t pwm_stable, uint16_t pwm_goal, uint32_t soft_start_end_pulse, uint32_t soft_stop_start_pulse,
-			uint8_t upcounting)
+static uint8_t PositionController_ConfigMove(SOOL_PositionController* controller_ptr,
+		uint32_t current_pos, uint32_t goal_pos,
+		uint16_t pwm_start, uint16_t pwm_stable, uint16_t pwm_goal,
+		uint32_t soft_start_end_pulse, uint32_t soft_stop_start_pulse, uint8_t upcounting)
 {
 
 	// already at the goal position!
@@ -182,7 +180,7 @@ static void PositionController_Abort(SOOL_PositionController* controller_ptr, ui
 
 // --------------------------------------------------------------
 
-static uint8_t PositionController_Process(SOOL_PositionController* controller_ptr, int64_t current_pos) {
+static uint8_t PositionController_Process(SOOL_PositionController* controller_ptr, uint32_t current_pos) {
 
 	// save the operation status
 	uint8_t status = 2;
@@ -253,7 +251,7 @@ static uint16_t PositionController_GetOutput(SOOL_PositionController* controller
 
 // --------------------------------------------------------------
 
-static uint8_t PositionController_HandleAcceleration(SOOL_PositionController* controller_ptr, int64_t current_pos) {
+static uint8_t PositionController_HandleAcceleration(SOOL_PositionController* controller_ptr, uint32_t current_pos) {
 
 	if ( controller_ptr->base.Process(&controller_ptr->base, current_pos) ) {
 
@@ -279,7 +277,7 @@ static uint8_t PositionController_HandleAcceleration(SOOL_PositionController* co
 
 // --------------------------------------------------------------
 
-static uint8_t PositionController_HandleStableSpeed(SOOL_PositionController* controller_ptr, int64_t current_pos) {
+static uint8_t PositionController_HandleStableSpeed(SOOL_PositionController* controller_ptr, uint32_t current_pos) {
 
 	// check whether the internal FSM operation of the PositionController should be continued;
 	// `aborted` status still allows to change speed via Process calls but abandons
@@ -304,12 +302,9 @@ static uint8_t PositionController_HandleStableSpeed(SOOL_PositionController* con
 			// at the configuration stage will not be feasible at that point
 			//
 			// safe slow-down on ERROR, assuming desired duration of the motion
-			// FIXME:
-			int a = 0;
-			a = a + 1;
 			PositionController_Abort(controller_ptr, 1);
 			controller_ptr->base.Reconfigure(&controller_ptr->base, controller_ptr->base.Get(&controller_ptr->base), controller_ptr->_config.pwm_goal, duration);
-			// never got it in the debugger, but at least the motor will stop safely
+			// never got it in the debugger, but at least the motor will (almost?) stop safely
 
 		}
 
@@ -323,7 +318,7 @@ static uint8_t PositionController_HandleStableSpeed(SOOL_PositionController* con
 
 // --------------------------------------------------------------
 
-static uint8_t PositionController_HandleDeceleration(SOOL_PositionController* controller_ptr, int64_t current_pos) {
+static uint8_t PositionController_HandleDeceleration(SOOL_PositionController* controller_ptr, uint32_t current_pos) {
 
 	if ( controller_ptr->base.Process(&controller_ptr->base, current_pos) ) {
 
@@ -349,7 +344,7 @@ static uint8_t PositionController_HandleDeceleration(SOOL_PositionController* co
 
 // --------------------------------------------------------------
 
-static uint8_t PositionController_HandleFinished(SOOL_PositionController* controller_ptr, int64_t current_pos) {
+static uint8_t PositionController_HandleFinished(SOOL_PositionController* controller_ptr, uint32_t current_pos) {
 
 	// check whether the internal FSM operation of the PositionController should be continued;
 	// `aborted` status still allows to change speed via Process calls but abandons
@@ -364,7 +359,7 @@ static uint8_t PositionController_HandleFinished(SOOL_PositionController* contro
 
 // --------------------------------------------------------------
 
-static uint8_t PositionController_RearrangeStages(int64_t current_pos, int64_t goal_pos,
+static uint8_t PositionController_RearrangeStages(uint32_t current_pos, uint32_t goal_pos,
 				uint32_t* soft_start_end_pulse_ptr, uint32_t* soft_stop_start_pulse_ptr,
 				uint32_t stage1, uint32_t stage2, uint32_t stage_total, uint8_t upcounting)
 {
@@ -421,7 +416,9 @@ static uint8_t PositionController_RearrangeStages(int64_t current_pos, int64_t g
 
 // --------------------------------------------------------------
 
-static uint8_t PositionController_ShrinkStages(int64_t current_pos, int64_t goal_pos,
+/// @brief Will cut the `pwm_stable` speed as much as is needed to shrink the stages 1 and 3,
+/// to fit all 3 stages into the range between `current_pos` and `goal_pos`
+static uint8_t PositionController_ShrinkStages(uint32_t current_pos, uint32_t goal_pos,
 				uint32_t* soft_start_end_pulse_ptr, uint32_t* soft_stop_start_pulse_ptr,
 				uint32_t stage1, uint32_t stage2, uint32_t stage_total, uint8_t upcounting,
 				uint16_t pwm_start, uint16_t* pwm_stable_ptr, uint16_t pwm_end) {
@@ -441,7 +438,6 @@ static uint8_t PositionController_ShrinkStages(int64_t current_pos, int64_t goal
 	// calculate maximum speed for shortened stages
 	int32_t pwm_stage1 = *pwm_stable_ptr;
 	int32_t pwm_stage2 = *pwm_stable_ptr;
-//	uint16_t changes = 0;
 
 	// calculate new duration of shortened stages
 	uint32_t duration_stage1 = stage1;
@@ -457,7 +453,6 @@ static uint8_t PositionController_ShrinkStages(int64_t current_pos, int64_t goal
 		// `setup_stop.pulse_change` is negative
 		pwm_stage1 -= setup_start.pulse_change;
 		pwm_stage2 += setup_stop.pulse_change;
-//		changes++;
 
 		duration_stage1 -= setup_start.time_change_gap;
 		duration_stage2 -= setup_stop.time_change_gap;
@@ -476,12 +471,6 @@ static uint8_t PositionController_ShrinkStages(int64_t current_pos, int64_t goal
 	} else {
 		pwm_stable_mod = pwm_stage1;
 	}
-
-	// NOTE: these are relative lengths!
-//	// stages must be shortened
-//	duration_stage1 = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(stage1, -setup_start.time_change_gap * changes);
-//	duration_stage2 = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(stage2, -setup_stop.time_change_gap  * changes);
-
 
 	// evaluate length of modified stages in regards to total motion `length`
 	if ( (duration_stage1 + duration_stage2) > stage_total ) {
