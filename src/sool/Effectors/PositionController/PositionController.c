@@ -24,9 +24,14 @@ static uint8_t PositionController_HandleStableSpeed(SOOL_PositionController* con
 static uint8_t PositionController_HandleDeceleration(SOOL_PositionController* controller_ptr, int64_t current_pos);
 static uint8_t PositionController_HandleFinished(SOOL_PositionController* controller_ptr, int64_t current_pos);
 
-static uint8_t PositionController_ShrinkRanges(int64_t current_pos, int64_t goal_pos,
+static uint8_t PositionController_RearrangeStages(int64_t current_pos, int64_t goal_pos,
 				uint32_t* soft_start_end_pulse_ptr, uint32_t* soft_stop_start_pulse_ptr,
 				uint32_t stage1, uint32_t stage2, uint32_t stage_total, uint8_t upcounting);
+
+static uint8_t PositionController_ShrinkStages(int64_t current_pos, int64_t goal_pos,
+				uint32_t* soft_start_end_pulse_ptr, uint32_t* soft_stop_start_pulse_ptr,
+				uint32_t stage1, uint32_t stage2, uint32_t stage_total, uint8_t upcounting,
+				uint16_t pwm_start, uint16_t* pwm_stable_ptr, uint16_t pwm_end);
 
 // --------------------------------------------------------------
 
@@ -77,18 +82,41 @@ static uint8_t PositionController_ConfigMove(SOOL_PositionController* controller
 	// evaluate motion feasibility;
 	// shrink the soft-start and soft-stop ranges if necessary (DEPRECATED);
 	// APPLIES BOTH FOR no `overflow` and `overflow` cases;
-	// FIXME: separate variables for easier debugging
 	uint32_t stage1 = SOOL_Sensor_Encoder_PositionCalculator_ComputeDiff(current_pos, soft_start_end_pulse, upcounting);
 	uint32_t stage2 = SOOL_Sensor_Encoder_PositionCalculator_ComputeDiff(soft_stop_start_pulse, goal_pos, upcounting);
 	uint32_t stage_total = SOOL_Sensor_Encoder_PositionCalculator_ComputeDiff(current_pos, goal_pos, upcounting);
-	if ( (stage1 + stage2) > stage_total )
-//	if ( (SOOL_Sensor_Encoder_PositionCalculator_ComputeDiff(current_pos, soft_start_end_pulse, upcounting) +
-//		  SOOL_Sensor_Encoder_PositionCalculator_ComputeDiff(soft_stop_start_pulse, goal_pos, upcounting))  >
-//		 SOOL_Sensor_Encoder_PositionCalculator_ComputeDiff(current_pos, goal_pos, upcounting) )
-	{
-		// try to shrink
-		PositionController_ShrinkRanges(current_pos, goal_pos, &soft_start_end_pulse_mod, &soft_stop_start_pulse_mod,
-										stage1, stage2, stage_total, upcounting);
+
+	// check validity
+	if ( (stage1 + stage2) > stage_total ) {
+
+		// try to rearrange, save status
+		uint8_t status = 0;
+		status = PositionController_RearrangeStages(current_pos, goal_pos, &soft_start_end_pulse_mod, &soft_stop_start_pulse_mod, stage1, stage2, stage_total, upcounting);
+
+		// investigate the status
+		switch ( status ) {
+
+			case(0): // completely infeasible motion - abort
+				return (0);
+				break;
+
+			case(1): // try to shrink (max speed will be decreased)
+				if ( !PositionController_ShrinkStages(current_pos, goal_pos, &soft_start_end_pulse_mod,
+					  &soft_stop_start_pulse_mod, stage1, stage2, stage_total, upcounting,
+					  pwm_start, &pwm_stable, pwm_goal) )
+				{
+					return (0);
+				}
+				break;
+
+			case(2): // rearranged successfully - process further
+				break;
+
+			default:
+				break;
+
+		}
+
 	}
 
 	// update internal configuration structure
@@ -275,6 +303,9 @@ static uint8_t PositionController_HandleStableSpeed(SOOL_PositionController* con
 			// at the configuration stage will not be feasible at that point
 			//
 			// safe slow-down on ERROR, assuming desired duration of the motion
+			// FIXME:
+			int a = 0;
+			a = a + 1;
 			PositionController_Abort(controller_ptr, 1);
 			controller_ptr->base.Reconfigure(&controller_ptr->base, controller_ptr->base.Get(&controller_ptr->base), controller_ptr->_config.pwm_goal, duration);
 			// never got it in the debugger, but at least the motor will stop safely
@@ -332,7 +363,7 @@ static uint8_t PositionController_HandleFinished(SOOL_PositionController* contro
 
 // --------------------------------------------------------------
 
-static uint8_t PositionController_ShrinkRanges(int64_t current_pos, int64_t goal_pos,
+static uint8_t PositionController_RearrangeStages(int64_t current_pos, int64_t goal_pos,
 				uint32_t* soft_start_end_pulse_ptr, uint32_t* soft_stop_start_pulse_ptr,
 				uint32_t stage1, uint32_t stage2, uint32_t stage_total, uint8_t upcounting)
 {
@@ -356,7 +387,7 @@ static uint8_t PositionController_ShrinkRanges(int64_t current_pos, int64_t goal
 
 	// check whether the shrinkage is not too aggressive
 	if ( ((stage1 / 2) <= diff) || ((stage2 / 2) <= diff) ) {
-		return (0);
+		return (1);
 	}
 
 	// counting direction
@@ -379,10 +410,89 @@ static uint8_t PositionController_ShrinkRanges(int64_t current_pos, int64_t goal
 		// found
 		*soft_start_end_pulse_ptr = soft_start_end;
 		*soft_stop_start_pulse_ptr = soft_stop_beg;
-		return (1);
+		return (2);
 	}
 
 	// no luck
 	return (0);
+
+}
+
+// --------------------------------------------------------------
+
+static uint8_t PositionController_ShrinkStages(int64_t current_pos, int64_t goal_pos,
+				uint32_t* soft_start_end_pulse_ptr, uint32_t* soft_stop_start_pulse_ptr,
+				uint32_t stage1, uint32_t stage2, uint32_t stage_total, uint8_t upcounting,
+				uint16_t pwm_start, uint16_t* pwm_stable_ptr, uint16_t pwm_end) {
+
+	struct _SOOL_SoftStarterConfigStruct config_start, config_stop;
+	struct _SOOL_SoftStarterSetupStruct setup_start, setup_stop;
+	struct _SOOL_SoftStarterStateStruct state_start, state_stop;
+
+	// evaluate feasibility of separate stages
+	if ( !SOOL_Effector_SoftStarter_Reconfigure(&config_start, &setup_start, &state_start, pwm_start, *pwm_stable_ptr, stage1) ) {
+		return (0);
+	}
+	if ( !SOOL_Effector_SoftStarter_Reconfigure(&config_stop, &setup_stop, &state_stop, *pwm_stable_ptr, pwm_end, stage2) ) {
+		return (0);
+	}
+
+	// calculate maximum speed for shortened stages
+	int32_t pwm_stage1 = *pwm_stable_ptr;
+	int32_t pwm_stage2 = *pwm_stable_ptr;
+	uint16_t changes = 0;
+
+	// calculate new duration of shortened stages
+	uint32_t duration_stage1 = stage1;
+	uint32_t duration_stage2 = stage2;
+
+	// modified value of the PWM pulse for the `stable` stage
+	uint16_t pwm_stable_mod = *pwm_stable_ptr;
+
+	// change until the `intersection point` is found;
+	// NOTE: the trapezoidal pattern of motion ( rotational speed(pulses) function )
+	// allows to assume that the `setup_start.pulse_change` is positive while
+	// `setup_stop.pulse_change` is negative
+	while ( pwm_stage1 >= pwm_stage2 ) {
+		pwm_stage1 -= setup_start.pulse_change;
+		pwm_stage2 += setup_stop.pulse_change;
+		changes++;
+	}
+
+	// set `pwm_stable` as the bigger `pwm_stageX`
+	if ( pwm_stage1 < pwm_stage2 ) {
+		pwm_stable_mod = pwm_stage2;
+	} else {
+		pwm_stable_mod = pwm_stage1;
+	}
+
+	// stages must be shortened
+	duration_stage1 = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(stage1, -setup_start.time_change_gap * changes);
+	duration_stage2 = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(stage2, -setup_stop.time_change_gap  * changes);
+
+	// check whether it is safe to apply some margin
+	if ( duration_stage1 >= 2 && duration_stage2 >= 2 ) {
+		duration_stage1--;
+		duration_stage2--;
+	} else {
+		return (0);
+	}
+
+	// evaluate length of modified stages in regards to total motion `length`
+	if ( (duration_stage1 + duration_stage2) > stage_total ) {
+		return (0);
+	}
+
+	// update the pointers with modified values;
+	// consider counting direction
+	if ( upcounting ) {
+		*soft_start_end_pulse_ptr  = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(current_pos, +duration_stage1);
+		*soft_stop_start_pulse_ptr = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(goal_pos, 	 -duration_stage2);
+	} else {
+		*soft_start_end_pulse_ptr  = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(current_pos, -duration_stage1);
+		*soft_stop_start_pulse_ptr = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(goal_pos, 	 +duration_stage2);
+	}
+
+	return (1);
 
 }
