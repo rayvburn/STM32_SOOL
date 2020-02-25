@@ -17,7 +17,7 @@ uint8_t SOOL_Effector_SoftStarter_Reconfigure(struct _SOOL_SoftStarterConfigStru
 	if ( pulse_end < 0 || pulse_start < 0 ) {
 		/* ERROR */
 		return (0);
-	} else if ( pulse_end == pulse_start ) {
+	} else if ( pulse_end == pulse_start || duration == 0 ) {
 		/* Does not make sense - but sometimes Reconfigure is called when the motor is stopped */
 		// set `_config` to prevent any change (as required based on the `pulse_start` and `pulse_end`
 		config_ptr->increments = 0;
