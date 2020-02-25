@@ -255,6 +255,7 @@ static uint16_t PositionController_GetOutput(SOOL_PositionController* controller
 
 static uint8_t PositionController_HandleAcceleration(SOOL_PositionController* controller_ptr, uint32_t current_pos) {
 
+	// a totally typical operation here
 	if ( controller_ptr->base.Process(&controller_ptr->base, current_pos) ) {
 
 		// check whether the internal FSM operation of the PositionController should be continued;
@@ -271,6 +272,19 @@ static uint8_t PositionController_HandleAcceleration(SOOL_PositionController* co
 
 		}
 		return (1);
+
+	} else if ( controller_ptr->base.IsFinished(&controller_ptr->base) ) {
+
+		// sometimes a 0-length ramp will be requested and `Process`
+		// will never return TRUE during that stage execution
+
+		// abort anyway
+		if ( controller_ptr->_state.aborted ) {
+			return (1);
+		}
+
+		PositionController_SelectNextState(controller_ptr); // go to STABLE
+		// go further with the same speed
 
 	}
 	return (0);
@@ -322,6 +336,7 @@ static uint8_t PositionController_HandleStableSpeed(SOOL_PositionController* con
 
 static uint8_t PositionController_HandleDeceleration(SOOL_PositionController* controller_ptr, uint32_t current_pos) {
 
+	// FIXME: this looks the same as HandleAcceleration
 	if ( controller_ptr->base.Process(&controller_ptr->base, current_pos) ) {
 
 		// check whether the internal FSM operation of the PositionController should be continued;
@@ -338,6 +353,19 @@ static uint8_t PositionController_HandleDeceleration(SOOL_PositionController* co
 
 		}
 		return (1);
+
+	} else if ( controller_ptr->base.IsFinished(&controller_ptr->base) ) {
+
+		// sometimes a 0-length ramp will be requested and `Process`
+		// will never return TRUE during that stage execution
+
+		// abort anyway
+		if ( controller_ptr->_state.aborted ) {
+			return (1);
+		}
+
+		PositionController_SelectNextState(controller_ptr); // go to STABLE
+		// go further with the same speed
 
 	}
 	return (0);
@@ -442,20 +470,21 @@ static uint8_t PositionController_ShrinkStages(uint32_t current_pos, uint32_t go
 	int32_t pwm_stage2 = *pwm_stable_ptr;
 
 	// calculate new duration of shortened stages
-	uint32_t duration_stage1 = stage1;
-	uint32_t duration_stage2 = stage2;
+	int64_t duration_stage1 = stage1;
+	int64_t duration_stage2 = stage2;
 
 	// modified value of the PWM pulse for the `stable` stage
 	uint16_t pwm_stable_mod = *pwm_stable_ptr;
 
-	// helper variable (method selection)
-	uint8_t small_range = 1;
+	// movement has to be very short - let's hard-code that case, some stages may be abandoned
+	if ( stage_total <= 3 ) {
+		return (PositionController_HardCodeShortStages(stage_total, soft_start_end_pulse_ptr, soft_stop_start_pulse_ptr, pwm_stable_ptr, current_pos, goal_pos, pwm_start, upcounting));
+	}
+
+	// `stage_total` is bigger than 3
 	// change until the `intersection point` is found;
 	// this while loop works for cases where (`stage_total >= 2`), see the related `small_range` flag
-	while ( (duration_stage1 + duration_stage2) >= (stage_total - 2) ) { // `length` condition; `-2` is a margin
-
-		// update
-		small_range = 0;
+	while ( (duration_stage1 + duration_stage2) > (stage_total) ) { /* previously: (stage_total - 2) ) { */ // `length` condition; `-2` is a margin
 
 		// NOTE: the trapezoidal pattern of motion ( rotational speed(pulses) function )
 		// allows to assume that the `setup_start.pulse_change` is positive while
@@ -470,15 +499,10 @@ static uint8_t PositionController_ShrinkStages(uint32_t current_pos, uint32_t go
 		// TODO: case - one stage of some small length and the other with 0?;
 		// HERE: both stages are similarly lengthened
 		if ( duration_stage1 < 1 && duration_stage2 < 1 ) {
-			small_range = 1;
+			return (0);
 			break;
 		}
 
-	}
-
-	// let's hard-code that case, some stages will be abandoned
-	if ( small_range ) {
-		return (PositionController_HardCodeShortStages(stage_total, soft_start_end_pulse_ptr, soft_stop_start_pulse_ptr, pwm_stable_ptr, current_pos, goal_pos, pwm_start, upcounting));
 	}
 
 	// set `pwm_stable` as the bigger `pwm_stageX`
