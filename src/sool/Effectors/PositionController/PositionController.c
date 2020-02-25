@@ -33,6 +33,8 @@ static uint8_t PositionController_ShrinkStages(uint32_t current_pos, uint32_t go
 				uint32_t stage1, uint32_t stage2, uint32_t stage_total, uint8_t upcounting,
 				uint16_t pwm_start, uint16_t* pwm_stable_ptr, uint16_t pwm_end);
 
+static uint8_t PositionController_HardCodeShortStages(uint32_t stage_total, uint32_t* soft_start_end_pulse_ptr, uint32_t* soft_stop_start_pulse_ptr,
+		uint16_t* pwm_stable_ptr, uint32_t current_pos, uint32_t goal_pos, uint16_t pwm_start, uint8_t upcounting);
 // --------------------------------------------------------------
 
 SOOL_PositionController SOOL_Effector_PositionController_Initialize() {
@@ -389,12 +391,12 @@ static uint8_t PositionController_RearrangeStages(uint32_t current_pos, uint32_t
 	// counting direction
 	if ( upcounting ) {
 		// temporary
-		soft_start_end = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(soft_start_end, (int32_t)(-diff)) - 1; 	// - margin
-		soft_stop_beg = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(soft_stop_beg, (int32_t)(+diff))   + 1; 	// + margin
+		soft_start_end = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(soft_start_end, (int32_t)(-diff));
+		soft_stop_beg = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(soft_stop_beg, (int32_t)(+diff));
 	} else {
 		// temporary
-		soft_start_end = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(soft_start_end, (int32_t)(+diff)) + 1; 	// + margin
-		soft_stop_beg = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(soft_stop_beg, (int32_t)(-diff))   - 1; 	// - margin
+		soft_start_end = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(soft_start_end, (int32_t)(+diff));
+		soft_stop_beg = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(soft_stop_beg, (int32_t)(-diff));
 	}
 
 	// evaluate ranges once again now
@@ -446,8 +448,15 @@ static uint8_t PositionController_ShrinkStages(uint32_t current_pos, uint32_t go
 	// modified value of the PWM pulse for the `stable` stage
 	uint16_t pwm_stable_mod = *pwm_stable_ptr;
 
+	// helper variable (method selection)
+	uint8_t small_range = 1;
 	// change until the `intersection point` is found;
+	// this while loop works for cases where (`stage_total >= 2`), see the related `small_range` flag
 	while ( (duration_stage1 + duration_stage2) >= (stage_total - 2) ) { // `length` condition; `-2` is a margin
+
+		// update
+		small_range = 0;
+
 		// NOTE: the trapezoidal pattern of motion ( rotational speed(pulses) function )
 		// allows to assume that the `setup_start.pulse_change` is positive while
 		// `setup_stop.pulse_change` is negative
@@ -458,11 +467,18 @@ static uint8_t PositionController_ShrinkStages(uint32_t current_pos, uint32_t go
 		duration_stage2 -= setup_stop.time_change_gap;
 
 		// check whether it is safe to apply some margin
-		if ( duration_stage1 < 2 && duration_stage2 < 2 ) {
-			return (0);
+		// TODO: case - one stage of some small length and the other with 0?;
+		// HERE: both stages are similarly lengthened
+		if ( duration_stage1 < 1 && duration_stage2 < 1 ) {
+			small_range = 1;
 			break;
 		}
 
+	}
+
+	// let's hard-code that case, some stages will be abandoned
+	if ( small_range ) {
+		return (PositionController_HardCodeShortStages(stage_total, soft_start_end_pulse_ptr, soft_stop_start_pulse_ptr, pwm_stable_ptr, current_pos, goal_pos, pwm_start, upcounting));
 	}
 
 	// set `pwm_stable` as the bigger `pwm_stageX`
@@ -491,5 +507,54 @@ static uint8_t PositionController_ShrinkStages(uint32_t current_pos, uint32_t go
 	*pwm_stable_ptr = pwm_stable_mod;
 
 	return (1);
+
+}
+
+// --------------------------------------------------------------
+
+/// brief Forces motion execution with hard-coded parameters. Not the best solution
+/// but at least the goal position should be reached successfully.
+static uint8_t PositionController_HardCodeShortStages(uint32_t stage_total, uint32_t* soft_start_end_pulse_ptr, uint32_t* soft_stop_start_pulse_ptr,
+		uint16_t* pwm_stable_ptr, uint32_t current_pos, uint32_t goal_pos, uint16_t pwm_start, uint8_t upcounting) {
+
+	// NOTE: see the `margin` in the `while` loop above
+	if ( stage_total == 1 ) {
+
+		*pwm_stable_ptr = pwm_start;
+		*soft_start_end_pulse_ptr = current_pos;
+		*soft_stop_start_pulse_ptr = goal_pos;
+		return (1);
+
+	} else if ( stage_total == 2 ) {
+
+		*pwm_stable_ptr = pwm_start;
+		*soft_start_end_pulse_ptr = current_pos;
+		if ( upcounting ) {
+			*soft_stop_start_pulse_ptr = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(goal_pos, -1);
+			return (1);
+		} else {
+			*soft_stop_start_pulse_ptr = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(goal_pos, +1);
+			return (1);
+		}
+
+	} else if ( stage_total == 3 ) {
+
+		*pwm_stable_ptr = pwm_start;
+		if ( upcounting ) {
+			*soft_start_end_pulse_ptr  = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(current_pos, +1);
+			*soft_stop_start_pulse_ptr = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(goal_pos, -1);
+			return (1);
+		} else {
+			*soft_start_end_pulse_ptr  = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(current_pos, -1);
+			*soft_stop_start_pulse_ptr = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(goal_pos, +1);
+			return (1);
+		}
+
+	} else {
+
+		// unsupported case
+		return (0);
+
+	}
 
 }
