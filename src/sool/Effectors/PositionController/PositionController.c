@@ -317,11 +317,13 @@ static uint8_t PositionController_HandleStableSpeed(SOOL_PositionController* con
 			// FIXME: error handling, although it is very unlikely that the motion verified
 			// at the configuration stage will not be feasible at that point
 			//
-			// safe slow-down on ERROR, assuming desired duration of the motion
-			PositionController_Abort(controller_ptr, 1);
-			controller_ptr->base.Reconfigure(&controller_ptr->base, controller_ptr->base.Get(&controller_ptr->base), controller_ptr->_config.pwm_goal, duration);
-			// never got it in the debugger, but at least the motor will (almost?) stop safely
-
+			// with very short movements there, the `duration == 0` case may occur and just skip to the next state then
+			if ( duration != 0 ) {
+				// safe slow-down on ERROR, assuming desired duration of the motion
+				PositionController_Abort(controller_ptr, 1);
+				controller_ptr->base.Reconfigure(&controller_ptr->base, controller_ptr->base.Get(&controller_ptr->base), controller_ptr->_config.pwm_goal, duration);
+				// never got it in the debugger, but at least the motor will (almost?) stop safely
+			}
 		}
 
 		PositionController_SelectNextState(controller_ptr); // go to DECELERATION
