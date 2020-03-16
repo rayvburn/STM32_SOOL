@@ -1,10 +1,12 @@
 ### STM32_SOOL - Semi-Object-Oriented library for STM32F1xx microcontrollers written in C
 
-Tested thoroughly with the STM32F103C8T6-based board module (a.k.a. `Blue Pill`).
+Tested thoroughly with the STM32F103C8T6-based board module (a.k.a. `Blue Pill`). I can't tell for other F1-series boards, but they should be compatible (at worst with small adjustments).
 
 Development of `STM32_SOOL` library is assisted by `System Workbench for STM32` IDE, i.e. modified `Eclipse` IDE. All necessary instructions, how to import the library and useful Eclipse project files are included.
 
 Most of the code is documented using Doxygen.
+
+---
 
 #### Main concepts:
 
