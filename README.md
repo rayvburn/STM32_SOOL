@@ -1,4 +1,4 @@
-### STM32_SOOL - Semi-Object-Oriented library for STM32F1xx microcontrollers written in C
+### STM32_SOOL - Semi-Object-Oriented Library for STM32F1xx microcontrollers written in C
 
 Tested thoroughly with the STM32F103C8T6-based board module (a.k.a. `Blue Pill`). I can't tell for other F1-series boards, but they should be compatible (at worst with small adjustments).
 
