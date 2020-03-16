@@ -6,6 +6,7 @@
  */
 
 #include <sool/Peripherals/TIM/SystickTimer.h>
+#include "misc.h" // for some reason that header complains not being included here (despite it is included in the SystickTimer.h)
 
 //// variables to store current time
 volatile static uint32_t millis_elapsed = 0;
