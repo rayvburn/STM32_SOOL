@@ -1,3 +1,0 @@
-to make use of it with Eclipse (STM32SW - System Workbench) a new project must be created and then proper symbols loaded (see `EclipseSetup` folder)
-
-File -> New -> C Project -> Static Library -> Ac6 STM32 MCU Project

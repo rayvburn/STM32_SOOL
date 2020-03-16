@@ -1,1 +1,0 @@
-this has not been tested due to I2C problems in STM32F1xx
