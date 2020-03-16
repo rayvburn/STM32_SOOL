@@ -35,6 +35,9 @@ static uint8_t PositionController_ShrinkStages(uint32_t current_pos, uint32_t go
 
 static uint8_t PositionController_HardCodeShortStages(uint32_t stage_total, uint32_t* soft_start_end_pulse_ptr, uint32_t* soft_stop_start_pulse_ptr,
 		uint16_t* pwm_stable_ptr, uint32_t current_pos, uint32_t goal_pos, uint16_t pwm_start, uint8_t upcounting);
+
+static struct _SOOL_SoftStarterSetupStruct PositionController_FindStageSetup(uint32_t stage_length,
+		struct _SOOL_SoftStarterSetupStruct setup_opposite, uint32_t stage_opposite_length);
 // --------------------------------------------------------------
 
 SOOL_PositionController SOOL_Effector_PositionController_Initialize() {
@@ -318,7 +321,18 @@ static uint8_t PositionController_HandleStableSpeed(SOOL_PositionController* con
 			// at the configuration stage will not be feasible at that point
 			//
 			// with very short movements there, the `duration == 0` case may occur and just skip to the next state then
-			if ( duration != 0 ) {
+			if ( duration == 0 ) {
+				// get into the next state
+			} else if ( controller_ptr->_config.pwm_stable == controller_ptr->_config.pwm_goal ) {
+				// workaround - change PWM values slightly and run again
+				if ( controller_ptr->_config.pwm_goal >= 1 ) {
+					controller_ptr->_config.pwm_goal--;
+				} else {
+					controller_ptr->_config.pwm_stable++;
+				}
+				// TODO: error handling
+				controller_ptr->base.Reconfigure(&controller_ptr->base, controller_ptr->_config.pwm_stable, controller_ptr->_config.pwm_goal, duration);
+			} else {
 				// safe slow-down on ERROR, assuming desired duration of the motion
 				PositionController_Abort(controller_ptr, 1);
 				controller_ptr->base.Reconfigure(&controller_ptr->base, controller_ptr->base.Get(&controller_ptr->base), controller_ptr->_config.pwm_goal, duration);
@@ -459,12 +473,41 @@ static uint8_t PositionController_ShrinkStages(uint32_t current_pos, uint32_t go
 	struct _SOOL_SoftStarterSetupStruct setup_start, setup_stop;
 	struct _SOOL_SoftStarterStateStruct state_start, state_stop;
 
+	// flags
+	uint8_t start_failed, stop_failed = 0;
 	// evaluate feasibility of separate stages
 	if ( !SOOL_Effector_SoftStarter_Reconfigure(&config_start, &setup_start, &state_start, pwm_start, *pwm_stable_ptr, stage1) ) {
-		return (0);
+		// investigate these cases, which are likely not a problem;
+		// these conditions are copied from the SoftStarter's Reconfigure method (placed here in the inverted form)
+		if ( !(pwm_start == *pwm_stable_ptr) || (stage1 == 0) ) {
+			return (0);
+		}
+		start_failed = 1;
+
 	}
 	if ( !SOOL_Effector_SoftStarter_Reconfigure(&config_stop, &setup_stop, &state_stop, *pwm_stable_ptr, pwm_end, stage2) ) {
+		// investigate these cases, which are likely not a problem;
+		if ( !(*pwm_stable_ptr == pwm_end) || (stage2 == 0) ) {
+			return (0);
+		}
+		stop_failed = 1;
+	}
+
+	// unable to find proper values
+	if ( start_failed && stop_failed ) {
 		return (0);
+	}
+
+	// movement has to be very short - let's hard-code that case, some stages may be abandoned
+	if ( stage_total <= 3 ) {
+		return (PositionController_HardCodeShortStages(stage_total, soft_start_end_pulse_ptr, soft_stop_start_pulse_ptr, pwm_stable_ptr, current_pos, goal_pos, pwm_start, upcounting));
+	} else {
+		// try to find setup values, maintaining a symmetry of the motion
+		if ( start_failed && !stop_failed ) {
+			setup_start = PositionController_FindStageSetup(stage1, setup_stop, stage2);
+		} else if ( !start_failed && stop_failed ) {
+			setup_stop = PositionController_FindStageSetup(stage2, setup_start, stage1);
+		}
 	}
 
 	// calculate maximum speed for shortened stages
@@ -477,11 +520,6 @@ static uint8_t PositionController_ShrinkStages(uint32_t current_pos, uint32_t go
 
 	// modified value of the PWM pulse for the `stable` stage
 	uint16_t pwm_stable_mod = *pwm_stable_ptr;
-
-	// movement has to be very short - let's hard-code that case, some stages may be abandoned
-	if ( stage_total <= 3 ) {
-		return (PositionController_HardCodeShortStages(stage_total, soft_start_end_pulse_ptr, soft_stop_start_pulse_ptr, pwm_stable_ptr, current_pos, goal_pos, pwm_start, upcounting));
-	}
 
 	// `stage_total` is bigger than 3
 	// change until the `intersection point` is found;
@@ -514,8 +552,9 @@ static uint8_t PositionController_ShrinkStages(uint32_t current_pos, uint32_t go
 		pwm_stable_mod = pwm_stage1;
 	}
 
-	// evaluate length of modified stages in regards to total motion `length`
-	if ( (duration_stage1 + duration_stage2) > stage_total ) {
+	// evaluate length of modified stages in regards to total motion `length`;
+	// do not allow negative duration values
+	if ( (duration_stage1 >= 0) && (duration_stage2 >= 0) && (duration_stage1 + duration_stage2) > stage_total ) {
 		return (0);
 	}
 
@@ -582,5 +621,24 @@ static uint8_t PositionController_HardCodeShortStages(uint32_t stage_total, uint
 		return (0);
 
 	}
+
+}
+
+// --------------------------------------------------------------
+
+static struct _SOOL_SoftStarterSetupStruct PositionController_FindStageSetup(uint32_t stage_length,
+		struct _SOOL_SoftStarterSetupStruct setup_opposite, uint32_t stage_opposite_length)
+{
+
+	struct _SOOL_SoftStarterSetupStruct setup;
+
+	// maintain symmetry of the stages
+	int32_t factor = (stage_length * 100)/(stage_opposite_length); // multiplied for higher accuracy
+	factor /= 100;
+
+	setup.pulse_change = setup_opposite.pulse_change * factor * (-1); // acceleration vs deceleration / deceleration vs acceleration - pulse change will be opposite
+	setup.time_change_gap = setup_opposite.time_change_gap * factor;
+
+	return (setup);
 
 }
