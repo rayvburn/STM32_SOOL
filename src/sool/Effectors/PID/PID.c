@@ -8,7 +8,7 @@
 #include <sool/Effectors/PID/PID.h>
 #include <sool/Peripherals/TIM/SystickTimer.h>
 
-static uint8_t PID_Compute(SOOL_PID *pid_ptr);
+static uint8_t PID_Compute(SOOL_PID *pid_ptr, float input, float setpoint);
 static void PID_SetTuningsAdv(SOOL_PID *pid_ptr, float kp, float ki, float kd, enum PIDProportional p_on);
 static void PID_SetTunings(SOOL_PID *pid_ptr, float kp, float ki, float kd);
 static void PID_SetSampleTime(SOOL_PID *pid_ptr, uint32_t new_sample_time);
@@ -16,15 +16,15 @@ static void PID_SetOutputLimits(SOOL_PID *pid_ptr, float min, float max);
 static void PID_SetMode(SOOL_PID *pid_ptr, enum PIDMode mode);
 static void PID_Initialize(SOOL_PID *pid_ptr);
 static void PID_SetControllerDirection(SOOL_PID *pid_ptr, enum PIDDirection direction);
+static float PID_GetOutput(SOOL_PID *pid_ptr);
 
 // * constructor.  links the PID to the Input, Output, and
 //   Setpoint.  Initial tuning parameters are also set here
 // DEFAULT: POn -> P_ON_E
 //
 // https://github.com/br3ttb/Arduino-PID-Library/blob/master/PID_v1.cpp#L44
-SOOL_PID SOOL_Effector_PID_Init(float* input, float* output, float* setpoint,
-		float kp, float ki, float kd, int controller_direction) {
-	return (SOOL_Effector_PID_InitAdv(input, output, setpoint, kp, ki, kd, PID_P_ON_E, controller_direction));
+SOOL_PID SOOL_Effector_PID_Init(float kp, float ki, float kd, int controller_direction) {
+	return (SOOL_Effector_PID_InitAdv(kp, ki, kd, PID_P_ON_E, controller_direction));
 }
 
 // * constructor.  links the PID to the Input, Output, and
@@ -32,15 +32,12 @@ SOOL_PID SOOL_Effector_PID_Init(float* input, float* output, float* setpoint,
 //   (overload for specifying proportional mode)
 //
 // https://github.com/br3ttb/Arduino-PID-Library/blob/master/PID_v1.cpp#L20
-SOOL_PID SOOL_Effector_PID_InitAdv(float* input, float* output, float* setpoint,
-		float kp, float ki, float kd, int p_on, int controller_direction) {
+SOOL_PID SOOL_Effector_PID_InitAdv(float kp, float ki, float kd, int p_on, int controller_direction) {
 
 	// `class` instance
 	SOOL_PID pid;
 
-	pid._setup.output = output;
-	pid._setup.input = input;
-	pid._setup.setpoint = setpoint;
+	pid._setup.output = 0.0f;
 
 	pid._config.in_auto = 0;
 
@@ -57,6 +54,7 @@ SOOL_PID SOOL_Effector_PID_InitAdv(float* input, float* output, float* setpoint,
 
     // `methods`
     pid.Compute = PID_Compute;
+    pid.GetOutput = PID_GetOutput;
     pid.SetControllerDirection = PID_SetControllerDirection;
     pid.SetMode = PID_SetMode;
     pid.SetOutputLimits = PID_SetOutputLimits;
@@ -75,7 +73,7 @@ SOOL_PID SOOL_Effector_PID_InitAdv(float* input, float* output, float* setpoint,
  *
  *   https://github.com/br3ttb/Arduino-PID-Library/blob/master/PID_v1.cpp#L58
  **********************************************************************************/
-static uint8_t PID_Compute(SOOL_PID *pid_ptr) {
+static uint8_t PID_Compute(SOOL_PID *pid_ptr, float input, float setpoint) {
 
    if(!pid_ptr->_config.in_auto) return 0;
    uint32_t now = SOOL_Periph_TIM_SysTick_GetMillis();
@@ -83,8 +81,7 @@ static uint8_t PID_Compute(SOOL_PID *pid_ptr) {
    if(timeChange >= pid_ptr->_config.sample_time)
    {
 	  /*Compute all the working error variables*/
-	  float input = *pid_ptr->_setup.input;
-	  float error = *pid_ptr->_setup.setpoint - input;
+	  float error = setpoint - input;
 	  float dInput = (input - pid_ptr->_setup.last_input);
 	  pid_ptr->_setup.output_sum += (pid_ptr->_setup.ki * error);
 
@@ -104,7 +101,7 @@ static uint8_t PID_Compute(SOOL_PID *pid_ptr) {
 
 		if(output > pid_ptr->_setup.out_max) output = pid_ptr->_setup.out_max;
 	  else if(output < pid_ptr->_setup.out_min) output = pid_ptr->_setup.out_min;
-		*pid_ptr->_setup.output = output;
+		pid_ptr->_setup.output = output;
 
 	  /*Remember some variables for next time*/
 		pid_ptr->_setup.last_input = input;
@@ -186,8 +183,8 @@ static void PID_SetOutputLimits(SOOL_PID *pid_ptr, float min, float max) {
 
    if(pid_ptr->_config.in_auto)
    {
-	   if(*pid_ptr->_setup.output > pid_ptr->_setup.out_max) *pid_ptr->_setup.output = pid_ptr->_setup.out_max;
-	   else if(*pid_ptr->_setup.output < pid_ptr->_setup.out_min) *pid_ptr->_setup.output = pid_ptr->_setup.out_min;
+	   if(pid_ptr->_setup.output > pid_ptr->_setup.out_max) pid_ptr->_setup.output = pid_ptr->_setup.out_max;
+	   else if(pid_ptr->_setup.output < pid_ptr->_setup.out_min) pid_ptr->_setup.output = pid_ptr->_setup.out_min;
 
 	   if(pid_ptr->_setup.output_sum > pid_ptr->_setup.out_max) pid_ptr->_setup.output_sum = pid_ptr->_setup.out_max;
 	   else if(pid_ptr->_setup.output_sum < pid_ptr->_setup.out_min) pid_ptr->_setup.output_sum = pid_ptr->_setup.out_min;
@@ -217,8 +214,8 @@ static void PID_SetMode(SOOL_PID *pid_ptr, enum PIDMode mode) {
  *  https://github.com/br3ttb/Arduino-PID-Library/blob/master/PID_v1.cpp#L189
  ******************************************************************************/
 static void PID_Initialize(SOOL_PID *pid_ptr) {
-   pid_ptr->_setup.output_sum = *pid_ptr->_setup.output;
-   pid_ptr->_setup.last_input = *pid_ptr->_setup.input;
+   pid_ptr->_setup.output_sum = pid_ptr->_setup.output;
+   pid_ptr->_setup.last_input = 0.0f;
    if(pid_ptr->_setup.output_sum > pid_ptr->_setup.out_max) pid_ptr->_setup.output_sum = pid_ptr->_setup.out_max;
    else if(pid_ptr->_setup.output_sum < pid_ptr->_setup.out_min) pid_ptr->_setup.output_sum = pid_ptr->_setup.out_min;
 }
@@ -239,4 +236,8 @@ static void PID_SetControllerDirection(SOOL_PID *pid_ptr, enum PIDDirection dire
 	   pid_ptr->_setup.kd = (0 - pid_ptr->_setup.kd);
    }
    pid_ptr->_config.controller_direction = (uint8_t)direction;
+}
+
+static float PID_GetOutput(SOOL_PID *pid_ptr) {
+	return (pid_ptr->_setup.output);
 }

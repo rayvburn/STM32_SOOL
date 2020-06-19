@@ -19,10 +19,11 @@ struct _SOOL_PID_SetupStruct {
 	float ki;                  // * (I)ntegral Tuning Parameter
 	float kd;                  // * (D)erivative Tuning Parameter
 
-	float *input;              // * Pointers to the Input, Output, and Setpoint variables
-	float *output;             //   This creates a hard link between the variables and the
-	float *setpoint;           //   PID, freeing the user from having to constantly tell us
-							   //   what these values are.  with pointers we'll just know.
+	// * Pointers to the Input, Output, and Setpoint variables
+	//   This creates a hard link between the variables and the
+    //   PID, freeing the user from having to constantly tell us
+	//   what these values are.  with pointers we'll just know.
+	float output;
 
 	float output_sum, last_input;
 	float out_min, out_max;
@@ -42,7 +43,7 @@ struct _SOOL_PID_Struct {
 	//   called every time loop() cycles. ON/OFF and
 	//   calculation frequency can be set using SetMode
 	//   SetSampleTime respectively
-	uint8_t (*Compute)(SOOL_PID *pid_ptr);
+	uint8_t (*Compute)(SOOL_PID *pid_ptr, float input, float setpoint);
 
 	// * clamps the output to a specific range. 0-255 by default, but
 	//   it's likely the user will want to change this depending on
@@ -66,18 +67,18 @@ struct _SOOL_PID_Struct {
 	// * sets the frequency, in Milliseconds, with which
 	//   the PID calculation is performed.  default is 100
 	void (*SetSampleTime)(SOOL_PID *pid_ptr, uint32_t new_sample_time);
+
+	float (*GetOutput)(SOOL_PID *pid_ptr);
 };
 
 // NOTE: requires systick to be configured @ 1000 Hz
 // * constructor.  links the PID to the Input, Output, and
 //   Setpoint.  Initial tuning parameters are also set here
-extern SOOL_PID SOOL_Effector_PID_Init(float* Input, float* Output, float* Setpoint,
-		float Kp, float Ki, float Kd, int ControllerDirection);
+extern SOOL_PID SOOL_Effector_PID_Init(float kp, float ki, float kd, int controller_direction);
 
 // * constructor.  links the PID to the Input, Output, and
 //   Setpoint.  Initial tuning parameters are also set here.
 //   (overload for specifying proportional mode)
-extern SOOL_PID SOOL_Effector_PID_InitAdv(float* Input, float* Output, float* Setpoint,
-		float Kp, float Ki, float Kd, int POn, int ControllerDirection);
+extern SOOL_PID SOOL_Effector_PID_InitAdv(float kp, float ki, float kd, int p_on, int controller_direction);
 
 #endif /* INC_SOOL_EFFECTORS_PID_PID_H_ */
