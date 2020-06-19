@@ -74,11 +74,11 @@ struct _SOOL_PID_Struct {
 // NOTE: requires systick to be configured @ 1000 Hz
 // * constructor.  links the PID to the Input, Output, and
 //   Setpoint.  Initial tuning parameters are also set here
-extern SOOL_PID SOOL_Effector_PID_Init(float kp, float ki, float kd, int controller_direction);
+extern SOOL_PID SOOL_Effector_PID_Init(float kp, float ki, float kd, enum PIDDirection controller_direction);
 
 // * constructor.  links the PID to the Input, Output, and
 //   Setpoint.  Initial tuning parameters are also set here.
 //   (overload for specifying proportional mode)
-extern SOOL_PID SOOL_Effector_PID_InitAdv(float kp, float ki, float kd, int p_on, int controller_direction);
+extern SOOL_PID SOOL_Effector_PID_InitAdv(float kp, float ki, float kd, enum PIDProportional p_on, enum PIDDirection controller_direction);
 
 #endif /* INC_SOOL_EFFECTORS_PID_PID_H_ */

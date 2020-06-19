@@ -23,7 +23,7 @@ static float PID_GetOutput(SOOL_PID *pid_ptr);
 // DEFAULT: POn -> P_ON_E
 //
 // https://github.com/br3ttb/Arduino-PID-Library/blob/master/PID_v1.cpp#L44
-SOOL_PID SOOL_Effector_PID_Init(float kp, float ki, float kd, int controller_direction) {
+SOOL_PID SOOL_Effector_PID_Init(float kp, float ki, float kd, enum PIDDirection controller_direction) {
 	return (SOOL_Effector_PID_InitAdv(kp, ki, kd, PID_P_ON_E, controller_direction));
 }
 
@@ -32,7 +32,7 @@ SOOL_PID SOOL_Effector_PID_Init(float kp, float ki, float kd, int controller_dir
 //   (overload for specifying proportional mode)
 //
 // https://github.com/br3ttb/Arduino-PID-Library/blob/master/PID_v1.cpp#L20
-SOOL_PID SOOL_Effector_PID_InitAdv(float kp, float ki, float kd, int p_on, int controller_direction) {
+SOOL_PID SOOL_Effector_PID_InitAdv(float kp, float ki, float kd, enum PIDProportional p_on, enum PIDDirection controller_direction) {
 
 	// `class` instance
 	SOOL_PID pid;
