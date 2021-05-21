@@ -145,6 +145,13 @@ static void SOOL_String_Clear(SOOL_String *string_ptr) {
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 static uint8_t SOOL_String_Resize(SOOL_String *string_ptr, const size_t new_capacity) {
+	if (string_ptr == NULL) {
+		return 0;
+	}
+
+	if (string_ptr->_info.capacity == new_capacity) {
+		return 0;
+	}
 
 	/* Backup some info */
 	uint16_t old_capacity = string_ptr->_info.capacity;

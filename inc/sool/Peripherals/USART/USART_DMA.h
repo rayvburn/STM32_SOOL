@@ -23,7 +23,6 @@
 #include <sool/Peripherals/DMA/DMA_common.h>
 #include <sool/Peripherals/DMA/DMA.h>
 #include <sool/Memory/String/String.h>
-#include <sool/Memory/Queue/QueueString.h>
 
 // - - - - - - - - - - - - - - - -
 
@@ -33,8 +32,6 @@
 // - - - - - - - - - - - - - - - -
 
 struct _SOOL_USART_DMA_State {
-//	uint8_t 	tx_queue_lock;
-	uint8_t 	tx_queue_transfer; // flag indicating whether data transmitted comes from the queue
 };
 
 // - - - - - - - - - - - - - - - -
@@ -57,7 +54,6 @@ struct _SOOL_USART_Rx {
 
 struct _SOOL_USART_Tx {
 	SOOL_String 		buffer;
-	SOOL_Queue_String	queue;
 	uint8_t 			prepping_request;
 } USART_Tx;
 
@@ -78,7 +74,7 @@ struct _SOOL_USART_DMA_Struct {
 
 	// --------------------------------------------------
 	struct _SOOL_USART_DMA_Config 	_setup;
-	struct _SOOL_USART_DMA_State	_state;
+	struct _SOOL_USART_DMA_State	_state; // temporarily empty
 	struct _SOOL_USART_Rx			_rx;
 	struct _SOOL_USART_Tx			_tx;
 
@@ -116,7 +112,8 @@ struct _SOOL_USART_DMA_Struct {
 	/* TX section */
 //	uint8_t (*IsTxQueueEmpty)(volatile SOOL_USART_DMA*);				// returns info whether TX queue is empty
 	uint8_t (*IsTxLineBusy)(volatile SOOL_USART_DMA*); 				// returns info whether TX DMA is currently working
-	uint8_t (*Send)(volatile SOOL_USART_DMA*, const char*); 		// copies given data into buffer and fires up the transfer
+
+	uint8_t (*Send)(volatile SOOL_USART_DMA*, const char*); 		// blocking call - if DMA_TX is not busy - copies given data into buffer and fires up the transfer
 	void	(*ClearTxBuffer)(volatile SOOL_USART_DMA*); 				// clears whole buffer
 	/**
 	 * @brief Function invoked inside interrupt handler only when `Transfer Complete` flag is set

@@ -15,8 +15,7 @@
 
 /* When RX buffer detected being too small then increment
  * its size by this value (in bytes) */
-#define USART_DMA_RX_BUFFER_INCREMENT 	2
-#define USART_DMA_TX_SINGLE_ELEMENT_QUEUE // the way USART_DMA works without any bugs
+#define USART_DMA_RX_BUFFER_INCREMENT 	10
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -35,10 +34,8 @@ static void		USART_DMA_ClearRxBuffer(volatile SOOL_USART_DMA *usart);
 static uint8_t 	USART_DMA_ConfirmReception(volatile SOOL_USART_DMA* usart);
 
 // TX
-static uint8_t 	USART_DMA_IsTxQueueEmpty(volatile SOOL_USART_DMA *usart); // FIXME: MOVED TO `HELPER` section
 static uint8_t 	USART_DMA_IsTxLineBusy(volatile SOOL_USART_DMA *usart);
 static uint8_t 	USART_DMA_Send(volatile SOOL_USART_DMA *usart, const char *to_send_buf);
-static uint8_t 	USART_DMA_SendFull(volatile SOOL_USART_DMA *usart, const char *to_send_buf, uint8_t queue_request);
 static void		USART_DMA_ClearTxBuffer(volatile SOOL_USART_DMA *usart);
 
 // IRQ
@@ -52,12 +49,10 @@ static void		USART_DMA_Destroy(volatile SOOL_USART_DMA *usart);
 
 // private class functions
 static void 	USART_DMA_SetupAndStartDmaReading(volatile SOOL_USART_DMA *usart, const size_t buf_start_pos, const size_t num_bytes_to_read);
-static void 	USART_DMA_RestartReading(volatile SOOL_USART_DMA *usart, const size_t buf_start_pos, const size_t num_bytes_to_read);
 static uint16_t USART_DMA_GetMaxNonEmptyItemIndex(volatile SOOL_String *arr);
-static uint8_t	USART_DMA_AddToQueue(volatile SOOL_USART_DMA *usart, const char *to_send_buf); // returns status
-static uint8_t 	USART_DMA_SendFromQueue(volatile SOOL_USART_DMA *usart); // returns status
-static uint8_t	USART_DMA_IsQueueTransfer(volatile SOOL_USART_DMA *usart);
-static void 	USART_DMA_OnQueueTransferFinish(volatile SOOL_USART_DMA *usart);
+static uint8_t	USART_DMA_IsRxBufferFilledUp(volatile SOOL_USART_DMA *usart);
+static size_t	USART_DMA_FindBufferEnd(volatile SOOL_USART_DMA *usart);
+
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 // private non-class function
@@ -99,18 +94,12 @@ volatile SOOL_USART_DMA SOOL_Periph_USART_DMA_Init(USART_TypeDef* USARTx, uint32
 
 	/* Initialize the peripheral's RX and TX buffers
 	 * with an arbitrary length */
+	if (buf_size == 0) {
+		buf_size = 1;
+	}
 	usart_obj._rx.buffer = SOOL_Memory_String_Init(buf_size);
 	usart_obj._tx.buffer = SOOL_Memory_String_Init(buf_size);
 	usart_obj._tx.prepping_request = 0;
-
-#ifndef USART_DMA_TX_SINGLE_ELEMENT_QUEUE
-	usart_obj._tx.queue = SOOL_Memory_Queue_String_Init(5);   // NOTE: SOOL_String weights about 40 bytes
-#else
-	usart_obj._tx.queue = SOOL_Memory_Queue_String_Init(1);
-	// NOTE: only single-object-queue makes sense here because when ISR calls Pop while main loop Pushing
-	// there comes an interference in terms of memory and wrong characters are sent or event some segfaults
-	// occur. Queue is feed with a new data only when is already empty.
-#endif
 
 	/* Start port clock considering remapping (Reference Manual, p. 183 - AFIO_MAPR) */
 	if ( USARTx == USART1 ) {
@@ -329,7 +318,6 @@ volatile SOOL_USART_DMA SOOL_Periph_USART_DMA_Init(USART_TypeDef* USARTx, uint32
 	usart_obj._rx.new_data_flag = 0;
 
 	/* State */
-	usart_obj._state.tx_queue_transfer = 0;
 
 	// TX buffer already assigned in this moment
 
@@ -345,7 +333,6 @@ volatile SOOL_USART_DMA SOOL_Periph_USART_DMA_Init(USART_TypeDef* USARTx, uint32
 	usart_obj.ClearRxBuffer = USART_DMA_ClearRxBuffer;
 	usart_obj._DmaRxIrqHandler = USART_DMA_RxInterruptHandler;
 
-//	usart_obj.IsTxQueueEmpty = USART_DMA_IsTxQueueEmpty;
 	usart_obj.IsTxLineBusy = USART_DMA_IsTxLineBusy;
 	usart_obj.Send = USART_DMA_Send;
 	usart_obj.ClearTxBuffer = USART_DMA_ClearTxBuffer;
@@ -379,6 +366,7 @@ void SOOL_Periph_USART_DMA_Startup(volatile SOOL_USART_DMA* usart_ptr) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+/* This is invoked after TC (RX side) but it may be that NOT ALL data was transmitted due to a full RX buffer */
 static void USART_DMA_SetupAndStartDmaReading(volatile SOOL_USART_DMA *usart, const size_t buf_start_pos,
 		const size_t num_bytes_to_read) {
 
@@ -463,21 +451,7 @@ static void USART_DMA_DeactivateReading(volatile SOOL_USART_DMA *usart) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-static void USART_DMA_RestartReading(volatile SOOL_USART_DMA *usart, const size_t buf_start_pos, const size_t num_bytes_to_read) {
-
-	/* This is invoked after TC but not all data was transmitted due to a full RX buffer */
-	USART_DMA_SetupAndStartDmaReading(usart, buf_start_pos, num_bytes_to_read);
-
-}
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
 static uint8_t USART_DMA_IsDataReceived(volatile SOOL_USART_DMA *usart) {
-
-//	/* Information about new data could be read only once */
-//	uint8_t temp = usart->_rx.new_data_flag;
-//	usart->_rx.new_data_flag = 0;
-//	return (temp);
 
 	/* Information about new data could be read as long as data
 	 * were not read by 'GetRxData()' */
@@ -569,15 +543,30 @@ static uint8_t USART_DMA_RxInterruptHandler(volatile SOOL_USART_DMA *usart) {
 	 * 	-	there are still some data to receive (buffer must be resized)
 	 */
 
-	/* The buffer must be resized in both cases - make it a little bigger */
-	if ( !usart->_rx.buffer.Resize(&usart->_rx.buffer, (size_t)(usart->_rx.buffer._info.capacity + USART_DMA_RX_BUFFER_INCREMENT)) ) {
-		// FIXME: unable to resize - print some error
+	/* First, check whether RX buffer was fully filled up. Then, if filled, resize it */
+	// NOTE: capacity cannot be set to 0
+	size_t rx_buffer_end = USART_DMA_FindBufferEnd(usart);
+
+	if (rx_buffer_end == (size_t)(usart->_rx.buffer._info.capacity - 1)) {
+		/* The buffer must be resized in both cases - make it a little bigger.
+		 * Only after "IDLE Line" interrupt is called, we are sure that all data were received!
+		 * At this moment we expect new data to come, therefore resize */
+		if (!usart->_rx.buffer.Resize(
+			&usart->_rx.buffer,
+			(size_t)(usart->_rx.buffer._info.capacity + USART_DMA_RX_BUFFER_INCREMENT))
+		) {
+			// FIXME: unable to resize - print some error
+		}
 	}
 
 	/* Try to continue reading allowing the message to be continuously
 	 * written into buffer (this is an ideal case)
 	 * NOTE: sometimes resizing takes too long and data is lost (or maybe it was just a debugging method issue) */
-	USART_DMA_RestartReading(usart, (size_t)(usart->_rx.buffer._info.capacity - USART_DMA_RX_BUFFER_INCREMENT), USART_DMA_RX_BUFFER_INCREMENT);
+	USART_DMA_SetupAndStartDmaReading(
+		usart,
+		rx_buffer_end + 1,
+		(size_t)(usart->_rx.buffer._info.capacity) - rx_buffer_end - 1
+	);
 
 	return (1);
 
@@ -587,44 +576,36 @@ static uint8_t USART_DMA_RxInterruptHandler(volatile SOOL_USART_DMA *usart) {
 
 static uint8_t USART_DMA_IdleInterruptHandler(volatile SOOL_USART_DMA *usart) {
 
-	if ( USART_GetITStatus(usart->_setup.USARTx, USART_IT_IDLE) == SET ) {
-
-//		USART_ClearITPendingBit(usart->_setup.USARTx, USART_IT_IDLE); // CAUTION: does not clear IT flag!
-		/* Clear IDLE Line IT flag, Ref manual, p. 824, Bit 4 - "by a software sequence (an read
-		 * to the USART_SR register followed by a read to the USART_DR register";
-		 * line is IDLE so no data SHOULD be lost by reading a DR */
-		usart->_setup.USARTx->SR;
-		usart->_setup.USARTx->DR;
-
-		/* NOTE: useful when interrupts generated all the time - this part
-		 * is a leftover from an unsuccessful IT flag clearance */
-//		usart->_setup.USARTx->CR1 &= (uint16_t)(~USART_CR1_IDLEIE);
-
-//		if ( usart->_setup.dma_rx.DMAy_Channelx->CCR & DMA_CCR1_EN ) {
-		if ( usart->base_dma_rx.IsRunning(&usart->base_dma_rx) ) {
-
-			/* update Array_String info */
-			usart->_rx.buffer._info.total = USART_DMA_GetMaxNonEmptyItemIndex(&usart->_rx.buffer) + 1;
-			usart->_rx.buffer._info.add_index = usart->_rx.buffer._info.total;
-
-			/* reading is active and Idle Line detected */
-			/* EN bit check is used to avoid the first interrupt of an Idle Line issue
-			 * (triggers just after enabling the IT_IDLE) */
-			usart->_rx.new_data_flag = 1;
-
-		}
-		return (1);
-
+	if ( USART_GetITStatus(usart->_setup.USARTx, USART_IT_IDLE) == RESET ) {
+		return (0);
 	}
 
-	return (0);
+//	USART_ClearITPendingBit(usart->_setup.USARTx, USART_IT_IDLE); // CAUTION: does not clear IT flag!
+	/* Clear IDLE Line IT flag, Ref manual, p. 824, Bit 4 - "by a software sequence (an read
+	 * to the USART_SR register followed by a read to the USART_DR register";
+	 * line is IDLE so no data SHOULD be lost by reading a DR */
+	usart->_setup.USARTx->SR;
+	usart->_setup.USARTx->DR;
 
-}
+	/* NOTE: useful when interrupts generated all the time - this part
+	 * is a leftover from an unsuccessful IT flag clearance */
+//	usart->_setup.USARTx->CR1 &= (uint16_t)(~USART_CR1_IDLEIE);
 
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+//	if ( usart->_setup.dma_rx.DMAy_Channelx->CCR & DMA_CCR1_EN ) {
+	if ( usart->base_dma_rx.IsRunning(&usart->base_dma_rx) ) {
 
-static uint8_t USART_DMA_IsTxQueueEmpty(volatile SOOL_USART_DMA *usart) {
-	return (usart->_tx.queue.IsEmpty(&usart->_tx.queue));
+		/* update Array_String info */
+		usart->_rx.buffer._info.total = (uint16_t)(USART_DMA_GetMaxNonEmptyItemIndex(&usart->_rx.buffer) + 1);
+		usart->_rx.buffer._info.add_index = usart->_rx.buffer._info.total;
+
+		/* reading is active and Idle Line detected */
+		/* EN bit check is used to avoid the first interrupt of an Idle Line issue
+		 * (triggers just after enabling the IT_IDLE) */
+		usart->_rx.new_data_flag = 1;
+
+	}
+	return (1);
+
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -652,100 +633,28 @@ static void	USART_DMA_ClearTxBuffer(volatile SOOL_USART_DMA *usart) {
  * @return
  */
 static uint8_t USART_DMA_TxInterruptHandler(volatile SOOL_USART_DMA *usart) {
+	/* Disable DMA Channel */
+//	usart->_setup.dma_tx.DMAy_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN);// DMA_Cmd(usart->_setup.dma_tx.DMAy_Channelx, DISABLE);
+	usart->base_dma_tx.Stop(&usart->base_dma_tx);
 
-	/* Check whether last data transferred came from the TX queue */
-//	if ( USART_DMA_IsQueueTransfer(usart) ) {
-//		USART_DMA_OnQueueTransferFinish(usart);
-//	}
-
-//	/* After completion of last transfer, check whether there are some data in the TX queue */
-//	if ( !usart->_tx.queue.IsEmpty(&usart->_tx.queue) ) {
-//
-//		/* Start transmitting the oldest element in the queue */
-//		USART_DMA_SendFromQueue(usart);
-//
-//	} else {
-
-		/* Disable DMA Channel */
-//		usart->_setup.dma_tx.DMAy_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN);// DMA_Cmd(usart->_setup.dma_tx.DMAy_Channelx, DISABLE);
-		usart->base_dma_tx.Stop(&usart->base_dma_tx);
-
-//	}
 	return (1);
-
-}
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-// this is invoked from main loop, indicator is hard-coded to 0
-static uint8_t USART_DMA_Send(volatile SOOL_USART_DMA *usart, const char *to_send_buf) {
-	return (USART_DMA_SendFull(usart, to_send_buf, 0));
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 // this is used directly to send data from queue (see TxInterruptHandler);
 // SendFull is indirectly called from main loop via USART_DMA instance's `Send()`
-static uint8_t USART_DMA_SendFull(volatile SOOL_USART_DMA *usart, const char *to_send_buf, uint8_t queue_request) {
+static uint8_t USART_DMA_Send(volatile SOOL_USART_DMA *usart, const char *to_send_buf) {
 	/* Check whether Send call was generated by main loop request or comes from TxInterrupt (queue). */
-//	if ( !queue_request ) {
-//
-//		/* Check whether currently transmitting data from the queue */
-//		if ( USART_DMA_IsTxLineBusy(usart) && USART_DMA_IsQueueTransfer(usart) ) {
-//
-//			// queue content transfer - blocking behavior
-//			return (0); 	// no luck
-//
-//		} else if ( USART_DMA_IsTxLineBusy(usart) &&
-//					#ifndef USART_DMA_TX_SINGLE_ELEMENT_QUEUE
-//					!usart->_tx.queue.IsFull(&usart->_tx.queue)
-//					#else
-//					USART_DMA_IsTxQueueEmpty(usart)
-//					#endif
-//		) {
-//
-//			/* Check whether currently transmitting data from buffer and queue is empty/FULL */
-//			// buffer content transfer, queue is empty
-//			if ( USART_DMA_AddToQueue(usart, to_send_buf) ) {
-//
-//				// make sure that after addition of data the line is still busy
-//				if ( !USART_DMA_IsTxLineBusy(usart) ) {
-//
-//					/* NOTE: if there are some strange characters sent at the end of a given string
-//					 * the problem probably is caused by returning a wrong status */
-//					uint8_t status = USART_DMA_SendFromQueue(usart);
-//					return (status);
-////					return (USART_DMA_SendFromQueue(usart)); // TODO: for #ifndef USART_DMA_TX_SINGLE_ELEMENT_QUEUE the status will be probably different (must check how many elements there are in the queue, if only 1 then returning status in this manner will be valid)
-//
-//				}
-//				return (1); // pushed successfully
-//			}
-//			return (0);		// USART is busy, Queue is full, cannot save the request
-//
-//		} else if ( !USART_DMA_IsTxLineBusy(usart) && !USART_DMA_IsTxQueueEmpty(usart) ) {
-//
-//			/* TX line is not busy but the queue is not empty (queue must have been fed
-//			 * with data just after last transfer completion) */
-//			USART_DMA_SendFromQueue(usart);
-//			return (0);		// data from the queue will be sent at first
-//
-//		} else if ( !USART_DMA_IsTxLineBusy(usart) ) {
-//
-//			/* TX line is not busy and queue is empty - go ahead! */
-//
-//		} else {
-//
-//			/* Unsupported case */
-//			return (0);
-//
-//		}
-//
-//	}
-
 	usart->_tx.prepping_request = 1;
 
 	/* Check message length */
 	uint32_t length = (uint32_t)strlen(to_send_buf);
+
+	/* Check whether running and wait, if needed */
+	while (usart->base_dma_tx.IsRunning(&usart->base_dma_tx)) {
+		// TODO: debug this
+	}
 
 	/* Decide whether reallocation is a must */
 	// shrink the buffer if smaller is needed, extend if bigger
@@ -755,6 +664,7 @@ static uint8_t USART_DMA_SendFull(volatile SOOL_USART_DMA *usart, const char *to
 		if ( !usart->_tx.buffer.Resize(&usart->_tx.buffer, (size_t)length) ) {
 			// FIXME: error message
 			//perror("COULD NOT REALLOCATE AN ARRAY");
+			// TODO: debug this
 		}
 
 	}
@@ -850,62 +760,48 @@ static void	USART_DMA_Destroy(volatile SOOL_USART_DMA *usart) {
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-// returns status
-static uint8_t USART_DMA_AddToQueue(volatile SOOL_USART_DMA *usart, const char *to_send_buf) {
-
-	// Add data to queue
-	if ( usart->_tx.queue.Push(&usart->_tx.queue, to_send_buf) ) {
-		return (1); // pushed successfully
+static uint8_t USART_DMA_IsRxBufferFilledUp(volatile SOOL_USART_DMA *usart) {
+	if (usart->_rx.buffer._info.capacity == 0) {
+		return 1;
 	}
-	return (0);		// no luck while pushing
 
+	size_t last_buffer_index = (size_t)(usart->_rx.buffer._info.capacity - 1);
+	if (USART_DMA_FindBufferEnd(usart) == last_buffer_index) {
+		return 1;
+	}
+
+	return 0;
 }
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-// returns status
-static uint8_t USART_DMA_SendFromQueue(volatile SOOL_USART_DMA *usart) {
+/* Looks for a last non-null character index in the given RX buffer */
+static size_t USART_DMA_FindBufferEnd(volatile SOOL_USART_DMA *usart) {
+	size_t capacity = (size_t)usart->_rx.buffer._info.capacity;
 
-	/* Start transmitting the oldest element in the queue */
-	usart->_state.tx_queue_transfer = 1;
+	if (capacity == 0) {
+		return 0;
+	}
 
-#ifndef SOOL_QUEUE_STRING_GET_FRONT_PTR
-	SOOL_String front_elem = usart->_tx.queue.GetFront(&usart->_tx.queue);
-#else
-	SOOL_String *front_elem_ptr = usart->_tx.queue.GetFront(&usart->_tx.queue);
-#endif
+	/* Heuristics applied here: we are looking for a few null chars in a row */
+	size_t num_chars_null = 0;
+	// number of found null characters, counted from the end of buffer
+	size_t nulls_in_row = 0;
+	size_t index_last_non_null_char = 0;
 
-#ifndef SOOL_QUEUE_STRING_GET_FRONT_PTR
-	/* Pop from the queue */
-	usart->_tx.queue.Pop(&usart->_tx.queue);
-#endif
+	for (size_t i = 0; i < capacity; i++) {
+		if (usart->_rx.buffer._data[i] == 0) {
+			num_chars_null++;
+			nulls_in_row++;
+		} else {
+			nulls_in_row = 0;
+			index_last_non_null_char = i;
+		}
+	}
 
-	/* Run DMA sending function */
-#ifndef SOOL_QUEUE_STRING_GET_FRONT_PTR
-	uint8_t status = USART_DMA_SendFull(usart, front_elem.GetString(&front_elem), 1);
-#else
-	uint8_t status = USART_DMA_SendFull(usart, front_elem_ptr->GetString(front_elem_ptr), 1);
-#endif
-
-#ifdef SOOL_QUEUE_STRING_GET_FRONT_PTR
-	/* Pop from the queue */
-	usart->_tx.queue.Pop(&usart->_tx.queue);
-#endif
-
-	return (status);
-
+	if (nulls_in_row > 0 && nulls_in_row == num_chars_null) {
+		// we are sure that buffer is not full, since all null characters are placed at the end of the buffer
+		return index_last_non_null_char;
+	}
+	return capacity;
 }
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-static uint8_t USART_DMA_IsQueueTransfer(volatile SOOL_USART_DMA *usart) {
-	return (usart->_state.tx_queue_transfer);
-}
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-static void USART_DMA_OnQueueTransferFinish(volatile SOOL_USART_DMA *usart) {
-	usart->_state.tx_queue_transfer = 0;
-}
-
-// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
