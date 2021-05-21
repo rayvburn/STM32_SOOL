@@ -58,6 +58,7 @@ struct _SOOL_USART_Rx {
 struct _SOOL_USART_Tx {
 	SOOL_String 		buffer;
 	SOOL_Queue_String	queue;
+	uint8_t 			prepping_request;
 } USART_Tx;
 
 // - - - - - - - - - - - - - - - -
