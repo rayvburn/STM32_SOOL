@@ -637,6 +637,8 @@ static uint8_t USART_DMA_TxInterruptHandler(volatile SOOL_USART_DMA *usart) {
 //	usart->_setup.dma_tx.DMAy_Channelx->CCR &= (uint16_t)(~DMA_CCR1_EN);// DMA_Cmd(usart->_setup.dma_tx.DMAy_Channelx, DISABLE);
 	usart->base_dma_tx.Stop(&usart->base_dma_tx);
 
+	USART_DMA_ClearTxBuffer(usart);
+
 	return (1);
 }
 
@@ -651,10 +653,8 @@ static uint8_t USART_DMA_Send(volatile SOOL_USART_DMA *usart, const char *to_sen
 	/* Check message length */
 	uint32_t length = (uint32_t)strlen(to_send_buf);
 
-	/* Check whether running and wait, if needed */
-	while (usart->base_dma_tx.IsRunning(&usart->base_dma_tx)) {
-		// TODO: debug this
-	}
+	/* Make sure that DMA is not running, and wait if needed */
+	while (usart->base_dma_tx.IsRunning(&usart->base_dma_tx));
 
 	/* Decide whether reallocation is a must */
 	// shrink the buffer if smaller is needed, extend if bigger
