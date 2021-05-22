@@ -155,32 +155,28 @@ static uint8_t SOOL_String_Resize(SOOL_String *string_ptr, const size_t new_capa
 
 	/* Backup some info */
 	uint16_t old_capacity = string_ptr->_info.capacity;
-	char *ptr_backup = string_ptr->_data;
 
 	/* Try to reallocate memory */
-	string_ptr->_data = realloc( (char*)string_ptr->_data, new_capacity * sizeof(char) );
+	char* ptr = realloc( (char*)string_ptr->_data, new_capacity * sizeof(char) );
 
 	/* Check if the reallocation was successful */
-	if ( string_ptr->_data != NULL ) {
-
-		/* Clear the new part of an Array (if Array is bigger than before) */
-		if ( old_capacity < new_capacity ) {
-			for ( size_t i = old_capacity; i < new_capacity; i++) {
-				string_ptr->_data[i] = 0;
-			}
-		}
-
-		/* Update capacity */
-		string_ptr->_info.capacity = new_capacity;
-
-		return (1);
-
+	if (ptr == NULL) {
+		return 0;
 	}
 
-	/* If the reallocation failed - restore a previous pointer and return 0 */
-	string_ptr->_data = ptr_backup;
-	// TODO: some error message
-	return (0);
+	string_ptr->_data = ptr;
+
+	/* Clear the new part of an Array (if Array is bigger than before) */
+	if ( old_capacity < new_capacity ) {
+		for ( size_t i = old_capacity; i < new_capacity; i++) {
+			string_ptr->_data[i] = 0;
+		}
+	}
+
+	/* Update capacity */
+	string_ptr->_info.capacity = new_capacity;
+
+	return (1);
 
 }
 
