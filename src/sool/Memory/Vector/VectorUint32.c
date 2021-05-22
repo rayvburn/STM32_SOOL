@@ -145,12 +145,15 @@ static uint8_t SOOL_Vector_Resize(SOOL_Vector_Uint32 *v_ptr, unsigned int new_si
 
 	/* Backup some info */
 	uint16_t old_size = v_ptr->_info.size;
-	uint32_t *ptr_backup = v_ptr->_data;
 
 	/* Check the new desired size of the vector */
 	if ( new_size != 0 ) {
 		// try to reallocate memory
-		v_ptr->_data = realloc( (uint32_t*)v_ptr->_data, new_size * sizeof(uint32_t) );
+		uint32_t* ptr = realloc( (uint32_t*)v_ptr->_data, new_size * sizeof(uint32_t) );
+		if (ptr == NULL) {
+			return 0;
+		}
+		v_ptr->_data = ptr;
 	} else {
 		// free the allocated memory block - this is the key for stable operation -
 		// it seems that C library included with StdPeriph has `realloc` implemented
@@ -187,8 +190,7 @@ static uint8_t SOOL_Vector_Resize(SOOL_Vector_Uint32 *v_ptr, unsigned int new_si
 
 	}
 
-	/* If the reallocation failed - restore a previous pointer and return 0 */
-	v_ptr->_data = ptr_backup;
+	// FIXME: WE SHOULD NOT GET THERE
 
 	// TODO: some error message
 	return (0);

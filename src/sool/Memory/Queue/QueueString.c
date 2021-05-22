@@ -195,7 +195,6 @@ static uint8_t SOOL_QueueString_Resize(SOOL_Queue_String *q_ptr, int8_t size_cha
 
 	/* Backup some info */
 	uint16_t old_capacity = q_ptr->_setup.size;
-	SOOL_String *ptr_backup = q_ptr->_data;
 
 	/* Try to (re)allocate memory */
 	if ( q_ptr->_setup.size != 0 ) {
@@ -204,7 +203,11 @@ static uint8_t SOOL_QueueString_Resize(SOOL_Queue_String *q_ptr, int8_t size_cha
 		// Check whether element to be added or deleted.
 		if ( size_change == 1 ) {
 
-			q_ptr->_data = realloc( q_ptr->_data, (q_ptr->_setup.size + 1) * sizeof(SOOL_String) );
+			SOOL_String* ptr = realloc( (SOOL_String*)q_ptr->_data, (q_ptr->_setup.size + 1) * sizeof(SOOL_String) );
+			if (ptr == NULL) {
+				return 0;
+			}
+			q_ptr->_data = ptr;
 
 		} else if ( size_change == -1 ) {
 
@@ -261,8 +264,7 @@ static uint8_t SOOL_QueueString_Resize(SOOL_Queue_String *q_ptr, int8_t size_cha
 
 	}
 
-	/* If the reallocation failed - restore a previous pointer and return 0 */
-	q_ptr->_data = ptr_backup;
+	// FIXME: WE SHOULD NOT GET THERE
 
 	// TODO: some error message
 	return (0);

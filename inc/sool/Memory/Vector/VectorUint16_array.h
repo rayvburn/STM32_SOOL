@@ -10,6 +10,7 @@
 
 #include "sool/Memory/Vector/VectorUint16.h"
 
+/* IMPORTANT: DO NOT USE IT! */
 /// @brief Extends array of Vector_Uint16 elements by 1
 /// @param v_ptr: pointer to the first element of the array
 /// @param size_curr: current size of the array
