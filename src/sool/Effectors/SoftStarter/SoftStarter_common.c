@@ -16,6 +16,7 @@ uint8_t SOOL_Effector_SoftStarter_Reconfigure(struct _SOOL_SoftStarterConfigStru
 	/* Evaluate correctness */
 	if ( pulse_end < 0 || pulse_start < 0 ) {
 		/* ERROR */
+		// printf("[SoftStarter_Reconfigure] Not correct (1) - without any action\r\n");
 		return (0);
 	} else if ( pulse_end == pulse_start || duration == 0 ) {
 		/* Does not make sense - but sometimes Reconfigure is called when the motor is stopped */
@@ -25,6 +26,7 @@ uint8_t SOOL_Effector_SoftStarter_Reconfigure(struct _SOOL_SoftStarterConfigStru
 		// set `_state`
 		state_ptr->changes_left = 0;
 		state_ptr->pulse_last = pulse_end;
+		// printf("[SoftStarter_Reconfigure] Not correct (2) - cleared\r\n");
 		return (0);
 	}
 
@@ -82,6 +84,19 @@ uint8_t SOOL_Effector_SoftStarter_Reconfigure(struct _SOOL_SoftStarterConfigStru
 	config_ptr->increments = state_ptr->changes_left;
 	config_ptr->pulse_start = pulse_start;
 
+	// printf("[SoftStarter_Reconfigure] Reconfig"
+	// 	"\r\n\t\tSTATE: time_change_gap %d, pulse_change %d, changes_left %d"
+	// 	"\r\n\t\tCONFIG: increments %d, pulse_start %d, pulse_end %d"
+    //     "\r\n\t\tduration %d\r\n",
+	// 	(int)setup_ptr->time_change_gap,
+	// 	(int)setup_ptr->pulse_change,
+	// 	(int)state_ptr->changes_left,
+	// 	(int)config_ptr->increments,
+	// 	(int)pulse_start,
+	// 	(int)pulse_end,
+    //     (int)duration
+	// );
+
 	return (1);
 
 }
@@ -96,6 +111,11 @@ void SOOL_Effector_SoftStarter_Start(struct _SOOL_SoftStarterConfigStruct* confi
 	state_ptr->changes_left = config_ptr->increments;
 	state_ptr->pulse_last = config_ptr->pulse_start;
 
+	// printf("[SoftStarter_Start] STATE: time_last_pwm_change %d, pwm_changes_left %d, pwm_last %d\r\n",
+	// 	(int)state_ptr->time_last_pulse_change,
+	// 	(int)state_ptr->changes_left,
+	// 	(int)state_ptr->pulse_last
+	// );
 }
 
 // --------------------------------------------------------------
@@ -108,16 +128,36 @@ uint8_t SOOL_Effector_SoftStarter_Process(struct _SOOL_SoftStarterSetupStruct* s
 	uint32_t time_diff = abs(SOOL_Workflow_Common_ComputeTimeDifference(state_ptr->time_last_pulse_change, stamp));
 	if (time_diff >= setup_ptr->time_change_gap) {
 
-
+		// printf("[SoftStarter_Process] diff: %d, time_change_gap %d, time_diff %d\r\n",
+		// 	(int)(stamp - state_ptr->time_last_pulse_change),
+		// 	(int)setup_ptr->time_change_gap,
+		// 	(int)time_diff
+		// );
+		
 		/* Check if finished */
 		if ( state_ptr->changes_left == 0 ) {
+			// printf("[SoftStarter_Process] (current %d, last change %d, gap %d) / aborted since changes_left is %d\r\n",
+			// 	(int)stamp,
+			// 	(int)state_ptr->time_last_pulse_change,
+			// 	(int)setup_ptr->time_change_gap,
+			// 	(int)state_ptr->changes_left
+			// );
 			return (0);
 		}
 
 		/* Update timestamp */
+		uint32_t time_last_pulse_change_bckp = state_ptr->time_last_pulse_change;
 		state_ptr->time_last_pulse_change = stamp;
 		state_ptr->changes_left--;
 		state_ptr->pulse_last += setup_ptr->pulse_change;
+
+		// printf("[SoftStarter_Process] (current %d, last change %d, gap %d) / STATE: changes_left %d, pwm_last %d\r\n",
+		// 	(int)stamp,
+		// 	(int)time_last_pulse_change_bckp,
+		// 	(int)setup_ptr->time_change_gap,
+		// 	(int)state_ptr->changes_left,
+		// 	(int)state_ptr->pulse_last
+		// );
 		return (1);
 
 	}
