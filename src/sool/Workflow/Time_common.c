@@ -6,6 +6,7 @@
  */
 
 #include <sool/Workflow/Time_common.h>
+#include <limits.h>
 
 // - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -17,8 +18,8 @@ uint32_t SOOL_Workflow_Common_ComputeTimeDifference(uint32_t time_start, uint32_
 	if ( time_end < time_start ) {
 
 		/* Overflow has occurred */
-		//time_diff = (UINT32_MAX - time_start) + time_end;
-		time_diff = (4294967295U - time_start) + time_end;
+		time_diff = (UINT32_MAX - time_start) + time_end;
+		//time_diff = (4294967295U - time_start) + time_end;
 
 	} else {
 

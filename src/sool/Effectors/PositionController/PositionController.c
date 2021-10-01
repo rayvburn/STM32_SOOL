@@ -11,6 +11,10 @@ static uint8_t 	PositionController_ConfigMove(SOOL_PositionController* controlle
 		uint32_t current_pos, uint32_t goal_pos,
 		uint16_t pwm_start, uint16_t pwm_stable, uint16_t pwm_goal,
 		uint32_t soft_start_end_pulse, uint32_t soft_stop_start_pulse, uint8_t upcounting);
+static uint8_t  PositionController_ConfigMoveStructAbs(SOOL_PositionController* controller_ptr,
+        struct PositionControlAbsRequest* ctrl_req);
+static uint8_t  PositionController_ConfigMoveStructRel(SOOL_PositionController* controller_ptr,
+        struct PositionControlRelRequest* ctrl_req);
 static void 	PositionController_Abort(SOOL_PositionController* controller_ptr, uint8_t state);
 static uint8_t 	PositionController_Process(SOOL_PositionController* controller_ptr, uint32_t current_pos);
 static uint8_t 	PositionController_GetMotionStatus(SOOL_PositionController* controller_ptr);
@@ -45,6 +49,8 @@ SOOL_PositionController SOOL_Effector_PositionController_Initialize() {
 	SOOL_PositionController controller;
 
 	controller.ConfigMove = PositionController_ConfigMove;
+    controller.ConfigMoveStructAbs = PositionController_ConfigMoveStructAbs;
+    controller.ConfigMoveStructRel = PositionController_ConfigMoveStructRel;
 	controller.GetMotionStatus = PositionController_GetMotionStatus;
 	controller.Process = PositionController_Process;
 	controller.GetOutput = PositionController_GetOutput;
@@ -165,13 +171,53 @@ static uint8_t PositionController_ConfigMove(SOOL_PositionController* controller
 
 // --------------------------------------------------------------
 
+static uint8_t PositionController_ConfigMoveStructAbs(
+    SOOL_PositionController* controller_ptr,
+    struct PositionControlAbsRequest* ctrl_req
+) {
+    return PositionController_ConfigMove(
+        controller_ptr,
+        ctrl_req->pos_acc_start,
+        ctrl_req->pos_goal,
+        ctrl_req->speed_start,
+        ctrl_req->speed_stable,
+        ctrl_req->speed_end,
+        ctrl_req->pos_stable_start,
+        ctrl_req->pos_dec_start,
+        ctrl_req->upcounting
+    );
+}
+
+// --------------------------------------------------------------
+
+static uint8_t PositionController_ConfigMoveStructRel(
+    SOOL_PositionController* controller_ptr,
+    struct PositionControlRelRequest* ctrl_req
+) {
+    uint32_t pos_stable_start = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(ctrl_req->pos_acc_start, ctrl_req->pos_acc_len);
+    uint32_t pos_dec_start = SOOL_Sensor_Encoder_PositionCalculator_ComputeGoal(ctrl_req->pos_goal, ctrl_req->pos_dec_len);
+    return PositionController_ConfigMove(
+        controller_ptr,
+        ctrl_req->pos_acc_start,
+        ctrl_req->pos_goal,
+        ctrl_req->speed_start,
+        ctrl_req->speed_stable,
+        ctrl_req->speed_end,
+        pos_stable_start,
+        pos_dec_start,
+        ctrl_req->upcounting
+    );
+}
+
+// --------------------------------------------------------------
+
 static void PositionController_Abort(SOOL_PositionController* controller_ptr, uint8_t state) {
 
 	switch ( state ) {
 
 		case(1):
 			controller_ptr->_state.aborted = 1;
-			controller_ptr->_state.stage_active = 0; // finished
+			controller_ptr->_state.stage_active = SOOL_POSITION_CONTROLLER_FINISHED;
 			break;
 		case(0):
 			controller_ptr->_state.aborted = 0;
@@ -307,7 +353,8 @@ static uint8_t PositionController_HandleStableSpeed(SOOL_PositionController* con
 
 	// TODO: safety in case of some `lag`? - consider `_config.upcounting` and `inequality`
 	// evaluate whether to start decelerating
-	if ( current_pos == controller_ptr->_config.soft_stop_start_pulse ) {
+	if ( (controller_ptr->_config.upcounting && current_pos == controller_ptr->_config.soft_stop_start_pulse)
+		|| (!controller_ptr->_config.upcounting && current_pos == controller_ptr->_config.soft_stop_start_pulse) ) {
 
 		// calculate how many `ticks` should deceleration take
 		// difference between current position and the goal position
@@ -339,7 +386,7 @@ static uint8_t PositionController_HandleStableSpeed(SOOL_PositionController* con
 				// never got it in the debugger, but at least the motor will (almost?) stop safely
 			}
 		}
-
+		controller_ptr->base.Start(&controller_ptr->base, current_pos);
 		PositionController_SelectNextState(controller_ptr); // go to DECELERATION
 
 	}
@@ -380,8 +427,7 @@ static uint8_t PositionController_HandleDeceleration(SOOL_PositionController* co
 			return (1);
 		}
 
-		PositionController_SelectNextState(controller_ptr); // go to STABLE
-		// go further with the same speed
+		PositionController_SelectNextState(controller_ptr); // go to FINISHED
 
 	}
 	return (0);
@@ -521,28 +567,54 @@ static uint8_t PositionController_ShrinkStages(uint32_t current_pos, uint32_t go
 	// modified value of the PWM pulse for the `stable` stage
 	uint16_t pwm_stable_mod = *pwm_stable_ptr;
 
+    // flag that indicate that some recovery was used to find feasible motion; prevents from being stuck in while
+    uint8_t recovery_activated = 0;
 	// `stage_total` is bigger than 3
 	// change until the `intersection point` is found;
 	// this while loop works for cases where (`stage_total >= 2`), see the related `small_range` flag
 	while ( (duration_stage1 + duration_stage2) > (stage_total) ) { /* previously: (stage_total - 2) ) { */ // `length` condition; `-2` is a margin
 
+        // Scale speeds - disabled ATM
 		// NOTE: the trapezoidal pattern of motion ( rotational speed(pulses) function )
 		// allows to assume that the `setup_start.pulse_change` is positive while
 		// `setup_stop.pulse_change` is negative
-		pwm_stage1 -= setup_start.pulse_change;
-		pwm_stage2 += setup_stop.pulse_change;
+		// pwm_stage1 -= setup_start.pulse_change;
+		// pwm_stage2 += setup_stop.pulse_change;
 
 		duration_stage1 -= setup_start.time_change_gap;
 		duration_stage2 -= setup_stop.time_change_gap;
 
-		// check whether it is safe to apply some margin
+        // do not allow negative duration; check whether it is safe to apply some margin
 		// TODO: case - one stage of some small length and the other with 0?;
 		// HERE: both stages are similarly lengthened
-		if ( duration_stage1 < 1 && duration_stage2 < 1 ) {
+        uint8_t duration_stage1_lowest_possible = (duration_stage1 - setup_start.time_change_gap) <= 0;
+        uint8_t duration_stage2_lowest_possible = (duration_stage2 - setup_stop.pulse_change) <= 0;
+        
+        // remake to the symmetry of the motion despite the required assymetry and try again
+        // potentially extend the "increment" of the shorter region to make motion feasible
+        if (!recovery_activated && duration_stage1_lowest_possible && !duration_stage2_lowest_possible) {
+            setup_stop = PositionController_FindStageSetup(stage2, setup_start, stage1);
+            duration_stage1 = stage1;
+	        duration_stage2 = stage2;
+            // @update pwm_stage1 and pwm_stage2 if changed in loop
+            recovery_activated = 1;
+        } else if (!recovery_activated && !duration_stage1_lowest_possible && duration_stage2_lowest_possible) {
+            setup_start = PositionController_FindStageSetup(stage1, setup_stop, stage2);
+            duration_stage1 = stage1;
+	        duration_stage2 = stage2;
+            // @update pwm_stage1 and pwm_stage2 if changed in loop
+            recovery_activated = 1;
+        } else if (duration_stage1_lowest_possible || duration_stage2_lowest_possible) {
+            if (recovery_activated) {
+                // cannot find proper solution -> ignore velocity profile and make it simple as that
+                duration_stage1 = stage_total / 2;
+	            duration_stage2 = stage_total / 2 + (stage_total % 2);
+                // @update pwm_stage1 and pwm_stage2 if changed in loop
+            } else {
 			return (0);
 			break;
 		}
-
+        }
 	}
 
 	// set `pwm_stable` as the bigger `pwm_stageX`
@@ -634,7 +706,15 @@ static struct _SOOL_SoftStarterSetupStruct PositionController_FindStageSetup(uin
 
 	// maintain symmetry of the stages
 	int32_t factor = (stage_length * 100)/(stage_opposite_length); // multiplied for higher accuracy
+	
+    if (abs(factor) < 100) {
+        // (int)(<1) -> 0
+        int8_t sign = factor > 0 ? +1 : -1;
+        factor = (int32_t)sign * 1; 
+    } else {
+        // valid integer
 	factor /= 100;
+    }
 
 	setup.pulse_change = setup_opposite.pulse_change * factor * (-1); // acceleration vs deceleration / deceleration vs acceleration - pulse change will be opposite
 	setup.time_change_gap = setup_opposite.time_change_gap * factor;

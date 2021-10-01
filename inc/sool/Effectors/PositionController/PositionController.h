@@ -13,6 +13,30 @@
 
 // --------------------------------------------------------------
 
+struct PositionControlAbsRequest {
+	uint32_t pos_acc_start;
+	uint32_t pos_stable_start;
+	uint32_t pos_dec_start;
+	uint32_t pos_goal;
+    uint8_t upcounting;
+	uint16_t speed_start;
+	uint16_t speed_stable;
+	uint16_t speed_end;
+};
+
+struct PositionControlRelRequest {
+	uint32_t pos_acc_start;
+	int64_t pos_acc_len;
+	int64_t pos_dec_len;
+	uint32_t pos_goal;
+    uint8_t upcounting;
+	uint16_t speed_start;
+	uint16_t speed_stable;
+	uint16_t speed_end;
+};
+
+// --------------------------------------------------------------
+
 struct _SOOL_PositionControllerStruct;
 typedef struct _SOOL_PositionControllerStruct SOOL_PositionController;
 
@@ -82,6 +106,20 @@ struct _SOOL_PositionControllerStruct {
 	uint8_t (*ConfigMove)(SOOL_PositionController* controller_ptr, uint32_t current_pos, uint32_t goal_pos,
 			uint16_t pwm_start, uint16_t pwm_stable, uint16_t pwm_goal,
 			uint32_t soft_start_end_pulse, uint32_t soft_stop_start_pulse, uint8_t upcounting);
+
+    /**
+     * @brief See ConfigMove for details
+     * 
+     * Argument list is replaced by PositionControlAbsRequest struct
+     */
+    uint8_t (*ConfigMoveStructAbs)(SOOL_PositionController* controller_ptr, struct PositionControlAbsRequest* ctrl_req);
+
+    /**
+     * @brief See ConfigMove for details
+     * 
+     * Argument list is replaced by PositionControlRelRequest struct
+     */
+    uint8_t (*ConfigMoveStructRel)(SOOL_PositionController* controller_ptr, struct PositionControlRelRequest* ctrl_req);
 
 	/**
 	 * @brief Tries to calculate a new pulse value based on the current position @ref current_pos

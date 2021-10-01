@@ -104,7 +104,10 @@ uint8_t SOOL_Effector_SoftStarter_Process(struct _SOOL_SoftStarterSetupStruct* s
 				struct _SOOL_SoftStarterStateStruct* state_ptr, uint32_t stamp) {
 
 //	if ( (stamp - state_ptr->time_last_pulse_change) >= setup_ptr->time_change_gap ) {
-	if ( abs((stamp - state_ptr->time_last_pulse_change)) >= setup_ptr->time_change_gap ) { // allows `down-counting`
+	// compared to above, allow `down-counting` AND consider long-term operation (uin32_t flip)
+	uint32_t time_diff = abs(SOOL_Workflow_Common_ComputeTimeDifference(state_ptr->time_last_pulse_change, stamp));
+	if (time_diff >= setup_ptr->time_change_gap) {
+
 
 		/* Check if finished */
 		if ( state_ptr->changes_left == 0 ) {
