@@ -658,7 +658,7 @@ static uint8_t USART_DMA_Send(volatile SOOL_USART_DMA *usart, const char *to_sen
 
 	/* Decide whether reallocation is a must */
 	// shrink the buffer if smaller is needed, extend if bigger
-	if ( length != usart->_tx.buffer._info.capacity ) {
+	if ( length > usart->_tx.buffer._info.capacity ) {
 
 		/* `Resize` method discards USART's volatile qualifier - not crucial here */
 		if ( !usart->_tx.buffer.Resize(&usart->_tx.buffer, (size_t)length) ) {
@@ -668,6 +668,9 @@ static uint8_t USART_DMA_Send(volatile SOOL_USART_DMA *usart, const char *to_sen
 		}
 
 	}
+
+	/* Fill buffer with null characters */
+	memset(usart->_tx.buffer._data, '\0', sizeof(char) * usart->_tx.buffer._info.capacity);
 
 	/* Try to copy contents of the string to be sent */
 	strcpy(usart->_tx.buffer._data, to_send_buf); // beware of `&`, this is not a typical array
