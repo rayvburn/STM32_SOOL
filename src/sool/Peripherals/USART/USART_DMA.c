@@ -547,7 +547,7 @@ static uint8_t USART_DMA_RxInterruptHandler(volatile SOOL_USART_DMA *usart) {
 	// NOTE: capacity cannot be set to 0
 	size_t rx_buffer_end = USART_DMA_FindBufferEnd(usart);
 
-	if (rx_buffer_end == (size_t)(usart->_rx.buffer._info.capacity - 1)) {
+	if (rx_buffer_end == (size_t)(usart->_rx.buffer._info.capacity)) {
 		/* The buffer must be resized in both cases - make it a little bigger.
 		 * Only after "IDLE Line" interrupt is called, we are sure that all data were received!
 		 * At this moment we expect new data to come, therefore resize */
@@ -564,8 +564,8 @@ static uint8_t USART_DMA_RxInterruptHandler(volatile SOOL_USART_DMA *usart) {
 	 * NOTE: sometimes resizing takes too long and data is lost (or maybe it was just a debugging method issue) */
 	USART_DMA_SetupAndStartDmaReading(
 		usart,
-		rx_buffer_end + 1,
-		(size_t)(usart->_rx.buffer._info.capacity) - rx_buffer_end - 1
+		rx_buffer_end,
+		(size_t)(usart->_rx.buffer._info.capacity) - rx_buffer_end
 	);
 
 	return (1);
